@@ -66,6 +66,7 @@ export class Renderer {
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
+    if (u.type === 'infantry') { this.drawSoldier(u, sel, col, t); return; }
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
@@ -88,6 +89,30 @@ export class Renderer {
     ctx.restore();
     if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
     if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
+  }
+  // Rifle Trooper: ~24px human figure, feet on the ground point, walking bob/sway, muzzle flash, team ring + tint.
+  drawSoldier(u, sel, col, t) {
+    const ctx = this.ctx, H = 24, moving = Math.hypot(u.x - (u._lx ?? u.x), u.y - (u._ly ?? u.y)) > 0.05;
+    u._lx = u.x; u._ly = u.y;
+    const c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
+    const ph = t * 11 + u.id * 1.7, bob = moving ? Math.abs(Math.sin(ph)) * 1.6 : 0, sway = moving ? Math.sin(ph) * 0.07 : 0;
+    const fx = u.x, fy = u.y + 5, dir = u.faceRight === false ? -1 : 1; // feet point
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.75; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(fx, fy, 7.5, 3.2, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.fillStyle = '#000a'; ctx.beginPath(); ctx.ellipse(fx, fy, 5.5, 2.2, 0, 0, 7); ctx.fill();
+    const spr = getSprite('soldier', u.team);
+    ctx.save(); ctx.translate(fx, fy); ctx.rotate(sway); ctx.translate(0, -bob); ctx.scale(dir, 1);
+    if (spr) { const w = H / spr.aspect; ctx.drawImage(spr.img, -w / 2, -H, w, H); }
+    else { // fallback figure: legs (stepping), body, head, rifle
+      const st = moving ? Math.sin(ph) * 3 : 0; ctx.strokeStyle = '#2a333c'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(-2 + st, 0); ctx.moveTo(0, -9); ctx.lineTo(2 - st, 0); ctx.stroke();
+      ctx.fillStyle = col; ctx.fillRect(-3.5, -18, 7, 10); ctx.fillStyle = '#556'; ctx.beginPath(); ctx.arc(0, -21, 3.2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#9ff'; ctx.fillRect(0.5, -22, 2.5, 1.2); ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, -14); ctx.lineTo(9, -11); ctx.stroke(); ctx.lineCap = 'butt';
+    }
+    const w = u.stats.weapon; if (w && u.cool > w.cooldown - 0.08) { // just fired: muzzle flash at rifle tip
+      ctx.save(); ctx.shadowColor = '#ffd27a'; ctx.shadowBlur = 8; ctx.fillStyle = '#fff3c0'; ctx.beginPath(); ctx.arc(spr ? 6.5 : 10, spr ? -7.5 : -11, 2.4, 0, 7); ctx.fill(); ctx.restore(); }
+    ctx.restore(); ctx.lineWidth = 1;
+    if (u.team !== 0 || sel || u.hp < u.stats.hp) this.hpBar(u, fx - 7, fy - H - 6 - bob, 14, sel);
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(fx, fy, 9.5, 4.2, 0, 0, 7); ctx.stroke(); }
   }
   // Cosmetic tank variants (cycled by unit id). Isometric art: flip horizontally by heading instead of rotating.
   drawTankSprite(u, sel, col, r) {

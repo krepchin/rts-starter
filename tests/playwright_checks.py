@@ -95,12 +95,12 @@ def run(p, name, ctxargs, browser):
           game.fog.enabled=false; for(let i=0;i<30*2;i++) game.update(1/30);
           game.units.filter(u=>u.team===1).forEach(u=>{u.x=3000;u.y=3000; u.order=null});
           game.buildings.filter(b=>b.type==='ion').forEach(b=>b.charge=120);
-          game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; {const c0=game.spawnUnit('carrier',0,12*32,15.5*32); c0.angle=0; const c1=game.spawnUnit('carrier',1,21*32,15.5*32); c1.angle=Math.PI; for(let k=0;k<5;k++){ const i0=game.spawnInterceptor(c0); i0.x=(13.5+k)*32; i0.y=17.5*32; i0.angle=k%2?0:Math.PI; i0.update=()=>{}; const i1=game.spawnInterceptor(c1); i1.x=(19+k)*32; i1.y=18*32; i1.update=()=>{}; }} ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
-          camera.centerOn(mobile? 11*32: 17*32, mobile? 14*32 : 10*32); }""", name != 'desktop')
-        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-v5{"" if name=="desktop" else "-mobile"}.png')
+          game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; {const c0=game.spawnUnit('carrier',0,12*32,15.5*32); c0.angle=0; const c1=game.spawnUnit('carrier',1,21*32,15.5*32); c1.angle=Math.PI; for(let k=0;k<5;k++){ const i0=game.spawnInterceptor(c0); i0.x=(13.5+k)*32; i0.y=17.5*32; i0.angle=k%2?0:Math.PI; i0.update=()=>{}; const i1=game.spawnInterceptor(c1); i1.x=(19+k)*32; i1.y=18*32; i1.update=()=>{}; }} game.graceUntil = 0; for(let i=0;i<6;i++){ const a=game.spawnUnit('infantry',0,(8+i*0.9)*32,(15+(i%2)*0.8)*32); a.command({type:'move',x:a.x+400,y:a.y}); const e=game.spawnUnit('infantry',1,(13.5+i*0.9)*32,(16.2+(i%2)*0.8)*32); e.angle=Math.PI; } for(let i=0;i<20;i++) game.update(1/30); ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
+          camera.centerOn(mobile? 11*32: 13*32, mobile? 15*32 : 13*32); }""", name != 'desktop')
+        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-v6{"" if name=="desktop" else "-mobile"}.png')
     c.close()
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/opt/google/chrome/chrome')
-    run(p, 'desktop', {'viewport': {'width': 1366, 'height': 800}}, b)
+    run(p, 'desktop', {'viewport': {'width': 1000, 'height': 620}, 'device_scale_factor': 2}, b)
     run(p, 'iphone', dict(p.devices['iPhone 13']), b)
     b.close()

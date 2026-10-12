@@ -1,9 +1,21 @@
-# Tiberium Skirmish — RTS Starter (v5)
+# Tiberium Skirmish — RTS Starter (v6)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets (all art is procedural canvas drawing).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v6
+- **Soldiers look like people:** Rifle Troopers (and the survivors that walk out when you sell a building) use the rifleman artwork at about 24px tall.
+  Their feet sit on the ground point, and each has a contact shadow and a team ring. Enemies are red-tinted.
+  They flip to face their direction of travel, bob as they walk, and show a muzzle flash when firing. If the image fails to load, a drawn figure is used instead.
+- **More stable sidebar:**
+  - Fixed sizes for tabs, buttons, the status line, the selection info and the action buttons, so changing text, badges or progress never shifts the layout.
+  - The DOM is only updated when a value actually changes, rather than every frame.
+  - Long-press to cancel no longer double-fires with the browser context menu.
+  - The "Radar offline" static on the minimap refreshes about 6× per second rather than every frame.
+  - Hover highlights only apply on devices with a mouse.
+  - `tests/sidebar_probe.py` measures DOM churn and layout stability.
 
 ## What's new in v5
 - **Start menu** with **"No attacks for the first 10 minutes"** (default ON, `?grace=0|1` URL override, `?autostart=1` skips the menu).

@@ -14,8 +14,11 @@ export class Minimap {
   render() {
     const { ctx, g } = this, m = g.map, sx = this.c.width / m.w, sy = this.c.height / m.h, fog = g.fog;
     if (!g.teams[0].radar) {
+      // gentle static, refreshed ~6x/sec (was full-rate random noise every frame = visible flicker)
+      const now = performance.now(); if (!this.staticT || now - this.staticT > 160) { this.staticT = now; this.seed = (this.seed || 1) * 16807 % 2147483647; }
+      let r = this.seed; const rnd = () => (r = r * 16807 % 2147483647) / 2147483647;
       ctx.fillStyle = '#050807'; ctx.fillRect(0, 0, this.c.width, this.c.height);
-      for (let i = 0; i < 220; i++) { ctx.fillStyle = `rgba(120,160,150,${Math.random() * 0.25})`; ctx.fillRect(Math.random() * this.c.width, Math.random() * this.c.height, 2, 2); }
+      for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(120,160,150,${rnd() * 0.18})`; ctx.fillRect(rnd() * this.c.width, rnd() * this.c.height, 2, 2); }
       ctx.fillStyle = '#f66'; ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('RADAR OFFLINE', this.c.width / 2, this.c.height / 2 - 4);
       ctx.fillStyle = '#9bc'; ctx.font = '10px system-ui,sans-serif';

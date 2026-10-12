@@ -44,3 +44,26 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 #startBtn{margin-top:16px;width:100%;min-height:46px;font:600 16px system-ui,sans-serif;background:#1f5f7f;color:#e8f7ff;border:1px solid #3fa9ff;border-radius:6px;cursor:pointer;touch-action:manipulation}
 #graceTimer{position:fixed;top:8px;left:8px;z-index:5;background:#0c1a24d0;border:1px solid #6f6;color:#9f9;font:600 13px system-ui,sans-serif;padding:5px 9px;border-radius:5px;pointer-events:none}
 #graceTimer[hidden]{display:none}#graceTimer.over{border-color:#f55;color:#f99}
+
+/* v6 sidebar stability: fixed sizes so changing text/badges/progress never shifts layout */
+#sidebar{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#sidebar button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#hud{height:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#buildTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+#buildTabs button{position:relative;height:34px;padding:0;min-width:0;overflow:hidden;white-space:nowrap}
+#buildTabs button .badge{position:absolute;top:1px;right:3px;font-size:10px;line-height:1;color:#fd6}
+#buildMenu button{height:48px;min-height:0;padding:4px 18px 6px 6px;white-space:nowrap;overflow:hidden}
+#buildMenu button .nm{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#buildMenu button .count{font-variant-numeric:tabular-nums}
+#queueCtl button{height:36px;min-height:0;white-space:nowrap}
+#qStatus{height:15px;min-height:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#selInfo{height:48px;overflow:hidden;line-height:16px}
+#selActions{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;height:38px;margin-top:4px}
+#selActions:not(.has){visibility:hidden}
+#selActions button{height:36px;min-height:0;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+#selActions button.armed{background:#5f2a1a;border-color:#f84}
+@media (hover:hover){#sidebar button:not(:disabled):hover{filter:brightness(1.25)}}
+@media (max-width:700px){#buildMenu button{height:44px}#buildTabs button{height:32px;font-size:12px}}
+#buildMenu button .nm{white-space:normal;line-height:13px;max-height:26px;text-align:center;font-size:11.5px}
+#buildMenu button{height:54px;padding:3px 16px 6px 6px;gap:2px}#buildMenu button small{font-size:11px;line-height:12px}
+@media (max-width:700px){#buildMenu button{height:46px}}

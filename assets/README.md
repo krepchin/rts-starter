@@ -6,3 +6,4 @@ Approved isometric artwork, cut out to transparent PNGs (1x + @2x for high-DPI):
 - harvester.png: tracked grinder Harvester (green bar under it = hopper fill)
 Loaded by src/engine/sprites.js; if an image fails the procedural art is used.
 - b_power, b_refinery, b_barracks, b_factory, b_airfield, b_radar, b_turret, b_ion: v4 building art (light animated overlays on radar/turret/ion/factory/power; dimmed when unpowered)
+- soldier.png: Rifle Trooper (cut out from a vignette background with a fitted background model; keeps its own small foot shadow)
