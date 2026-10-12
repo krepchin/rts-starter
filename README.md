@@ -1,9 +1,14 @@
-# Tiberium Skirmish — RTS Starter (v3)
+# Tiberium Skirmish — RTS Starter (v4)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets (all art is procedural canvas drawing).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v4 (visual only)
+All structures now use isometric artwork matching the Construction Yard (steel-blue panels, cyan lights, hazard stripes, concrete slabs),
+enemy copies red-tinted, sprites dimmed when unpowered, with small animated overlays (radar sweep glint, turret muzzle flash, Ion charge glow,
+War Factory busy lights, power core pulse). Procedural art remains as fallback. Gameplay unchanged.
 
 ## What's new in v3 (visual only)
 Approved isometric artwork for the Construction Yard (both factions, enemy red-tinted) and three cosmetic Light Tank variants

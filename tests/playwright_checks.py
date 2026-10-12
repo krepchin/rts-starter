@@ -84,7 +84,7 @@ def run(p, name, ctxargs, browser):
           game.buildings.filter(b=>b.type==='ion').forEach(b=>b.charge=120);
           game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; {const c0=game.spawnUnit('carrier',0,12*32,15.5*32); c0.angle=0; const c1=game.spawnUnit('carrier',1,21*32,15.5*32); c1.angle=Math.PI; for(let k=0;k<5;k++){ const i0=game.spawnInterceptor(c0); i0.x=(13.5+k)*32; i0.y=17.5*32; i0.angle=k%2?0:Math.PI; i0.update=()=>{}; const i1=game.spawnInterceptor(c1); i1.x=(19+k)*32; i1.y=18*32; i1.update=()=>{}; }} ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
           camera.centerOn(mobile? 11*32: 17*32, mobile? 14*32 : 10*32); }""", name != 'desktop')
-        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-art-v3{"" if name=="desktop" else "-mobile"}.png')
+        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-art-v4{"" if name=="desktop" else "-mobile"}.png')
     c.close()
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/opt/google/chrome/chrome')

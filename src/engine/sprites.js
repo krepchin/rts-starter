@@ -2,7 +2,8 @@
 // team 0 = original steel-blue art, team 1 = red/rust tinted copy so factions stay distinct.
 // get() returns null until loaded or if loading failed, so callers fall back to procedural drawing.
 const TINT = { 1: 'rgba(255,70,40,0.42)' };
-const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_drone', 'icp_jet', 'icp_vtol', 'harvester'];
+const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_drone', 'icp_jet', 'icp_vtol', 'harvester',
+  'b_power', 'b_refinery', 'b_barracks', 'b_factory', 'b_airfield', 'b_radar', 'b_turret', 'b_ion'];
 const cache = {};
 
 function tinted(img, team) {

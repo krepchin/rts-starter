@@ -85,6 +85,23 @@ function smoke(ctx, x, y, t, n = 3, col = '#9aa') {
   ctx.globalAlpha = 1;
 }
 
+// Light animated overlays on top of the raster sprites (only where they fit the art).
+function overlay(ctx, P, b, X, Y, W, H, t, s, top, sw, sh) {
+  const cx = X + W / 2;
+  if (b.type === 'radar') {
+    if (s.powered) glowDot(ctx, cx + 4 + Math.sin(t * 1.6) * 9, top + sh * 0.18, 2, P.glow, 0.5 + 0.5 * Math.abs(Math.cos(t * 1.6)));
+    else { ctx.fillStyle = '#f55'; ctx.font = 'bold 9px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('OFFLINE', cx, Y + H - 4); }
+  } else if (b.type === 'turret') {
+    if (b.flash > 0) glowDot(ctx, cx + Math.cos(b.aim) * 14, Y + H / 2 - 6 + Math.sin(b.aim) * 8, 4, '#9ff');
+  } else if (b.type === 'ion') {
+    const f = s.charge; glowDot(ctx, cx, top + 4, 2 + f * 4 + (f >= 1 ? Math.sin(t * 8) * 1.5 : 0), f >= 1 ? '#fff' : P.glow, s.powered ? 0.3 + f * 0.7 : 0.15);
+  } else if (b.type === 'factory' && s.busy) {
+    glowDot(ctx, cx - sw * 0.2, Y + H - 14, 2.2, '#ffcc33', blink(t, 0.6) ? 1 : 0.2); glowDot(ctx, cx + sw * 0.05, Y + H - 6, 2.2, '#ffcc33', blink(t, 0.6, 0.3) ? 1 : 0.2);
+  } else if (b.type === 'power' && s.powered) {
+    glowDot(ctx, cx - sw * 0.2, top + sh * 0.2, 3, P.glow, 0.35 + 0.35 * Math.sin(t * 3));
+  }
+}
+
 const ART = {
   cy(ctx, P, b, X, Y, W, H, t, s) {
     const r = block(ctx, P, X + 8, Y + 34, W - 16, H - 42, 22);
@@ -227,15 +244,18 @@ export function drawBuildingArt(ctx, b, t, game) {
     charge: b.stats?.superweapon ? b.charge / b.stats.superweapon.chargeTime : 0,
   };
   const build = Math.min(1, (b.age ?? 9) / 1.2); // rise-up animation when placed
-  const spr = b.type === 'cy' ? getSprite('cy', b.team) : null;
+  const spr = getSprite(b.type === 'cy' ? 'cy' : 'b_' + b.type, b.team);
   ctx.save();
   if (!spr) pad(ctx, P, X, Y, W, H);
   if (build < 1) { ctx.beginPath(); ctx.rect(X - 20, Y + H - (H + 80) * build, W + 40, (H + 80) * build + 4); ctx.clip(); }
   if (spr) { // approved isometric artwork (enemy copy is red-tinted); footprint stays the 3x3 tile grid
     const sw = W * 1.38, sh = sw * spr.aspect;
     ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(X + W / 2 + 4, Y + H - 14, sw * 0.48, sh * 0.28, 0, 0, 7); ctx.fill();
-    ctx.drawImage(spr.img, X + W / 2 - sw / 2, Y + H + 6 - sh, sw, sh);
-    glowDot(ctx, X + W / 2, Y + H - 2, 2.5, P.accent, blink(t, 1.2) ? 1 : 0.3); // team beacon
+    if (!s.powered) ctx.filter = 'brightness(0.6)'; // dim when unpowered (no-op where ctx.filter is unsupported)
+    ctx.drawImage(spr.img, X + W / 2 - sw / 2, Y + H + 6 - sh, sw, sh); ctx.filter = 'none';
+    const top = Y + H + 6 - sh, cx = X + W / 2;
+    glowDot(ctx, cx, Y + H - 2, 2.5, P.accent, blink(t, 1.2) ? 1 : 0.3); // team beacon
+    overlay(ctx, P, b, X, Y, W, H, t, s, top, sw, sh);
   } else ART[b.type]?.(ctx, P, b, X, Y, W, H, t, s);
   ctx.restore();
   if (build < 1) { ctx.strokeStyle = P.glow; ctx.globalAlpha = 0.8; const yy = Y + H - (H + 60) * build; ctx.beginPath(); ctx.moveTo(X, yy); ctx.lineTo(X + W, yy); ctx.stroke(); ctx.globalAlpha = 1; }
