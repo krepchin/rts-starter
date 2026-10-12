@@ -18,7 +18,8 @@ export class Input {
     // iOS Safari: block page scroll/zoom gestures that touch-action alone may not stop.
     for (const ev of ['touchstart', 'touchmove']) canvas.addEventListener(ev, e => e.preventDefault(), opt);
     document.addEventListener('gesturestart', e => e.preventDefault());
-    window.addEventListener('keydown', e => { this.keys.add(e.key.toLowerCase()); if (e.key === 'Escape') this.ui.cancel(); if (e.key.startsWith('Arrow')) e.preventDefault(); });
+    window.addEventListener('keydown', e => { if (e.key === ' ' || e.key.toLowerCase() === 'f') { e.preventDefault(); if (!e.repeat) this.ui.find(this.cam); }
+      this.keys.add(e.key.toLowerCase()); if (e.key === 'Escape') this.ui.cancel(); if (e.key.startsWith('Arrow')) e.preventDefault(); });
     window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.keys.clear());
   }
@@ -59,7 +60,13 @@ export class Input {
       const a = this.cam.toWorld(b.x0, b.y0), c = this.cam.toWorld(b.x1, b.y1); this.ui.boxSelect(a.x, a.y, c.x, c.y, e.shiftKey); return; }
     // Click/tap: select own thing, otherwise (touch, or mouse with selection) command.
     const hit = this.g.entityAt(w.x, w.y);
-    if (hit && hit.team === 0) this.ui.select(hit, e.shiftKey);
+    if (hit && hit.team === 0) {
+      // double-click / double-tap an own unit: centre the camera on the selection
+      const now = performance.now(), dbl = this.lastTap && this.lastTap.e === hit && now - this.lastTap.t < 350;
+      this.lastTap = { e: hit, t: now };
+      if (dbl) { this.ui.find(this.cam); return; }
+      this.ui.select(hit, e.shiftKey);
+    }
     else if (d.type !== 'mouse' && this.ui.selection.size) this.ui.commandAt(w.x, w.y);
     else if (!hit) this.ui.clearSelection(); else this.ui.select(hit, false);
   }

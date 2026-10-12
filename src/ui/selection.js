@@ -21,6 +21,19 @@ export class PlayerUI {
     });
     this.g.effects.push({ t: 0.3, ping: true, x, y });
   }
+  // "Find my army": centre the camera on the selection, or (nothing selected) on own combat units.
+  // Repeated finds with nothing selected cycle through own units so stragglers can be located too.
+  find(camera) {
+    let list = [...this.selection].filter(e => !e.dead);
+    if (!list.length) {
+      const army = this.g.units.filter(u => u.team === 0 && u.type !== 'interceptor' && u.type !== 'harvester');
+      if (!army.length) return false;
+      this.findIdx = ((this.findIdx ?? -1) + 1) % (army.length + 1);
+      list = this.findIdx === 0 ? army : [army[this.findIdx - 1]];
+    }
+    const x = list.reduce((s, e) => s + e.x, 0) / list.length, y = list.reduce((s, e) => s + e.y, 0) / list.length;
+    camera.centerOn(x, y); this.g.effects.push({ t: 0.3, ping: true, x, y }); return true;
+  }
   beginPlacing(type) { this.placing = type; this.targeting = false; }
   place() { if (this.g.placeBuilding(0, this.hoverTile.x, this.hoverTile.y)) this.placing = null; }
   beginTargeting() { if (this.g.superReady(0)) { this.targeting = true; this.placing = null; } }

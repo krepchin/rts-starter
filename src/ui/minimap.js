@@ -28,10 +28,15 @@ export class Minimap {
       ctx.fillStyle = '#3e6';
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.tib[m.idx(x, y)] > 5 && fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx, sy);
       for (const b of g.buildings) if (b.team === 0 || b.seen) { ctx.fillStyle = TEAM_COLORS[b.team]; ctx.fillRect(b.tx * sx, b.ty * sy, b.w * sx, b.h * sy); }
-      for (const u of g.units) if (u.team === 0 || fog.visibleAt(u.x, u.y)) { ctx.fillStyle = TEAM_COLORS[u.team]; ctx.fillRect(u.x / 32 * sx - 1, u.y / 32 * sy - 1, 2.5, 2.5); }
+      for (const u of g.units) if (u.team !== 0 && fog.visibleAt(u.x, u.y)) { ctx.fillStyle = TEAM_COLORS[u.team]; ctx.fillRect(u.x / 32 * sx - 1, u.y / 32 * sy - 1, 2.5, 2.5); }
+      for (const u of g.units) if (u.team === 0 && u.type !== 'interceptor') { // own units: bright, outlined, on top
+        ctx.fillStyle = '#000'; ctx.fillRect(u.x / 32 * sx - 2, u.y / 32 * sy - 2, 4, 4); ctx.fillStyle = '#8fd0ff'; ctx.fillRect(u.x / 32 * sx - 1.5, u.y / 32 * sy - 1.5, 3, 3); }
       ctx.fillStyle = '#0007';
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (!fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx + .5, sy + .5);
     }
+    // Selected units always shown (even with radar offline) as blinking white markers, so you can find them.
+    if (this.sel) { const on = (performance.now() / 300 | 0) % 2 === 0; for (const e of this.sel) if (!e.dead && e.kind === 'unit') {
+      const x = e.x / 32 * sx, y = e.y / 32 * sy; ctx.fillStyle = on ? '#fff' : '#6f6'; ctx.fillRect(x - 2.5, y - 2.5, 5, 5); ctx.strokeStyle = '#000'; ctx.strokeRect(x - 2.5, y - 2.5, 5, 5); } }
     ctx.strokeStyle = '#fff'; ctx.strokeRect(this.cam.x / 32 * sx, this.cam.y / 32 * sy, this.cam.vw / 32 * sx, this.cam.vh / 32 * sy);
   }
 }

@@ -7,7 +7,7 @@ export class Unit extends Entity {
     super(game, 'unit', type, team, x, y, UNITS[type]);
     this.order = null; this.angle = 0;
   }
-  command(order) { this.order = order; this.target = null; }
+  command(order) { this.order = order; this.target = null; if (order?.type === 'attackMove' || order?.type === 'move') this.anchor = null; }
   moveToward(x, y, dt, stopDist = 4) {
     const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
     if (d <= stopDist) return true;
@@ -18,16 +18,20 @@ export class Unit extends Entity {
   update(dt) {
     this.cool -= dt;
     const o = this.order;
-    if (o?.type === 'move') { if (this.moveToward(o.x, o.y, dt)) this.order = null; }
-    else if (o?.type === 'attack') {
-      if (!this.canHit(o.target)) this.order = null;
+    if (o?.type === 'move') { if (this.moveToward(o.x, o.y, dt)) { this.order = null; this.anchor = { x: this.x, y: this.y }; } }
+    else if (o?.type === 'attack') { // explicit attack order: pursue (player intent), then idle where it ended
+      if (!this.canHit(o.target)) { this.order = null; this.anchor = { x: this.x, y: this.y }; }
       else if (!this.tryFire(o.target, dt)) this.moveToward(o.target.x, o.target.y, dt);
     } else if (this.stats.weapon) {
-      // Idle / attack-move: auto-acquire enemies within sight.
-      if (!this.target || !this.canHit(this.target) || this.dist(this.target) > this.stats.sight * TILE * 1.5)
-        this.target = this.game.findEnemyNear(this, this.stats.sight * TILE, e => this.canHit(e));
+      // Idle / attack-move: auto-acquire enemies within sight, but only pursue within a leash of the unit's anchor
+      // (its guard spot, or where an attack-move fight started). Afterwards return to the anchor instead of drifting off.
+      if (!this.anchor) this.anchor = { x: this.x, y: this.y };
+      const leash = this.stats.sight * TILE * 1.5, A = this.anchor, inLeash = e => Math.hypot(e.x - A.x, e.y - A.y) <= leash;
+      if (!this.target || !this.canHit(this.target) || !inLeash(this.target))
+        this.target = this.game.findEnemyNear(this, this.stats.sight * TILE, e => this.canHit(e) && inLeash(e));
       if (this.target) { if (!this.tryFire(this.target, dt)) this.moveToward(this.target.x, this.target.y, dt); }
-      else if (o?.type === 'attackMove' && this.moveToward(o.x, o.y, dt)) this.order = null;
+      else if (o?.type === 'attackMove') { this.anchor = { x: this.x, y: this.y }; if (this.moveToward(o.x, o.y, dt)) this.order = null; }
+      else if (Math.hypot(this.x - A.x, this.y - A.y) > 8) this.moveToward(A.x, A.y, dt, 8);
     }
     this.separate(dt);
     this.x = Math.max(0, Math.min(this.game.map.pxW, this.x)); this.y = Math.max(0, Math.min(this.game.map.pxH, this.y));
@@ -35,7 +39,9 @@ export class Unit extends Entity {
   // Cheap local avoidance so units don't stack perfectly (no real pathfinding yet).
   separate(dt) {
     for (const o of this.game.units) {
-      if (o === this || o.isAir !== this.isAir || o.dead) continue;
+      // Interceptors neither push nor get pushed: they swarm around/into their Carrier, and pushing it made Carriers
+      // get shoved across (and off) the map while their wing chased them to re-dock.
+      if (o === this || o.isAir !== this.isAir || o.dead || o.type === 'interceptor' || this.type === 'interceptor') continue;
       const dx = this.x - o.x, dy = this.y - o.y, d = Math.hypot(dx, dy) || 0.01, min = this.radius + o.radius;
       if (d < min) { const push = (min - d) * 0.5 * Math.min(1, dt * 10); this.x += dx / d * push; this.y += dy / d * push; }
     }

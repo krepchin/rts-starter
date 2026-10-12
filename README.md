@@ -1,9 +1,24 @@
-# Tiberium Skirmish — RTS Starter (v6)
+# Tiberium Skirmish — RTS Starter (v7)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets (all art is procedural canvas drawing).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v7 (bug fix: "units flew off the screen")
+- **Root cause:** Interceptors returning to re-dock crowded around their Carrier, and unit separation pushed the Carrier away from them.
+  The wing kept chasing it at 160 px/s and kept shoving, so the Carrier was pushed across the map. Its update had no map clamp, so it left the map entirely.
+  In a scripted test, a Carrier and its interceptors ended up about 800 tiles outside the 88-tile map.
+- **Fixed:** interceptors no longer take part in separation, and every unit class is clamped to the map in `Game.update`. That also catches any non-finite (NaN) positions.
+- **Leash:** idle and attack-move units only pursue enemies within 1.5× their sight radius of their guard spot, then walk back to it.
+  Previously they chased fleeing enemies indefinitely, for example 19 tiles in the repro (`tests/drift_repro.mjs`); now it's 4 tiles at most.
+  Explicit attack orders still pursue. Attack-move waves still advance.
+- **Finding your units:**
+  - The **◎ Find my units** button under the minimap, Space, or F centres the camera on your selection.
+  - With nothing selected, repeated presses cycle between the whole army and each unit.
+  - Double-click or double-tap a unit to centre on it.
+  - The minimap shows your units as bright outlined dots, and selected units blink white even when the radar is offline.
+- **Robustness:** the game loop survives a drawing error (it logs it once) rather than freezing.
 
 ## What's new in v6
 - **Soldiers look like people:** Rifle Troopers (and the survivors that walk out when you sell a building) use the rifleman artwork at about 24px tall.

@@ -163,7 +163,12 @@ export class Game {
       }
     }
     for (const b of this.buildings) if (!b.dead) b.update(dt);
-    for (const u of this.units) if (!u.dead) u.update(dt);
+    for (const u of this.units) if (!u.dead) {
+      u.update(dt);
+      // Safety net for every unit class (Carrier/Harvester have their own update): never leave the map, never NaN.
+      if (!Number.isFinite(u.x) || !Number.isFinite(u.y)) { u.x = u.lastX ?? this.map.pxW / 2; u.y = u.lastY ?? this.map.pxH / 2; }
+      u.x = Math.max(4, Math.min(this.map.pxW - 4, u.x)); u.y = Math.max(4, Math.min(this.map.pxH - 4, u.y)); u.lastX = u.x; u.lastY = u.y;
+    }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
     for (const e of this.effects) e.t -= dt; this.effects = this.effects.filter(e => e.t > 0);
     this.fog.update(this.entities);

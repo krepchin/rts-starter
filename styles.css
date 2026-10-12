@@ -67,3 +67,5 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 #buildMenu button .nm{white-space:normal;line-height:13px;max-height:26px;text-align:center;font-size:11.5px}
 #buildMenu button{height:54px;padding:3px 16px 6px 6px;gap:2px}#buildMenu button small{font-size:11px;line-height:12px}
 @media (max-width:700px){#buildMenu button{height:46px}}
+#findBtn{display:block;width:100%;height:30px;margin:4px 0 0;background:#10283a;color:#cfe;border:1px solid #2a6c88;border-radius:4px;font:inherit;font-size:12px;cursor:pointer;touch-action:manipulation;white-space:nowrap;overflow:hidden}
+@media (max-width:700px){#findBtn{width:134px}}

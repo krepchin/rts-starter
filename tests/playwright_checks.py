@@ -58,10 +58,24 @@ async () => {
       creditsEarned: Q.teams.map(t=>Math.round(t.credits)) };
     for (let i=0;i<30*90 && deaths===0;i++){ q0.update(1/30); q1.update(1/30); Q.update(1/30); }
     R.grace.combatAfter = Q.combat; R.grace.damageAfter = Q.entities.some(e=>e.hp < e.stats.hp) || deaths > 0; R.grace.deathsAfter = deaths; }
+  // v7: no unit leaves the map / drifts after a fight; Find centres camera
+  { const T=32, D=new Game(); D.fog.enabled=false;
+    const mine=[D.spawnUnit('carrier',0,30*T,30*T)]; for(let i=0;i<4;i++) mine.push(D.spawnUnit('infantry',0,(29+i)*T,32*T)); for(let i=0;i<2;i++) mine.push(D.spawnUnit('tank',0,(30+i)*T,33*T));
+    const home=mine.map(u=>({x:u.x,y:u.y})); const foes=[]; for(let i=0;i<3;i++) foes.push(D.spawnUnit('tank',1,(40+i)*T,36*T)); for(let i=0;i<4;i++) foes.push(D.spawnUnit('infantry',1,(40+i)*T,38*T));
+    const ec=D.spawnUnit('carrier',1,50*T,40*T); for(const f of [...foes,ec]) f.command({type:'attackMove',x:30*T,y:30*T});
+    let maxd=0, oob=0;
+    for(let s=0;s<30*180;s++){ D.update(1/30); if(s===30*12) for(const f of D.units) if(f.team===1&&f.type!=='interceptor') f.command({type:'move',x:84*T,y:84*T});
+      mine.forEach((u,i)=>{ if(!u.dead) maxd=Math.max(maxd,Math.hypot(u.x-home[i].x,u.y-home[i].y)/T); });
+      oob += D.units.filter(u=>!(u.x>=0&&u.y>=0&&u.x<=D.map.pxW&&u.y<=D.map.pxH)).length; }
+    R.v7 = { maxPlayerDriftTiles: +maxd.toFixed(1), outOfBoundsSamples: oob, enemyCarrierInMap: ec.dead || (ec.x>=0 && ec.x<=D.map.pxW && ec.y>=0 && ec.y<=D.map.pxH) };
+    const u0 = g.units.find(u=>u.team===0&&u.type==='tank'); ui.clearSelection(); ui.select(u0); camera.centerOn(80*32,80*32); document.querySelector('#findBtn').click();
+    R.v7.findCentresOnSelection = Math.abs(camera.x + camera.vw/2 - u0.x) < 40 || camera.x === 0;
+    ui.clearSelection(); }
   // AI vs AI
   const A = new Game(); A.fog.enabled = false; const a0 = new EnemyAI(A,0), a1 = new EnemyAI(A,1); let s = 0;
   const t0 = performance.now();
   while (!A.over && s < 30*60*45) { a0.update(1/30); a1.update(1/30); A.update(1/30); s++; }
+  R.aiVsAiOutOfBounds = A.units.filter(u=>!(u.x>=0&&u.y>=0&&u.x<=A.map.pxW&&u.y<=A.map.pxH)).length;
   R.aiVsAi = { over: A.over, winner: A.winner, minutes: +(A.time/60).toFixed(1), ms: Math.round(performance.now()-t0),
     built: [0,1].map(tm => [...new Set(A.buildings.filter(b=>b.team===tm).map(b=>b.type))].join(',')) };
   // live game sanity: AI in the real page is building
@@ -87,6 +101,7 @@ def run(p, name, ctxargs, browser):
     badge = pg.inner_text('#buildMenu button[data-key=infantry] .count')
     pg.click('#qPause'); paused = pg.evaluate("() => game.teams[0].paused.infantry"); pg.click('#qPause')
     res = pg.evaluate(CHECKS)
+    t0 = pg.evaluate('() => game.time'); pg.wait_for_timeout(700); res['loopAliveAfterChecks'] = pg.evaluate('() => game.time') - t0 > 0.3
     print(name, json.dumps({'errors': errs, 'menuShown': menu, 'graceDefaultOn': graceDefault, 'timerText': timer, 'uiQueued': ui, 'placingMode': placing, 'placedPower': placed, 'infBadge': badge, 'pausedViaButton': paused, **res}, indent=1))
     if SHOTS:
         pg.evaluate("""(mobile) => { game.teams[0].credits=99999;
@@ -97,7 +112,7 @@ def run(p, name, ctxargs, browser):
           game.buildings.filter(b=>b.type==='ion').forEach(b=>b.charge=120);
           game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; {const c0=game.spawnUnit('carrier',0,12*32,15.5*32); c0.angle=0; const c1=game.spawnUnit('carrier',1,21*32,15.5*32); c1.angle=Math.PI; for(let k=0;k<5;k++){ const i0=game.spawnInterceptor(c0); i0.x=(13.5+k)*32; i0.y=17.5*32; i0.angle=k%2?0:Math.PI; i0.update=()=>{}; const i1=game.spawnInterceptor(c1); i1.x=(19+k)*32; i1.y=18*32; i1.update=()=>{}; }} game.graceUntil = 0; for(let i=0;i<6;i++){ const a=game.spawnUnit('infantry',0,(8+i*0.9)*32,(15+(i%2)*0.8)*32); a.command({type:'move',x:a.x+400,y:a.y}); const e=game.spawnUnit('infantry',1,(13.5+i*0.9)*32,(16.2+(i%2)*0.8)*32); e.angle=Math.PI; } for(let i=0;i<20;i++) game.update(1/30); ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
           camera.centerOn(mobile? 11*32: 13*32, mobile? 15*32 : 13*32); }""", name != 'desktop')
-        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-v6{"" if name=="desktop" else "-mobile"}.png')
+        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-v7{"" if name=="desktop" else "-mobile"}.png')
     c.close()
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/opt/google/chrome/chrome')
