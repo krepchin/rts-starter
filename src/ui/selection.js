@@ -14,7 +14,7 @@ export class PlayerUI {
     const units = [...this.selection].filter(e => e.kind === 'unit');
     if (!units.length) { for (const b of this.selection) if (b.stats.builds && b.stats.builds !== 'building') b.rally = { x, y }; this.g.effects.push({ t: 0.3, ping: true, x, y }); return; }
     units.forEach((u, i) => {
-      if (target && target.team !== u.team) u.command({ type: 'attack', target });
+      if (target && target.team !== u.team && this.g.combat) u.command({ type: 'attack', target });
       else if (u.type === 'harvester' && tib) u.command({ type: 'harvest' });
       else { const n = Math.ceil(Math.sqrt(units.length)), ox = (i % n - (n - 1) / 2) * 26, oy = (Math.floor(i / n) - (n - 1) / 2) * 26;
         u.command({ type: 'move', x: x + ox, y: y + oy }); }

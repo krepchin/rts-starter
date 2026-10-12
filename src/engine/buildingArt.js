@@ -250,10 +250,11 @@ export function drawBuildingArt(ctx, b, t, game) {
   if (build < 1) { ctx.beginPath(); ctx.rect(X - 20, Y + H - (H + 80) * build, W + 40, (H + 80) * build + 4); ctx.clip(); }
   if (spr) { // approved isometric artwork (enemy copy is red-tinted); footprint stays the 3x3 tile grid
     const sw = W * 1.38, sh = sw * spr.aspect;
-    ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(X + W / 2 + 4, Y + H - 14, sw * 0.48, sh * 0.28, 0, 0, 7); ctx.fill();
+    // Slab sits on the footprint: bottom vertex at the footprint's bottom edge; tight contact shadow only.
+    ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.moveTo(X + W / 2, Y + H + 3); ctx.lineTo(X + W / 2 + sw * 0.5, Y + H - sh * 0.3); ctx.lineTo(X + W / 2, Y + H - sh * 0.62); ctx.lineTo(X + W / 2 - sw * 0.5, Y + H - sh * 0.3); ctx.closePath(); ctx.fill();
     if (!s.powered) ctx.filter = 'brightness(0.6)'; // dim when unpowered (no-op where ctx.filter is unsupported)
-    ctx.drawImage(spr.img, X + W / 2 - sw / 2, Y + H + 6 - sh, sw, sh); ctx.filter = 'none';
-    const top = Y + H + 6 - sh, cx = X + W / 2;
+    ctx.drawImage(spr.img, X + W / 2 - sw / 2, Y + H + 1 - sh, sw, sh); ctx.filter = 'none';
+    const top = Y + H + 1 - sh, cx = X + W / 2;
     glowDot(ctx, cx, Y + H - 2, 2.5, P.accent, blink(t, 1.2) ? 1 : 0.3); // team beacon
     overlay(ctx, P, b, X, Y, W, H, t, s, top, sw, sh);
   } else ART[b.type]?.(ctx, P, b, X, Y, W, H, t, s);

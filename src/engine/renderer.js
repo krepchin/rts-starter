@@ -1,10 +1,11 @@
 import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
 import { drawBuildingArt } from './buildingArt.js';
+import { Terrain } from '../world/terrain.js';
 import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
-  constructor(canvas, game, camera) { this.c = canvas; this.ctx = canvas.getContext('2d'); this.g = game; this.cam = camera; this.dpr = 1; }
+  constructor(canvas, game, camera) { this.c = canvas; this.ctx = canvas.getContext('2d'); this.g = game; this.cam = camera; this.dpr = 1; this.terrain = new Terrain(game.map); }
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const r = this.c.getBoundingClientRect();
@@ -19,17 +20,12 @@ export class Renderer {
     const x0 = Math.max(0, (cam.x / TILE) | 0), y0 = Math.max(0, (cam.y / TILE) | 0);
     const x1 = Math.min(g.map.w, x0 + Math.ceil(cam.vw / TILE) + 2), y1 = Math.min(g.map.h, y0 + Math.ceil(cam.vh / TILE) + 2);
     const t = performance.now() / 1000;
+    this.terrain.draw(ctx, cam.x, cam.y, cam.x + cam.vw, cam.y + cam.vh); // pre-rendered ground chunks
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const i = g.map.idx(x, y);
-      ctx.fillStyle = ['#18221c', '#1a251e', '#172019', '#1c2620'][g.map.ground[i]];
-      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
       const amt = g.map.tib[i];
       if (amt > 5) this.drawCrystals(x, y, amt / 500, t);
     }
-    ctx.strokeStyle = '#ffffff08'; ctx.beginPath();
-    for (let x = x0; x <= x1; x++) { ctx.moveTo(x * TILE, y0 * TILE); ctx.lineTo(x * TILE, y1 * TILE); }
-    for (let y = y0; y <= y1; y++) { ctx.moveTo(x0 * TILE, y * TILE); ctx.lineTo(x1 * TILE, y * TILE); }
-    ctx.stroke();
     const vis = g.buildings.filter(b => b.team === 0 || fog.visibleAt(b.x, b.y) || b.seen).sort((a, b) => (a.ty + a.h) - (b.ty + b.h));
     for (const b of vis) { if (b.team !== 0) b.seen = true; this.drawBuilding(b, ui.selection.has(b), t); }
     const ground = g.units.filter(u => !u.isAir), air = g.units.filter(u => u.isAir);
@@ -74,6 +70,7 @@ export class Renderer {
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
+    else { ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(0, r * 0.5, r * 1.1, r * 0.55, 0, 0, 7); ctx.fill(); }
     ctx.rotate(u.angle);
     ctx.fillStyle = col; ctx.strokeStyle = '#000'; ctx.shadowColor = col; ctx.shadowBlur = u.isAir ? 10 : 4;
     ctx.beginPath();
@@ -96,15 +93,16 @@ export class Renderer {
   drawTankSprite(u, sel, col, r) {
     const spr = getSprite(u.type === 'harvester' ? 'harvester' : TANK_VARIANTS[u.id % 3], u.team); if (!spr) return false;
     const ctx = this.ctx, c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
-    const w = u.type === 'harvester' ? 42 : 38, h = w * spr.aspect;
-    ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.ellipse(u.x + 2, u.y + 4, w * 0.42, h * 0.3, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.44, h * 0.32, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
-    ctx.save(); ctx.translate(u.x, u.y); if (u.faceRight) ctx.scale(-1, 1);
-    ctx.drawImage(spr.img, -w / 2, 6 - h, w, h); ctx.restore();
-    if (u.type === 'harvester') { const f = u.load / u.stats.capacity; ctx.fillStyle = '#000a'; ctx.fillRect(u.x - 12, u.y + 8, 24, 3); // hopper fill
-      ctx.fillStyle = '#4f8'; ctx.shadowColor = '#3f6'; ctx.shadowBlur = f > 0 ? 6 : 0; ctx.fillRect(u.x - 12, u.y + 8, 24 * f, 3); ctx.shadowBlur = 0; }
-    this.hpBar(u, u.x - r, u.y - h + 2, r * 2, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.5, h * 0.38, 0, 0, 7); ctx.stroke(); }
+    // Grounded: sprite bottom (tracks/wheels) sits on the unit's ground point; tight contact shadow right under the hull.
+    const w = u.type === 'harvester' ? 42 : 38, h = w * spr.aspect, gy = u.y + r * 0.5, sy = gy - h * 0.22;
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.ellipse(u.x, sy, w * 0.5, h * 0.34, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.fillStyle = '#000a'; ctx.beginPath(); ctx.ellipse(u.x, sy, w * 0.42, h * 0.24, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.translate(u.x, gy); if (u.faceRight) ctx.scale(-1, 1);
+    ctx.drawImage(spr.img, -w / 2, -h, w, h); ctx.restore();
+    if (u.type === 'harvester') { const f = u.load / u.stats.capacity; ctx.fillStyle = '#000a'; ctx.fillRect(u.x - 12, gy + 2, 24, 3); // hopper fill
+      ctx.fillStyle = '#4f8'; ctx.shadowColor = '#3f6'; ctx.shadowBlur = f > 0 ? 6 : 0; ctx.fillRect(u.x - 12, gy + 2, 24 * f, 3); ctx.shadowBlur = 0; }
+    this.hpBar(u, u.x - r, gy - h - 3, r * 2, sel);
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, sy, w * 0.56, h * 0.4, 0, 0, 7); ctx.stroke(); }
     return true;
   }
   // Air units: isometric art flipped by heading, hovering above a soft ground shadow.
@@ -113,7 +111,7 @@ export class Renderer {
     const spr = getSprite(name, u.team); if (!spr) return false;
     const ctx = this.ctx, c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
     const big = u.type === 'carrier', w = big ? 72 : 22, h = w * spr.aspect, lift = big ? 16 : 10, bob = Math.sin(t * 2 + u.id) * (big ? 2 : 1.5);
-    ctx.save(); ctx.filter = 'blur(3px)'; ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.4, h * 0.25, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.filter = 'blur(3px)'; ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(u.x + lift * 0.6, u.y + lift + 6, w * 0.38, h * 0.22, 0, 0, 7); ctx.fill(); ctx.restore();
     if (big) { ctx.strokeStyle = col; ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.45, h * 0.3, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1; }
     ctx.save(); ctx.translate(u.x, u.y + bob); if (u.faceRight !== !!NATIVE_RIGHT[name]) ctx.scale(-1, 1);
     ctx.drawImage(spr.img, -w / 2, -h / 2, w, h); ctx.restore();

@@ -7,12 +7,14 @@ import { Carrier, Interceptor } from '../entities/carrier.js';
 
 const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
+export const GRACE_SECONDS = 600; // optional ceasefire at game start (applies to both sides)
 export const PRODUCER = { building: 'cy', infantry: 'barracks', vehicle: 'factory', aircraft: 'airfield' };
 
 // Holds all simulation state. Rendering/UI read from it; input/AI write commands to it.
 export class Game {
-  constructor() {
-    this.map = new GameMap(64, 64);
+  constructor(opts = {}) {
+    this.map = new GameMap(88, 88);
+    this.graceUntil = opts.grace ? GRACE_SECONDS : 0;
     this.units = []; this.buildings = []; this.effects = [];
     this.teams = [0, 1].map(id => ({ id, credits: ECONOMY.startCredits, powerMade: 0, powerUsed: 0, lowPower: false, radar: false,
       queues: { building: [], infantry: [], vehicle: [], aircraft: [] }, paused: {}, stalled: {}, rr: {}, readyBuilding: null }));
@@ -22,12 +24,13 @@ export class Game {
   }
   setupSkirmish() {
     const m = this.map;
-    m.addField(14, 20, 4); m.addField(20, 8, 3); m.addField(50, 44, 4); m.addField(44, 56, 3);
-    m.addField(32, 32, 5); m.addField(10, 52, 3); m.addField(54, 12, 3);
+    // Fields mirrored through the map centre so both bases get the same economy.
+    for (const [x, y, r] of [[14, 20, 4], [20, 8, 3], [30, 58, 3], [12, 72, 4]]) { m.addField(x, y, r); m.addField(87 - x, 87 - y, r); }
+    m.addField(44, 44, 5);
     this.addBuilding('cy', 0, 6, 6).age = 9; this.spawnUnit('harvester', 0, 10 * TILE, 12 * TILE);
     this.spawnUnit('tank', 0, 11 * TILE, 10 * TILE); this.spawnUnit('infantry', 0, 9 * TILE, 10 * TILE); this.spawnUnit('infantry', 0, 9.5 * TILE, 10.5 * TILE);
-    this.addBuilding('cy', 1, 54, 54).age = 9; this.spawnUnit('harvester', 1, 54 * TILE, 52 * TILE);
-    this.spawnUnit('tank', 1, 53 * TILE, 53 * TILE);
+    this.addBuilding('cy', 1, 79, 79).age = 9; this.spawnUnit('harvester', 1, 79 * TILE, 77 * TILE);
+    this.spawnUnit('tank', 1, 78 * TILE, 78 * TILE);
   }
   // ---- entity management
   addBuilding(type, team, tx, ty) {
@@ -55,6 +58,8 @@ export class Game {
     for (const b of this.buildings) if (b.team === src.team && b.type === type && !b.dead) { const d = src.dist(b); if (d < bd) { bd = d; best = b; } }
     return best;
   }
+  get combat() { return this.time >= this.graceUntil; } // false during the ceasefire: no damage, targeting, attacks or Ion
+  graceLeft() { return Math.max(0, this.graceUntil - this.time); }
   has(team, type) { return this.buildings.some(b => b.team === team && b.type === type && !b.dead); }
   producers(team, cat) { return this.buildings.filter(b => b.team === team && !b.dead && b.type === PRODUCER[cat]); }
   entityAt(px, py) {
@@ -113,7 +118,7 @@ export class Game {
   toggleRepair(team, b) { if (b && !b.dead && b.team === team && b.kind === 'building') b.repairing = !b.repairing && b.hp < b.stats.hp; return b?.repairing; }
   superReady(team) { return this.buildings.find(b => b.team === team && !b.dead && b.stats.superweapon && b.powered && b.charge >= b.stats.superweapon.chargeTime) || null; }
   fireSuper(team, x, y) {
-    const src = this.superReady(team); if (!src) return false;
+    const src = this.superReady(team); if (!src || !this.combat) return false;
     const sw = src.stats.superweapon, r = sw.radius * TILE; src.charge = 0;
     for (const e of this.entities) if (!e.dead && Math.hypot(e.x - x, e.y - y) <= r + e.radius * 0.5) e.damage(sw.damage, src);
     this.effects.push({ t: 1.4, ion: true, x, y, r }); return true;

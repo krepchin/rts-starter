@@ -1,9 +1,19 @@
-# Tiberium Skirmish — RTS Starter (v4)
+# Tiberium Skirmish — RTS Starter (v5)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets (all art is procedural canvas drawing).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v5
+- **Start menu** with **"No attacks for the first 10 minutes"** (default ON, `?grace=0|1` URL override, `?autostart=1` skips the menu).
+  The ceasefire applies equally to both sides: no damage, no auto-targeting or attack orders, the AI sends no waves, nobody can fire the Ion.
+  Building, harvesting and production continue. An on-screen countdown shows the time left.
+- **Bigger map:** 88×88 (was 64×64). Bases are in opposite corners, and the Tiberium fields are mirrored through the centre so both sides get the same economy.
+- **Richer terrain:** procedural dirt, grass and rock with noise, elevation shading, soil patches, rock outcrops, cracks and pebbles, plus crystal-stained ground around Tiberium fields.
+  It's pre-rendered lazily into 512px offscreen chunks for phone performance.
+- **Grounded units:** ground-unit sprites sit on their ground point with tight contact shadows. Air units hover with an offset shadow, and building slabs sit on their footprint.
+- **AI:** it now searches for building spots around its Construction Yard's centre, so the bottom-right corner no longer runs into the map edge.
 
 ## What's new in v4 (visual only)
 All structures now use isometric artwork matching the Construction Yard (steel-blue panels, cyan lights, hazard stripes, concrete slabs),

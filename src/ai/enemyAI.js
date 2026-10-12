@@ -1,4 +1,4 @@
-import { TILE } from '../data/stats.js';
+import { TILE, BUILDINGS } from '../data/stats.js';
 
 // Scripted opponent using the same rules as the player: Construction Yard + queues, power, repair, superweapon, waves.
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];
@@ -33,10 +33,10 @@ export class EnemyAI {
     // 4) Repair damaged structures when we can afford it.
     for (const b of g.buildings) if (b.team === me && !b.repairing && b.hp < b.stats.hp * 0.6 && t.credits > 500) g.toggleRepair(me, b);
     // 5) Superweapon: hit the densest cluster of known enemy structures.
-    if (g.superReady(me)) { const tgt = this.ionTarget(); if (tgt) g.fireSuper(me, tgt.x, tgt.y); }
+    if (g.combat && g.superReady(me)) { const tgt = this.ionTarget(); if (tgt) g.fireSuper(me, tgt.x, tgt.y); }
     // 6) Attack waves (escalate over time so games end).
     const late = g.time > 900;
-    if (this.waveTimer <= 0 && army.length >= (late ? 4 : this.waveSize)) {
+    if (g.combat && this.waveTimer <= 0 && army.length >= (late ? 4 : this.waveSize)) {
       const target = this.pickTarget();
       if (target) for (const u of army) u.command({ type: 'attackMove', x: target.x, y: target.y });
       this.waveTimer = late ? 45 : 90; this.waveSize = Math.min(14, this.waveSize + 2);
@@ -59,7 +59,8 @@ export class EnemyAI {
     const cy = this.g.buildings.find(b => b.team === this.team && b.type === 'cy');
     if (!cy) return;
     for (let r = 2; r < 12; r++) for (let k = 0; k < 16; k++) {
-      const a = k / 16 * Math.PI * 2, tx = Math.round(cy.tx + Math.cos(a) * r), ty = Math.round(cy.ty + Math.sin(a) * r);
+      // search rings around the yard's centre (not its corner) so both map corners place equally well
+      const s = BUILDINGS[type], a = k / 16 * Math.PI * 2, tx = Math.round(cy.tx + cy.w / 2 + Math.cos(a) * r - s.w / 2), ty = Math.round(cy.ty + cy.h / 2 + Math.sin(a) * r - s.h / 2);
       if (this.g.canPlace(this.team, type, tx, ty)) { this.g.placeBuilding(this.team, tx, ty); return; }
     }
   }

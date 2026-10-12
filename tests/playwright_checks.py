@@ -47,6 +47,17 @@ async () => {
   bi('power',10,6); bi('power',10,3); bi('refinery',10,10); bi('radar',13,6); bi('factory',2,11); bi('power',14,2); bi('ion',14,10);
   R.ionBuilt = I.has(0,'ion'); step(I, 182); const tk = I.units.find(u=>u.team===1&&u.type==='tank'); const hp0 = tk.hp;
   R.ionFired = I.fireSuper(0, tk.x, tk.y); R.ionDamaged = tk.dead || tk.hp < hp0; R.ionCooldown = I.superReady(0) === null;
+  // Grace period (both sides): no damage/targeting/attacks/Ion for 10 min, then combat resumes
+  { const Q = new Game({ grace: true }); let deaths = 0; const od = Q.onDeath.bind(Q); Q.onDeath = e => { deaths++; od(e); };
+    const pt = Q.units.find(u=>u.team===0&&u.type==='tank'); const et = Q.spawnUnit('tank',1,pt.x+40,pt.y); const ei = Q.spawnUnit('infantry',1,pt.x+30,pt.y+20);
+    const q0 = new EnemyAI(Q,0), q1 = new EnemyAI(Q,1); const hp0 = [pt.hp, et.hp, ei.hp];
+    for (let i=0;i<30*590;i++){ q0.update(1/30); q1.update(1/30); Q.update(1/30); }
+    const dmgDuring = Q.entities.filter(e=>e.hp < e.stats.hp).length;
+    R.grace = { combatFlagDuring: Q.combat, noDamageDuring: dmgDuring === 0 && deaths === 0, ionBlocked: Q.fireSuper(1, pt.x, pt.y) === false,
+      graceLeftAt590: Math.round(Q.graceLeft()), structuresBuiltDuring: [0,1].map(t=>Q.buildings.filter(b=>b.team===t).length),
+      creditsEarned: Q.teams.map(t=>Math.round(t.credits)) };
+    for (let i=0;i<30*90 && deaths===0;i++){ q0.update(1/30); q1.update(1/30); Q.update(1/30); }
+    R.grace.combatAfter = Q.combat; R.grace.damageAfter = Q.entities.some(e=>e.hp < e.stats.hp) || deaths > 0; R.grace.deathsAfter = deaths; }
   // AI vs AI
   const A = new Game(); A.fog.enabled = false; const a0 = new EnemyAI(A,0), a1 = new EnemyAI(A,1); let s = 0;
   const t0 = performance.now();
@@ -61,7 +72,9 @@ async () => {
 def run(p, name, ctxargs, browser):
     c = browser.new_context(**ctxargs); pg = c.new_page(); errs = []
     pg.on('console', lambda m: m.type == 'error' and errs.append(m.text)); pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.goto(URL); pg.wait_for_timeout(3000)
+    pg.goto(URL); pg.wait_for_timeout(1500)
+    menu = pg.is_visible('#startMenu'); graceDefault = pg.is_checked('#graceOpt'); pg.click('#startBtn'); pg.wait_for_timeout(1500)
+    timer = pg.inner_text('#graceTimer')
     # UI flow: click Power Plant button, wait, place, check sidebar badges
     pg.click('#buildMenu button[data-key=power]'); pg.wait_for_timeout(500)
     ui = pg.evaluate("() => ({q: game.teams[0].queues.building.length, status: document.querySelector('#qStatus').textContent})")
@@ -74,7 +87,7 @@ def run(p, name, ctxargs, browser):
     badge = pg.inner_text('#buildMenu button[data-key=infantry] .count')
     pg.click('#qPause'); paused = pg.evaluate("() => game.teams[0].paused.infantry"); pg.click('#qPause')
     res = pg.evaluate(CHECKS)
-    print(name, json.dumps({'errors': errs, 'uiQueued': ui, 'placingMode': placing, 'placedPower': placed, 'infBadge': badge, 'pausedViaButton': paused, **res}, indent=1))
+    print(name, json.dumps({'errors': errs, 'menuShown': menu, 'graceDefaultOn': graceDefault, 'timerText': timer, 'uiQueued': ui, 'placingMode': placing, 'placedPower': placed, 'infBadge': badge, 'pausedViaButton': paused, **res}, indent=1))
     if SHOTS:
         pg.evaluate("""(mobile) => { game.teams[0].credits=99999;
           for (const [k,x,y] of [['refinery',10,10],['factory',14,2],['radar',14,6],['airfield',2,13],['turret',4,10],['power',10,3],['ion',14,9],['power',2,2],['power',2,5],['power',17,2]]) game.addBuilding(k,0,x,y).age=9;
@@ -84,7 +97,7 @@ def run(p, name, ctxargs, browser):
           game.buildings.filter(b=>b.type==='ion').forEach(b=>b.charge=120);
           game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; {const c0=game.spawnUnit('carrier',0,12*32,15.5*32); c0.angle=0; const c1=game.spawnUnit('carrier',1,21*32,15.5*32); c1.angle=Math.PI; for(let k=0;k<5;k++){ const i0=game.spawnInterceptor(c0); i0.x=(13.5+k)*32; i0.y=17.5*32; i0.angle=k%2?0:Math.PI; i0.update=()=>{}; const i1=game.spawnInterceptor(c1); i1.x=(19+k)*32; i1.y=18*32; i1.update=()=>{}; }} ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
           camera.centerOn(mobile? 11*32: 17*32, mobile? 14*32 : 10*32); }""", name != 'desktop')
-        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-art-v4{"" if name=="desktop" else "-mobile"}.png')
+        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-v5{"" if name=="desktop" else "-mobile"}.png')
     c.close()
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/opt/google/chrome/chrome')

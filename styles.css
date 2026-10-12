@@ -34,3 +34,13 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 #selActions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}#selActions button.on{background:#1f5f2f;border-color:#6f6}
 #qStatus{min-height:14px;font-size:11px;color:#fd6;margin-top:3px}
 @media (max-width:700px){#buildMenu button{min-height:40px;font-size:11px}#queueCtl button,#selActions button{font-size:11px}}
+#startMenu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(#0c1a24ee,#05080cf5);z-index:10;padding:16px}
+#startMenu[hidden]{display:none}
+#startMenu .panel{max-width:420px;background:#0c1a24;border:1px solid #2a6c88;border-radius:8px;padding:18px 20px;box-shadow:0 0 30px #3fa9ff33}
+#startMenu h1{margin:0 0 14px;font-size:24px;color:#7fd8ff;letter-spacing:1px}
+#startMenu .opt{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.35;cursor:pointer}
+#startMenu .opt input{width:22px;height:22px;flex:none;margin-top:1px}
+#startMenu small{color:#9bc}
+#startBtn{margin-top:16px;width:100%;min-height:46px;font:600 16px system-ui,sans-serif;background:#1f5f7f;color:#e8f7ff;border:1px solid #3fa9ff;border-radius:6px;cursor:pointer;touch-action:manipulation}
+#graceTimer{position:fixed;top:8px;left:8px;z-index:5;background:#0c1a24d0;border:1px solid #6f6;color:#9f9;font:600 13px system-ui,sans-serif;padding:5px 9px;border-radius:5px;pointer-events:none}
+#graceTimer[hidden]{display:none}#graceTimer.over{border-color:#f55;color:#f99}

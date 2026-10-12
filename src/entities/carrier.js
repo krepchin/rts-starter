@@ -28,7 +28,7 @@ export class Carrier extends Unit {
     if (this.order?.type === 'attack' && !this.canHitT(this.order.target)) this.order = null;
     this.separate(dt);
   }
-  canHitT(t) { return t && !t.dead && t.team !== this.team; }
+  canHitT(t) { return t && this.game.combat && !t.dead && t.team !== this.team; }
 }
 
 export class Interceptor extends Unit {
@@ -40,7 +40,7 @@ export class Interceptor extends Unit {
     this.cool -= dt; this.phase += dt * 3;
     const c = this.carrier, leash = c.stats.leashRange * TILE;
     const t = this.target;
-    if (c.dead) { this.damage(9999); return; }
+    if (c.dead) { this.damage(9999, null, true); return; }
     if (t && !t.dead && c.dist(t) < leash) {
       // Strafe around the target.
       const ox = t.x + Math.cos(this.phase) * 30, oy = t.y + Math.sin(this.phase) * 30;

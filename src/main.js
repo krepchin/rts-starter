@@ -1,4 +1,4 @@
-import { Game } from './engine/game.js';
+import { Game, GRACE_SECONDS } from './engine/game.js';
 import { Camera } from './engine/camera.js';
 import { Renderer } from './engine/renderer.js';
 import { Input } from './engine/input.js';
@@ -20,7 +20,15 @@ const input = new Input(canvas, game, camera, ui);
 const sidebar = new Sidebar(game, ui);
 const minimap = new Minimap(document.getElementById('minimap'), game, camera);
 const ai = new EnemyAI(game, 1);
-const banner = document.getElementById('banner');
+const banner = document.getElementById('banner'), graceEl = document.getElementById('graceTimer');
+let started = false;
+// Start menu: optional 10-minute ceasefire for both sides (default ON). ?grace=0|1 overrides; ?autostart=1 skips the menu.
+const params = new URLSearchParams(location.search), graceOpt = document.getElementById('graceOpt');
+if (params.has('grace')) graceOpt.checked = params.get('grace') !== '0';
+function start() { game.graceUntil = graceOpt.checked ? GRACE_SECONDS : 0; started = true; document.getElementById('startMenu').hidden = true; }
+document.getElementById('startBtn').addEventListener('click', start);
+if (params.get('autostart') === '1') start();
+window.startGame = start;
 
 // iOS Safari: 100vh includes the URL bar, so size from innerHeight.
 function onResize() { document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`); renderer.resize(); }
@@ -30,9 +38,14 @@ onResize();
 camera.centerOn(8 * 32, 8 * 32);
 
 startLoop(dt => {
-  input.update(dt); ai.update(dt); game.update(dt); ui.prune();
+  input.update(dt); if (!started) return; ai.update(dt); game.update(dt); ui.prune();
   if (game.over && banner.hidden) { banner.hidden = false; banner.textContent = game.over === 'win' ? 'VICTORY' : 'DEFEAT'; }
   if (ui.placing && !game.teams[0].readyBuilding) ui.placing = null;
-}, () => { renderer.render(ui); sidebar.update(); minimap.render(); });
+}, () => {
+  const left = game.graceLeft(), after = game.time - game.graceUntil;
+  graceEl.hidden = !started || !(left > 0 || (game.graceUntil > 0 && after < 4));
+  if (!graceEl.hidden) { graceEl.classList.toggle('over', left <= 0);
+    graceEl.textContent = left > 0 ? `Ceasefire: no attacks ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : 'Ceasefire over: combat enabled!'; }
+  renderer.render(ui); sidebar.update(); minimap.render(); });
 
 window.game = game; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests
