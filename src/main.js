@@ -29,6 +29,7 @@ camera.centerOn(8 * 32, 8 * 32);
 startLoop(dt => {
   input.update(dt); ai.update(dt); game.update(dt); ui.prune();
   if (game.over && banner.hidden) { banner.hidden = false; banner.textContent = game.over === 'win' ? 'VICTORY' : 'DEFEAT'; }
+  if (ui.placing && !game.teams[0].readyBuilding) ui.placing = null;
 }, () => { renderer.render(ui); sidebar.update(); minimap.render(); });
 
-window.game = game; // handy for debugging in the console
+window.game = game; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests

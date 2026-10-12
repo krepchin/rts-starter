@@ -19,3 +19,18 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 #banner{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:800;color:#6f6;background:#000a;text-shadow:0 0 20px #3f3}
 @media (max-width:700px){#sidebar{width:150px}#minimap{width:134px;height:134px}#buildMenu{grid-template-columns:1fr}}
 #banner[hidden]{display:none}
+#powerBar{height:10px;background:#000;border:1px solid #1d4a5c;margin-bottom:6px;position:relative}
+#powerMade,#powerUsed{position:absolute;left:0;height:5px;transition:width .3s}
+#powerMade{top:0;background:#3fa9ff}#powerUsed{bottom:0;background:#6f6}#powerUsed.low{background:#f44;animation:blinkp .6s infinite alternate}
+@keyframes blinkp{to{opacity:.4}}
+#buildTabs button b{color:#fd6;font-weight:700}#buildTabs button.ready{border-color:#6f6}
+#buildMenu button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:12px}
+#buildMenu button .count{position:absolute;top:2px;right:4px;color:#fd6;font-size:12px}
+#buildMenu button .state{position:absolute;top:2px;left:4px;font-style:normal;font-size:9px;color:#fd6;font-weight:700}
+#buildMenu button.ready .state{color:#6f6}
+#queueCtl{display:flex;gap:4px;margin-top:4px}
+#queueCtl button,#selActions button{flex:1;background:#10283a;color:#cfe;border:1px solid #2a6c88;border-radius:4px;padding:6px 4px;font:inherit;font-size:12px;min-height:36px;cursor:pointer;touch-action:manipulation}
+#queueCtl button:disabled,#selActions button:disabled{opacity:.4}
+#selActions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}#selActions button.on{background:#1f5f2f;border-color:#6f6}
+#qStatus{min-height:14px;font-size:11px;color:#fd6;margin-top:3px}
+@media (max-width:700px){#buildMenu button{min-height:40px;font-size:11px}#queueCtl button,#selActions button{font-size:11px}}

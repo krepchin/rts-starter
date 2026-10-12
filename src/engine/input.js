@@ -44,7 +44,7 @@ export class Input {
     this.pointers.set(e.pointerId, p);
     const d = this.down; if (!d) return;
     if (Math.hypot(p.x - d.x, p.y - d.y) > (d.type === 'mouse' ? 5 : 12)) d.moved = true;
-    if (d.moved && d.button === 0 && !this.ui.placing) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
+    if (d.moved && d.button === 0 && !this.ui.placing && !this.ui.targeting) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
   }
   onUp(e) {
     clearTimeout(this.longTimer);
@@ -53,6 +53,7 @@ export class Input {
     this.down = null;
     const w = this.cam.toWorld(p.x, p.y);
     if (d.button === 2) { this.ui.cancelPlacingOr(() => this.ui.commandAt(w.x, w.y)); return; }
+    if (this.ui.targeting) { this.ui.fireAt(w.x, w.y); return; }
     if (this.ui.placing) { this.updateHover(p); this.ui.place(); return; }
     if (this.ui.box) { const b = this.ui.box; this.ui.box = null;
       const a = this.cam.toWorld(b.x0, b.y0), c = this.cam.toWorld(b.x1, b.y1); this.ui.boxSelect(a.x, a.y, c.x, c.y, e.shiftKey); return; }
@@ -64,6 +65,7 @@ export class Input {
   }
   onCancel(e) { this.pointers.delete(e.pointerId); this.down = null; this.ui.box = null; clearTimeout(this.longTimer); }
   updateHover(p) {
+    this.ui.hoverWorld = this.cam.toWorld(p.x, p.y);
     if (!this.ui.placing) return; const s = BUILDINGS[this.ui.placing], w = this.cam.toWorld(p.x, p.y);
     this.ui.hoverTile = { x: Math.round(w.x / TILE - s.w / 2), y: Math.round(w.y / TILE - s.h / 2) };
   }
