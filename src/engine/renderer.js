@@ -70,7 +70,7 @@ export class Renderer {
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
-    if (u.type === 'tank' && this.drawTankSprite(u, sel, col, r)) return;
+    if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
@@ -94,13 +94,15 @@ export class Renderer {
   }
   // Cosmetic tank variants (cycled by unit id). Isometric art: flip horizontally by heading instead of rotating.
   drawTankSprite(u, sel, col, r) {
-    const spr = getSprite(TANK_VARIANTS[u.id % 3], u.team); if (!spr) return false;
+    const spr = getSprite(u.type === 'harvester' ? 'harvester' : TANK_VARIANTS[u.id % 3], u.team); if (!spr) return false;
     const ctx = this.ctx, c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
-    const w = 38, h = w * spr.aspect;
+    const w = u.type === 'harvester' ? 42 : 38, h = w * spr.aspect;
     ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.ellipse(u.x + 2, u.y + 4, w * 0.42, h * 0.3, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.44, h * 0.32, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
     ctx.save(); ctx.translate(u.x, u.y); if (u.faceRight) ctx.scale(-1, 1);
     ctx.drawImage(spr.img, -w / 2, 6 - h, w, h); ctx.restore();
+    if (u.type === 'harvester') { const f = u.load / u.stats.capacity; ctx.fillStyle = '#000a'; ctx.fillRect(u.x - 12, u.y + 8, 24, 3); // hopper fill
+      ctx.fillStyle = '#4f8'; ctx.shadowColor = '#3f6'; ctx.shadowBlur = f > 0 ? 6 : 0; ctx.fillRect(u.x - 12, u.y + 8, 24 * f, 3); ctx.shadowBlur = 0; }
     this.hpBar(u, u.x - r, u.y - h + 2, r * 2, sel);
     if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.5, h * 0.38, 0, 0, 7); ctx.stroke(); }
     return true;
