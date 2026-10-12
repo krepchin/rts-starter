@@ -17,26 +17,26 @@ export class Minimap {
       // gentle static, refreshed ~6x/sec (was full-rate random noise every frame = visible flicker)
       const now = performance.now(); if (!this.staticT || now - this.staticT > 160) { this.staticT = now; this.seed = (this.seed || 1) * 16807 % 2147483647; }
       let r = this.seed; const rnd = () => (r = r * 16807 % 2147483647) / 2147483647;
-      ctx.fillStyle = '#050807'; ctx.fillRect(0, 0, this.c.width, this.c.height);
+      ctx.fillStyle = '#3a3226'; ctx.fillRect(0, 0, this.c.width, this.c.height);
       for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(120,160,150,${rnd() * 0.18})`; ctx.fillRect(rnd() * this.c.width, rnd() * this.c.height, 2, 2); }
-      ctx.fillStyle = '#f66'; ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#e8a080'; ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('RADAR OFFLINE', this.c.width / 2, this.c.height / 2 - 4);
-      ctx.fillStyle = '#9bc'; ctx.font = '10px system-ui,sans-serif';
+      ctx.fillStyle = '#d8cba8'; ctx.font = '10px system-ui,sans-serif';
       ctx.fillText(g.has(0, 'radar') ? 'Low power' : 'Build a Comm Center', this.c.width / 2, this.c.height / 2 + 12);
     } else {
-      ctx.fillStyle = '#0d1612'; ctx.fillRect(0, 0, this.c.width, this.c.height);
-      ctx.fillStyle = '#3e6';
+      ctx.fillStyle = '#cdbb92'; ctx.fillRect(0, 0, this.c.width, this.c.height);
+      ctx.fillStyle = '#7c9a30';
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.tib[m.idx(x, y)] > 5 && fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx, sy);
       for (const b of g.buildings) if (b.team === 0 || b.seen) { ctx.fillStyle = TEAM_COLORS[b.team]; ctx.fillRect(b.tx * sx, b.ty * sy, b.w * sx, b.h * sy); }
       for (const u of g.units) if (u.team !== 0 && fog.visibleAt(u.x, u.y)) { ctx.fillStyle = TEAM_COLORS[u.team]; ctx.fillRect(u.x / 32 * sx - 1, u.y / 32 * sy - 1, 2.5, 2.5); }
       for (const u of g.units) if (u.team === 0 && u.type !== 'interceptor') { // own units: bright, outlined, on top
-        ctx.fillStyle = '#000'; ctx.fillRect(u.x / 32 * sx - 2, u.y / 32 * sy - 2, 4, 4); ctx.fillStyle = '#8fd0ff'; ctx.fillRect(u.x / 32 * sx - 1.5, u.y / 32 * sy - 1.5, 3, 3); }
-      ctx.fillStyle = '#0007';
+        ctx.fillStyle = '#000'; ctx.fillRect(u.x / 32 * sx - 2, u.y / 32 * sy - 2, 4, 4); ctx.fillStyle = '#2f6fb0'; ctx.fillRect(u.x / 32 * sx - 1.5, u.y / 32 * sy - 1.5, 3, 3); }
+      ctx.fillStyle = '#3a322680';
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (!fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx + .5, sy + .5);
     }
     // Selected units always shown (even with radar offline) as blinking white markers, so you can find them.
     if (this.sel) { const on = (performance.now() / 300 | 0) % 2 === 0; for (const e of this.sel) if (!e.dead && e.kind === 'unit') {
       const x = e.x / 32 * sx, y = e.y / 32 * sy; ctx.fillStyle = on ? '#fff' : '#6f6'; ctx.fillRect(x - 2.5, y - 2.5, 5, 5); ctx.strokeStyle = '#000'; ctx.strokeRect(x - 2.5, y - 2.5, 5, 5); } }
-    ctx.strokeStyle = '#fff'; ctx.strokeRect(this.cam.x / 32 * sx, this.cam.y / 32 * sy, this.cam.vw / 32 * sx, this.cam.vh / 32 * sy);
+    ctx.strokeStyle = '#2b261e'; ctx.strokeRect(this.cam.x / 32 * sx, this.cam.y / 32 * sy, this.cam.vw / 32 * sx, this.cam.vh / 32 * sy);
   }
 }

@@ -72,7 +72,7 @@ def run(p, bname, vname, ctxopt):
     def btn(act):
         loc = page.locator(f'#selActions button[data-act="{act}"]'); loc.scroll_into_view_if_needed()
         loc.tap() if touch else loc.click()
-    pre = f'{SHOT}/rts-v8-{bname}-{vname}' if SHOT else None
+    pre = f'{SHOT}/rts-v9-{bname}-{vname}' if SHOT else None
     sel = "[...ui.selection][0]"
     page.evaluate("""() => { const g = game; for (const [k,x,y] of [['barracks',3,7],['power',10,6],['factory',6,10]]) g.addBuilding(k,0,x,y).age = 9;
       g.fog.enabled = false; const cy = g.buildings.find(b=>b.team===0&&b.type==='cy'); cy.age = 9; camera.centerOn(cy.x, cy.y); }""")

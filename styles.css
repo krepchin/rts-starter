@@ -73,3 +73,48 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 /* v8: 4-5 actions for yard / Base Walker */
 #selActions.two{height:78px}
 #selInfo{white-space:pre-line}
+
+/* ===== v9: pencil-and-ink sketchbook theme (matches the approved concept art) ===== */
+:root{--ink:#2b261e;--ink2:#5a5040;--paper:#e9dfc4;--paper2:#d9cba6;--wash:#c9a23a;--wash2:#e4cf8a;--tib:#7c9a30;--red:#a8432c;
+ --hand:"Segoe Print","Bradley Hand","Noteworthy","Comic Neue",Georgia,serif;--serif:Georgia,"Iowan Old Style","Times New Roman",serif}
+html,body{background:#b9a67c;color:var(--ink);font-family:var(--serif)}
+#sidebar{background:
+  repeating-linear-gradient(-45deg,transparent 0 6px,rgba(43,38,30,.035) 6px 7px),
+  radial-gradient(120% 80% at 30% 10%,#f1e8cf,var(--paper) 55%,var(--paper2));
+  border-left:2px solid var(--ink);box-shadow:inset 3px 0 0 rgba(43,38,30,.15)}
+#hud{font-family:var(--hand);font-size:14px}
+#credits{color:var(--ink)}#credits::before{content:"";}
+#power{color:var(--ink2)}#power.low{color:var(--red)}
+#powerBar{background:var(--paper);border:1.5px solid var(--ink);border-radius:2px}
+#powerMade{background:var(--wash)}#powerUsed{background:var(--tib)}#powerUsed.low{background:var(--red)}
+#minimap{background:#cdbb92;border:2px solid var(--ink);border-radius:3px;box-shadow:2px 2px 0 rgba(43,38,30,.35)}
+#sidebar button,#startBtn,#findBtn{background:linear-gradient(#f3ead2,#e2d4ae);color:var(--ink);border:1.5px solid var(--ink);
+  border-radius:4px 7px 5px 6px;box-shadow:1.5px 2px 0 rgba(43,38,30,.45);font-family:var(--serif)}
+#sidebar button:disabled{opacity:.42;box-shadow:none}
+#sidebar button:active:not(:disabled){transform:translate(1px,1px);box-shadow:0 0 0 rgba(0,0,0,0)}
+#buildTabs button{font-family:var(--hand);font-size:13px}
+#buildTabs button.on{background:linear-gradient(#ecd68a,#d8b85a);font-weight:700}
+#buildTabs button b,#buildMenu button .count,#buildMenu button .state,#qStatus{color:#8a5a12}
+#buildMenu button .nm{font-weight:600}
+#buildMenu button small{color:var(--ink2);font-style:italic}
+#buildMenu button .bar{background:repeating-linear-gradient(-45deg,var(--tib) 0 3px,#5f7a22 3px 5px);height:4px}
+#buildMenu button.ready,#buildTabs button.ready{border-color:#4f6a1c;color:#3f5a14;background:linear-gradient(#e6efc0,#cfdc96)}
+#buildMenu button.ready .state{color:#3f5a14}
+#selActions button.on{background:linear-gradient(#e6efc0,#cfdc96);border-color:#4f6a1c}
+#selActions button.armed{background:linear-gradient(#f1c9b8,#d99a82);border-color:var(--red)}
+#selInfo{color:var(--ink);font-size:12px}
+@media (hover:hover){#sidebar button:not(:disabled):hover{filter:none;background:linear-gradient(#f7f0dc,#ece0bf)}}
+#startMenu{background:radial-gradient(#e9dfc4f0,#b9a67cf5)}
+#startMenu .panel{background:repeating-linear-gradient(-45deg,transparent 0 7px,rgba(43,38,30,.04) 7px 8px),var(--paper);
+  border:2px solid var(--ink);border-radius:6px 10px 7px 9px;box-shadow:4px 5px 0 rgba(43,38,30,.35);color:var(--ink)}
+#startMenu h1{color:var(--ink);font-family:var(--hand);letter-spacing:.5px;margin-bottom:2px}
+#version{font:italic 12px var(--serif);color:var(--ink2);margin-bottom:12px}
+#startMenu small{color:var(--ink2)}
+#startBtn{background:linear-gradient(#ecd68a,#d8b85a);font:700 16px var(--hand)}
+#graceTimer{background:#e9dfc4e8;border:1.5px solid var(--ink);color:var(--ink);font-family:var(--hand);box-shadow:2px 2px 0 rgba(43,38,30,.35)}
+#graceTimer.over{border-color:var(--red);color:var(--red)}
+#banner{color:var(--ink);background:#e9dfc4cc;text-shadow:none;font-family:var(--hand)}
+[title]{cursor:inherit}
+/* phone: two action columns so labels are never clipped */
+@media (max-width:700px){#selActions,#selActions.two{grid-template-columns:repeat(2,1fr);height:78px}
+  #selActions button{font-size:12px;padding:0 1px;letter-spacing:-.2px;text-overflow:clip}}

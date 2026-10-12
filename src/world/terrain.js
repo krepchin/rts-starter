@@ -1,3 +1,4 @@
+import { sketchify } from '../engine/sketch.js';
 import { TILE } from '../data/stats.js';
 import { mulberry } from './map.js';
 
@@ -77,6 +78,7 @@ export class Terrain {
       ctx.fillStyle = `rgb(${l},${l - 4},${l - 10})`; ctx.beginPath(); ctx.ellipse(x, y, rad, rad * 0.7, 0, 0, 7); ctx.fill(); }
     for (let k = 0; k < 80; k++) { const x = r() * CHUNK, y = r() * CHUNK, st = this.stainAt(ox + x, oy + y); if (st < 0.25 || r() > st) continue;
       ctx.fillStyle = `rgba(90,230,120,${0.25 + st * 0.35})`; ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + 1.5, y); ctx.lineTo(x, y + 1); ctx.lineTo(x - 1.5, y); ctx.fill(); }
+    sketchify(c, { wash: 'paper', keep: 0.15, ink: 0.9, lift: 95, hatch: false }); // v9 paper/sand pencil look
     this.chunks.set(key, c); return c;
   }
   draw(ctx, x0, y0, x1, y1) {

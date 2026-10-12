@@ -100,7 +100,7 @@ export class Sidebar {
       if (isM) {
         mk('deploy', 'Deploy', () => this.ui.deploying === one ? this.ui.cancel() : this.ui.beginDeploy(one), 'Unfold the base: tap a spot (preview shows the full footprint)');
         if (one.type === 'robot') {
-          mk('weapon', 'Sprayer', () => one.toggleMode(), 'Switch weapon: Tiberium sprayer / drill arms');
+          mk('weapon', '⇄Spray', () => one.toggleMode(), 'Switch weapon: Tiberium sprayer / drill arms');
           mk('burrow', 'Burrow', () => this.ui.burrowing === one ? this.ui.cancel() : this.ui.beginBurrow(one), 'Drill mode: dig under and erupt at a target spot');
         }
       }
@@ -108,10 +108,10 @@ export class Sidebar {
     }
     if (isM) {
       const busy = one.busy, A = this.act;
-      setD(A.deploy, busy); setT(A.deploy, this.ui.deploying === one ? 'Place…' : one.state === 'deploying' ? 'Unfolding' : 'Deploy'); setC(A.deploy, 'on', this.ui.deploying === one);
-      if (A.weapon) { setT(A.weapon, one.mode === 'spray' ? '⇄ Sprayer' : '⇄ Drill'); setD(A.weapon, busy); setC(A.weapon, 'on', one.swapT > 0); }
+      setD(A.deploy, busy); setT(A.deploy, this.ui.deploying === one ? 'Place' : one.state === 'deploying' ? 'Unfold' : 'Deploy'); setC(A.deploy, 'on', this.ui.deploying === one);
+      if (A.weapon) { setT(A.weapon, one.mode === 'spray' ? '⇄Spray' : '⇄Drill'); setD(A.weapon, busy); setC(A.weapon, 'on', one.swapT > 0); }
       if (A.burrow) { setD(A.burrow, !one.canBurrow() && this.ui.burrowing !== one);
-        setT(A.burrow, this.ui.burrowing === one ? 'Target…' : one.state === 'under' ? 'Digging' : one.burrowCd > 0 ? `Burrow ${Math.ceil(one.burrowCd)}s` : one.mode !== 'drill' ? 'Burrow (drill)' : 'Burrow'); setC(A.burrow, 'on', this.ui.burrowing === one); }
+        setT(A.burrow, this.ui.burrowing === one ? 'Target' : one.state === 'under' ? 'Digging' : one.burrowCd > 0 ? `⏳${Math.ceil(one.burrowCd)}s` : 'Burrow'); setC(A.burrow, 'on', this.ui.burrowing === one); }
       const names = one.carried.map(c => BUILDINGS[c.type].name.replace('Construction ', '')).join(', ');
       const st = { rising: 'Assembling…', ready: one.type === 'robot' ? (one.mode === 'spray' ? 'Weapon: Tiberium sprayer' : 'Weapon: drill arms') : 'Packed: move, then Deploy',
         deploying: 'Unfolding base…', burrowing: 'Burrowing…', under: 'Underground (untargetable)', emerging: 'Erupting!' }[one.state];

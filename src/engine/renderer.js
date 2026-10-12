@@ -2,6 +2,7 @@ import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
 import { drawBuildingArt } from './buildingArt.js';
 import { Terrain } from '../world/terrain.js';
 import { drawMobileBase } from './mcvArt.js';
+import { INK } from './sketch.js';
 import { FORMATION } from '../entities/mcv.js';
 import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
 
@@ -17,7 +18,7 @@ export class Renderer {
   render(ui) {
     const { ctx, g, cam } = this, fog = g.fog;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#0a1016'; ctx.fillRect(0, 0, cam.vw, cam.vh);
+    ctx.fillStyle = '#b9a67c'; ctx.fillRect(0, 0, cam.vw, cam.vh);
     ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
     const x0 = Math.max(0, (cam.x / TILE) | 0), y0 = Math.max(0, (cam.y / TILE) | 0);
     const x1 = Math.min(g.map.w, x0 + Math.ceil(cam.vw / TILE) + 2), y1 = Math.min(g.map.h, y0 + Math.ceil(cam.vh / TILE) + 2);
@@ -33,7 +34,7 @@ export class Renderer {
     const ground = g.units.filter(u => !u.isAir), air = g.units.filter(u => u.isAir);
     for (const u of [...ground, ...air]) if (u.team === 0 || fog.visibleAt(u.x, u.y)) this.drawUnit(u, ui.selection.has(u), t);
     for (const e of g.effects) {
-      if (e.ping) { ctx.strokeStyle = '#6f6'; ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(1, 4 + (0.3 - e.t) * 40), 0, 7); ctx.stroke(); }
+      if (e.ping) { ctx.strokeStyle = '#4f6a1c'; ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(1, 4 + (0.3 - e.t) * 40), 0, 7); ctx.stroke(); }
       else if (e.ion) { const k = e.t / 1.4; ctx.save(); ctx.globalAlpha = Math.min(1, k * 2); ctx.shadowColor = '#9cf'; ctx.shadowBlur = 30;
         ctx.fillStyle = '#dff'; ctx.fillRect(e.x - 10 * k, e.y - 900, 20 * k, 900); ctx.strokeStyle = '#9cf'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.3 - k), 0, 7); ctx.stroke(); ctx.fillStyle = '#9cf6'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * k, 0, 7); ctx.fill(); ctx.restore(); }
@@ -51,17 +52,17 @@ export class Renderer {
     if (ui.deploying) this.drawDeploy(ui);
     if (ui.burrowing) this.drawBurrow(ui);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (ui.box) { const b = ui.box; ctx.strokeStyle = '#6f6'; ctx.setLineDash([4, 3]); ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.setLineDash([]); }
+    if (ui.box) { const b = ui.box; ctx.strokeStyle = '#4f6a1c'; ctx.setLineDash([4, 3]); ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.setLineDash([]); }
   }
   drawCrystals(tx, ty, f, t) {
     const ctx = this.ctx, n = 1 + Math.round(f * 3), cx = tx * TILE, cy = ty * TILE;
-    ctx.shadowColor = '#3f6'; ctx.shadowBlur = 8 + Math.sin(t * 2 + tx + ty) * 3;
+    ctx.shadowColor = '#9c3'; ctx.shadowBlur = 3 + Math.sin(t * 2 + tx + ty) * 1.5; ctx.strokeStyle = INK; ctx.lineWidth = 0.8;
     for (let k = 0; k < n; k++) {
       const ox = cx + 6 + ((k * 37 + tx * 13) % 20), oy = cy + 8 + ((k * 23 + ty * 7) % 16), h = 6 + f * 8;
-      ctx.fillStyle = k % 2 ? '#5f9' : '#2e6';
-      ctx.beginPath(); ctx.moveTo(ox, oy - h); ctx.lineTo(ox + 4, oy); ctx.lineTo(ox, oy + 3); ctx.lineTo(ox - 4, oy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k % 2 ? '#b5cf62' : '#86a83a';
+      ctx.beginPath(); ctx.moveTo(ox, oy - h); ctx.lineTo(ox + 4, oy); ctx.lineTo(ox, oy + 3); ctx.lineTo(ox - 4, oy); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur = 0; ctx.lineWidth = 1;
   }
   drawBuilding(b, sel, t) {
     const ctx = this.ctx, x = b.tx * TILE, y = b.ty * TILE, w = b.w * TILE, h = b.h * TILE;
@@ -77,9 +78,9 @@ export class Renderer {
     }
     drawBuildingArt(ctx, b, t, this.g);
     this.hpBar(b, x, y - 6, w, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.setLineDash([6, 4]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
-      ctx.fillStyle = '#cfe'; ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(BUILDINGS[b.type].name, x + w / 2, y + h + 11);
-      if (b.rally) { ctx.strokeStyle = '#6f6'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.rally.x, b.rally.y); ctx.stroke(); ctx.beginPath(); ctx.arc(b.rally.x, b.rally.y, 4, 0, 7); ctx.stroke(); } }
+    if (sel) { ctx.strokeStyle = INK; ctx.setLineDash([6, 4]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
+      ctx.fillStyle = INK; ctx.font = 'italic 600 11px Georgia,serif'; ctx.textAlign = 'center'; ctx.fillText(BUILDINGS[b.type].name, x + w / 2, y + h + 11);
+      if (b.rally) { ctx.strokeStyle = '#4f6a1c'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.rally.x, b.rally.y); ctx.stroke(); ctx.beginPath(); ctx.arc(b.rally.x, b.rally.y, 4, 0, 7); ctx.stroke(); } }
     if (b.stats.superweapon && b.team === 0) { const f = b.charge / b.stats.superweapon.chargeTime; ctx.fillStyle = '#000a'; ctx.fillRect(x, y + h - 4, w, 4); ctx.fillStyle = f >= 1 ? '#fff' : '#9cf'; ctx.fillRect(x, y + h - 4, w * f, 4); }
   }
   drawUnit(u, sel, t) {
@@ -107,7 +108,7 @@ export class Renderer {
     if (u.type === 'carrier') { ctx.fillStyle = '#cff'; ctx.beginPath(); ctx.arc(-r * 0.2, 0, 4 + Math.sin(t * 4), 0, 7); ctx.fill(); }
     ctx.restore();
     if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
+    if (sel) { ctx.strokeStyle = INK; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
   }
   // Rifle Trooper: ~24px human figure, feet on the ground point, walking bob/sway, muzzle flash, team ring + tint.
   drawSoldier(u, sel, col, t) {
@@ -131,7 +132,7 @@ export class Renderer {
       ctx.save(); ctx.shadowColor = '#ffd27a'; ctx.shadowBlur = 8; ctx.fillStyle = '#fff3c0'; ctx.beginPath(); ctx.arc(spr ? 6.5 : 10, spr ? -7.5 : -11, 2.4, 0, 7); ctx.fill(); ctx.restore(); }
     ctx.restore(); ctx.lineWidth = 1;
     if (u.team !== 0 || sel || u.hp < u.stats.hp) this.hpBar(u, fx - 7, fy - H - 6 - bob, 14, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(fx, fy, 9.5, 4.2, 0, 0, 7); ctx.stroke(); }
+    if (sel) { ctx.strokeStyle = INK; ctx.beginPath(); ctx.ellipse(fx, fy, 9.5, 4.2, 0, 0, 7); ctx.stroke(); }
   }
   // Cosmetic tank variants (cycled by unit id). Isometric art: flip horizontally by heading instead of rotating.
   drawTankSprite(u, sel, col, r) {
@@ -146,7 +147,7 @@ export class Renderer {
     if (u.type === 'harvester') { const f = u.load / u.stats.capacity; ctx.fillStyle = '#000a'; ctx.fillRect(u.x - 12, gy + 2, 24, 3); // hopper fill
       ctx.fillStyle = '#4f8'; ctx.shadowColor = '#3f6'; ctx.shadowBlur = f > 0 ? 6 : 0; ctx.fillRect(u.x - 12, gy + 2, 24 * f, 3); ctx.shadowBlur = 0; }
     this.hpBar(u, u.x - r, gy - h - 3, r * 2, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, sy, w * 0.56, h * 0.4, 0, 0, 7); ctx.stroke(); }
+    if (sel) { ctx.strokeStyle = INK; ctx.beginPath(); ctx.ellipse(u.x, sy, w * 0.56, h * 0.4, 0, 0, 7); ctx.stroke(); }
     return true;
   }
   // Air units: isometric art flipped by heading, hovering above a soft ground shadow.
@@ -161,20 +162,21 @@ export class Renderer {
     ctx.drawImage(spr.img, -w / 2, -h / 2, w, h); ctx.restore();
     if (!big) { ctx.fillStyle = col; ctx.fillRect(u.x - 1.5, u.y + bob - h / 2 - 3, 3, 3); return true; } // team marker
     this.hpBar(u, u.x - w * 0.35, u.y + bob - h / 2 - 6, w * 0.7, sel);
-    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.5, h * 0.36, 0, 0, 7); ctx.stroke(); }
+    if (sel) { ctx.strokeStyle = INK; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.5, h * 0.36, 0, 0, 7); ctx.stroke(); }
     return true;
   }
-  hpBar(e, x, y, w, always) {
+  hpBar(e, x, y, w, always) { // v9: ink-framed, muted wash colours
     if (!always && e.hp >= e.stats.hp) return;
     const f = e.hp / e.stats.hp, ctx = this.ctx;
-    ctx.fillStyle = '#000a'; ctx.fillRect(x, y, w, 4);
-    ctx.fillStyle = f > 0.6 ? '#4f6' : f > 0.3 ? '#fd4' : '#f44'; ctx.fillRect(x, y, w * f, 4);
+    ctx.fillStyle = '#e8dcbccc'; ctx.fillRect(x, y, w, 4);
+    ctx.fillStyle = f > 0.6 ? '#6f8f2a' : f > 0.3 ? '#c9a23a' : '#a8432c'; ctx.fillRect(x, y, w * f, 4);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, 5);
   }
   drawFog(x0, y0, x1, y1) {
     const g = this.g; if (!g.fog.enabled) return; const ctx = this.ctx, v = g.fog.v;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const s = v[g.map.idx(x, y)]; if (s === 2) continue;
-      ctx.fillStyle = s === 0 ? '#000' : '#0008'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      ctx.fillStyle = s === 0 ? '#3a3226' : '#3a32267a'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
   drawPlacement(ui) {
@@ -194,7 +196,7 @@ export class Renderer {
       for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) ctx.fillRect((tx + x) * TILE + 1, (ty + y) * TILE + 1, TILE - 2, TILE - 2);
       ctx.strokeRect(tx * TILE, ty * TILE, s.w * TILE, s.h * TILE);
     }
-    ctx.strokeStyle = '#6f6'; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(mb.x, mb.y); ctx.lineTo((ht.x + 1.5) * TILE, (ht.y + 1.5) * TILE); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = '#4f6a1c'; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(mb.x, mb.y); ctx.lineTo((ht.x + 1.5) * TILE, (ht.y + 1.5) * TILE); ctx.stroke(); ctx.setLineDash([]);
   }
   drawBurrow(ui) {
     const mb = ui.burrowing, p = ui.hoverWorld; if (!p) return; const ctx = this.ctx, r = 2.6 * TILE, t = performance.now() / 1000;
