@@ -1,6 +1,8 @@
 import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
 import { drawBuildingArt } from './buildingArt.js';
 import { Terrain } from '../world/terrain.js';
+import { drawMobileBase } from './mcvArt.js';
+import { FORMATION } from '../entities/mcv.js';
 import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
@@ -36,12 +38,18 @@ export class Renderer {
         ctx.fillStyle = '#dff'; ctx.fillRect(e.x - 10 * k, e.y - 900, 20 * k, 900); ctx.strokeStyle = '#9cf'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.3 - k), 0, 7); ctx.stroke(); ctx.fillStyle = '#9cf6'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * k, 0, 7); ctx.fill(); ctx.restore(); }
       else if (e.sell) { ctx.strokeStyle = `rgba(200,200,180,${e.t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.6 - e.t), 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+      else if (e.part) { ctx.globalAlpha = Math.max(0, e.t / e.life); ctx.fillStyle = e.color; if (e.glow) { ctx.shadowColor = e.color; ctx.shadowBlur = 6; }
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (e.glow ? 1 : 1.6 - e.t / e.life), 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+      else if (e.erupt) { const k = e.t / 0.9; ctx.strokeStyle = `rgba(160,120,70,${k})`; ctx.lineWidth = 6 * k; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * (1.2 - k * 0.6), e.r * 0.45 * (1.2 - k * 0.6), 0, 0, 7); ctx.stroke();
+        ctx.fillStyle = `rgba(255,200,90,${k * 0.6})`; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 0.5 * k, e.r * 0.2 * k, 0, 0, 7); ctx.fill(); ctx.lineWidth = 1; }
       else if (e.boom) { ctx.fillStyle = `rgba(255,${150 + e.t * 150 | 0},60,${e.t / 0.6})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.2 - e.t), 0, 7); ctx.fill(); }
       else { ctx.strokeStyle = e.color; ctx.lineWidth = 2; ctx.globalAlpha = e.t / 0.12; ctx.beginPath(); ctx.moveTo(e.x1, e.y1); ctx.lineTo(e.x2, e.y2); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1; }
     }
     this.drawFog(x0, y0, x1, y1);
     if (ui.placing) this.drawPlacement(ui);
     if (ui.targeting) this.drawTargeting(ui);
+    if (ui.deploying) this.drawDeploy(ui);
+    if (ui.burrowing) this.drawBurrow(ui);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (ui.box) { const b = ui.box; ctx.strokeStyle = '#6f6'; ctx.setLineDash([4, 3]); ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.setLineDash([]); }
   }
@@ -57,6 +65,16 @@ export class Renderer {
   }
   drawBuilding(b, sel, t) {
     const ctx = this.ctx, x = b.tx * TILE, y = b.ty * TILE, w = b.w * TILE, h = b.h * TILE;
+    // v8: packing = slide toward the yard and shrink; unfold = reverse slide out of the walker
+    const sl = b.slide, uf = b.unfold;
+    if (sl || uf) {
+      const k = sl ? sl.k : uf.t / uf.dur, e = uf ? k * k : k, ox = (sl ? sl.dx : uf.fx) * e, oy = (sl ? sl.dy : uf.fy) * e, sc = 1 - 0.55 * e;
+      ctx.save(); ctx.translate(b.x + ox, b.y + oy); ctx.scale(sc, sc); ctx.translate(-b.x, -b.y);
+      if (sl && b.type === 'cy') { ctx.shadowColor = '#3fa9ff'; ctx.shadowBlur = 20 * k; }
+      drawBuildingArt(ctx, b, t, this.g); ctx.restore();
+      if (sl && k > 0.7) { ctx.fillStyle = `rgba(220,240,255,${(k - 0.7) * 1.6})`; ctx.beginPath(); ctx.arc(b.x + ox, b.y + oy, b.radius * sc, 0, 7); ctx.fill(); }
+      return;
+    }
     drawBuildingArt(ctx, b, t, this.g);
     this.hpBar(b, x, y - 6, w, sel);
     if (sel) { ctx.strokeStyle = '#fff'; ctx.setLineDash([6, 4]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
@@ -66,6 +84,7 @@ export class Renderer {
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
+    if (u.carried) { drawMobileBase(ctx, u, sel, t); return; }
     if (u.type === 'infantry') { this.drawSoldier(u, sel, col, t); return; }
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
@@ -164,6 +183,24 @@ export class Renderer {
     ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
     for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { ctx.fillRect((ht.x + x) * TILE + 1, (ht.y + y) * TILE + 1, TILE - 2, TILE - 2); }
     ctx.strokeRect(ht.x * TILE, ht.y * TILE, s.w * TILE, s.h * TILE);
+  }
+  // Full-footprint deploy preview: ghost of every carried building in its unfold slot, green/red per tile.
+  drawDeploy(ui) {
+    const mb = ui.deploying, p = ui.hoverWorld || { x: mb.x, y: mb.y }, ht = ui.deployTile(p), ctx = this.ctx, g = this.g;
+    for (const f of mb.footprint()) {
+      const s = BUILDINGS[f.type], tx = ht.x + f.dx, ty = ht.y + f.dy, ok = g.fits(0, f.type, tx, ty);
+      ctx.globalAlpha = 0.5; drawBuildingArt(ctx, { type: f.type, team: 0, tx, ty, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+      ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
+      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) ctx.fillRect((tx + x) * TILE + 1, (ty + y) * TILE + 1, TILE - 2, TILE - 2);
+      ctx.strokeRect(tx * TILE, ty * TILE, s.w * TILE, s.h * TILE);
+    }
+    ctx.strokeStyle = '#6f6'; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(mb.x, mb.y); ctx.lineTo((ht.x + 1.5) * TILE, (ht.y + 1.5) * TILE); ctx.stroke(); ctx.setLineDash([]);
+  }
+  drawBurrow(ui) {
+    const mb = ui.burrowing, p = ui.hoverWorld; if (!p) return; const ctx = this.ctx, r = 2.6 * TILE, t = performance.now() / 1000;
+    ctx.strokeStyle = '#d9a35a'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 20;
+    ctx.beginPath(); ctx.moveTo(mb.x, mb.y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.ellipse(p.x, p.y, r, r * 0.5, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    ctx.fillStyle = '#d9a35a33'; ctx.beginPath(); ctx.ellipse(p.x, p.y, r, r * 0.5, 0, 0, 7); ctx.fill();
   }
   drawTargeting(ui) {
     const ctx = this.ctx, p = ui.hoverWorld; if (!p) return; const r = 3 * TILE, t = performance.now() / 1000;

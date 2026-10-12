@@ -41,9 +41,38 @@ export class EnemyAI {
       if (target) for (const u of army) u.command({ type: 'attackMove', x: target.x, y: target.y });
       this.waveTimer = late ? 45 : 90; this.waveSize = Math.min(14, this.waveSize + 2);
     }
+    // 7) Mobile command centre: relocate the base when the yard is under siege; drive/burrow the walker to safety and redeploy.
+    this.mobileBase(g, me);
     // Defend: idle units counter anything hitting our buildings.
     const hurt = g.buildings.find(b => b.team === me && b.lastAttacker && !b.lastAttacker.dead && b.dist(b.lastAttacker) < 10 * TILE);
     if (hurt) for (const u of army) if (!u.order) u.command({ type: 'attack', target: hurt.lastAttacker });
+  }
+  mobileBase(g, me) {
+    const mb = g.units.find(u => u.team === me && u.carried);
+    if (!mb) {
+      const cy = g.buildings.find(b => b.team === me && b.type === 'cy' && !b.packing), atk = cy?.lastAttacker;
+      if (cy && g.combat && cy.hp < cy.stats.hp * 0.45 && atk && !atk.dead && cy.dist(atk) < 9 * TILE && g.canMorph(me, cy)) {
+        // retreat spot: away from the attacker, clamped inside the map
+        const dx = cy.x - atk.x, dy = cy.y - atk.y, d = Math.hypot(dx, dy) || 1, m = g.map, R = 14 * TILE;
+        this.reloc = { x: Math.max(6 * TILE, Math.min(m.pxW - 8 * TILE, cy.x + dx / d * R)), y: Math.max(6 * TILE, Math.min(m.pxH - 6 * TILE, cy.y + dy / d * R)) };
+        g.transformBase(me, cy);
+      }
+      return;
+    }
+    if (mb.busy) return;
+    const dest = this.reloc || { x: mb.x, y: mb.y };
+    // Under fire and badly hurt: dig out (drill) toward the retreat spot; otherwise spray structures in reach.
+    if (mb.type === 'robot' && mb.hp < mb.stats.hp * 0.5 && mb.lastAttacker && !mb.lastAttacker.dead && mb.dist(mb.lastAttacker) < 6 * TILE) {
+      if (mb.mode !== 'drill') mb.setMode('drill'); else if (mb.canBurrow()) { mb.burrow(dest.x, dest.y); return; }
+    } else if (mb.type === 'robot' && mb.mode !== 'spray' && mb.swapT <= 0) mb.setMode('spray');
+    if (Math.hypot(mb.x - dest.x, mb.y - dest.y) > 2 * TILE) { if (!mb.order) mb.command({ type: 'move', x: dest.x, y: dest.y }); return; }
+    // At the spot: find the nearest valid footprint and unfold.
+    const bx = Math.round(mb.x / TILE - 1.5), by = Math.round(mb.y / TILE - 1.5);
+    for (let r = 0; r < 10; r++) for (let k = 0; k < Math.max(1, r * 8); k++) {
+      const a = k / Math.max(1, r * 8) * Math.PI * 2, tx = Math.round(bx + Math.cos(a) * r), ty = Math.round(by + Math.sin(a) * r);
+      if (g.canDeploy(mb, tx, ty)) { mb.startDeploy(tx, ty); this.reloc = null; return; }
+    }
+    this.reloc = { x: mb.x + (Math.random() - .5) * 8 * TILE, y: mb.y + (Math.random() - .5) * 8 * TILE }; // blocked: try elsewhere
   }
   pickTarget() {
     const enemies = this.g.buildings.filter(b => b.team !== this.team);
@@ -56,7 +85,7 @@ export class EnemyAI {
     return best;
   }
   placeNearBase(type) {
-    const cy = this.g.buildings.find(b => b.team === this.team && b.type === 'cy');
+    const cy = this.g.buildings.find(b => b.team === this.team && b.type === 'cy' && !b.packing);
     if (!cy) return;
     for (let r = 2; r < 12; r++) for (let k = 0; k < 16; k++) {
       // search rings around the yard's centre (not its corner) so both map corners place equally well

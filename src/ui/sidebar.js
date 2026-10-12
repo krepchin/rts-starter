@@ -82,29 +82,56 @@ export class Sidebar {
   }
   updateSelection(t) {
     const g = this.g, sel = [...this.ui.selection], one = sel.length === 1 ? sel[0] : null;
-    const isB = !!(one && one.kind === 'building' && one.team === 0);
-    const key = isB ? `b${one.id}` : '';
+    const isB = !!(one && one.kind === 'building' && one.team === 0 && !one.packing);
+    const isM = !!(one && one.carried && one.team === 0);
+    const key = isB ? `b${one.id}` : isM ? `m${one.id}` : '';
     if (key !== this.selKey) { // rebuild action buttons only when the selection changes
       this.selKey = key; this.el.actions.replaceChildren(); this.act = {}; this.armed = null;
+      const mk = (id, label, fn, title) => { const b = document.createElement('button'); b.textContent = label; b._t = label; b.dataset.act = id; if (title) b.title = title; b.addEventListener('click', fn); this.el.actions.append(b); this.act[id] = b; };
       if (isB) {
-        const mk = (id, label, fn) => { const b = document.createElement('button'); b.textContent = label; b._t = label; b.addEventListener('click', fn); this.el.actions.append(b); this.act[id] = b; };
         mk('repair', 'Repair', () => g.toggleRepair(0, one));
         mk('sell', 'Sell', () => { if (this.armed === one) { g.sell(0, one); this.ui.clearSelection(); this.armed = null; } else { this.armed = one; clearTimeout(this.armT); this.armT = setTimeout(() => this.armed = null, 2500); } });
         if (one.stats.superweapon) mk('fire', 'Fire Ion', () => this.ui.beginTargeting());
+        if (one.type === 'cy') {
+          mk('pack', 'Pack', () => g.packYard(0, one), 'Fold the yard alone into a slow armored crawler');
+          mk('transform', 'Transform', () => g.transformBase(0, one), 'Yard + barracks + power plant + war factory become the Base Walker');
+        }
       }
-      setC(this.el.actions, 'has', isB);
+      if (isM) {
+        mk('deploy', 'Deploy', () => this.ui.deploying === one ? this.ui.cancel() : this.ui.beginDeploy(one), 'Unfold the base: tap a spot (preview shows the full footprint)');
+        if (one.type === 'robot') {
+          mk('weapon', 'Sprayer', () => one.toggleMode(), 'Switch weapon: Tiberium sprayer / drill arms');
+          mk('burrow', 'Burrow', () => this.ui.burrowing === one ? this.ui.cancel() : this.ui.beginBurrow(one), 'Drill mode: dig under and erupt at a target spot');
+        }
+      }
+      setC(this.el.actions, 'has', isB || isM); setC(this.el.actions, 'two', Object.keys(this.act).length > 3);
+    }
+    if (isM) {
+      const busy = one.busy, A = this.act;
+      setD(A.deploy, busy); setT(A.deploy, this.ui.deploying === one ? 'Place…' : one.state === 'deploying' ? 'Unfolding' : 'Deploy'); setC(A.deploy, 'on', this.ui.deploying === one);
+      if (A.weapon) { setT(A.weapon, one.mode === 'spray' ? '⇄ Sprayer' : '⇄ Drill'); setD(A.weapon, busy); setC(A.weapon, 'on', one.swapT > 0); }
+      if (A.burrow) { setD(A.burrow, !one.canBurrow() && this.ui.burrowing !== one);
+        setT(A.burrow, this.ui.burrowing === one ? 'Target…' : one.state === 'under' ? 'Digging' : one.burrowCd > 0 ? `Burrow ${Math.ceil(one.burrowCd)}s` : one.mode !== 'drill' ? 'Burrow (drill)' : 'Burrow'); setC(A.burrow, 'on', this.ui.burrowing === one); }
+      const names = one.carried.map(c => BUILDINGS[c.type].name.replace('Construction ', '')).join(', ');
+      const st = { rising: 'Assembling…', ready: one.type === 'robot' ? (one.mode === 'spray' ? 'Weapon: Tiberium sprayer' : 'Weapon: drill arms') : 'Packed: move, then Deploy',
+        deploying: 'Unfolding base…', burrowing: 'Burrowing…', under: 'Underground (untargetable)', emerging: 'Erupting!' }[one.state];
+      setT(this.el.info, `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp} · Carries: ${names}\n${this.ui.deploying === one ? 'Tap map to deploy (right-click/Esc cancels)' : this.ui.burrowing === one ? 'Tap a spot to burrow to' : st} · no production`);
+      return;
     }
     if (isB) {
       const s = one.stats;
       setT(this.act.repair, one.repairing ? 'Repairing' : 'Repair'); setC(this.act.repair, 'on', one.repairing); setD(this.act.repair, one.hp >= s.hp && !one.repairing);
       setT(this.act.sell, this.armed === one ? `+$${Math.floor((s.cost || 0) * 0.5 * one.hp / s.hp)}?` : 'Sell'); setC(this.act.sell, 'armed', this.armed === one);
       if (this.act.fire) { const f = one.charge / s.superweapon.chargeTime; setD(this.act.fire, !g.superReady(0)); setT(this.act.fire, this.ui.targeting ? 'Target…' : f >= 1 ? 'FIRE' : `⚡${Math.floor(f * 100)}%`); }
+      if (this.act.pack) { const ok = g.canMorph(0, one); setD(this.act.pack, !ok); setD(this.act.transform, !ok); }
       const lines = [`${s.name}`, `HP ${Math.ceil(one.hp)}/${s.hp} · Power ${s.power > 0 ? '+' : ''}${s.power}`];
       if (!one.powered && (s.weapon || s.radar || s.superweapon)) lines.push('OFFLINE: low power');
       else if (s.builds && s.builds !== 'building') lines.push('Tap map: set rally point');
+      else if (one.type === 'cy') lines.push(`Transform takes: ${g.transformParts(one).map(b => b.stats.name.split(' ')[0]).join(', ')}`);
       setT(this.el.info, lines.join('\n'));
       return;
     }
+    if (one?.packing) { setT(this.el.info, `${one.stats.name}\nPacking up… (offline)`); return; }
     setT(this.el.info, one ? `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp}` +
       (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.type === 'harvester' ? `\nLoad ${one.load | 0}` : '')
       : sel.length ? `${sel.length} selected` : this.ui.targeting ? 'Ion Cannon: tap a target (right-click/Esc cancels)'

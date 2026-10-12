@@ -2,12 +2,20 @@
 export class PlayerUI {
   constructor(game) { this.g = game; this.selection = new Set(); this.box = null; this.placing = null; this.targeting = false; this.hoverTile = { x: 0, y: 0 }; this.hoverWorld = null; }
   clearSelection() { this.selection.clear(); }
+  // v8: deploy preview (full footprint) for a Mobile Yard / Base Walker, and Burrow target for the walker's drill.
+  beginDeploy(mb) { this.cancel(); this.deploying = mb; }
+  beginBurrow(mb) { if (mb.canBurrow()) { this.cancel(); this.burrowing = mb; } }
+  deployTile(w) { return { x: Math.round(w.x / 32 - 1.5), y: Math.round(w.y / 32 - 1.5) }; }
+  deployAt(w) { const t = this.deployTile(w); if (this.deploying.startDeploy(t.x, t.y)) this.deploying = null; }
+  burrowAt(w) { if (this.burrowing.burrow(w.x, w.y)) { this.g.effects.push({ t: 0.3, ping: true, x: w.x, y: w.y }); this.burrowing = null; } }
   select(e, add) { if (!add) this.selection.clear(); this.selection.add(e); }
   boxSelect(x0, y0, x1, y1, add) {
     if (!add) this.selection.clear();
     for (const u of this.g.units) if (u.team === 0 && u.type !== 'interceptor' && u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1) this.selection.add(u);
   }
-  prune() { for (const e of this.selection) if (e.dead) this.selection.delete(e); if (this.targeting && !this.g.superReady(0)) this.targeting = false; }
+  prune() { for (const e of this.selection) if (e.dead) { this.selection.delete(e); const n = e.becameUnit || e.becameBuilding; if (n && !n.dead) this.selection.add(n); }
+    if (this.deploying && (this.deploying.dead || this.deploying.state !== 'ready')) this.deploying = null;
+    if (this.burrowing && (this.burrowing.dead || !this.burrowing.canBurrow())) this.burrowing = null; if (this.targeting && !this.g.superReady(0)) this.targeting = false; }
   commandAt(x, y) {
     const target = this.g.entityAt(x, y);
     const tib = this.g.map.tib[this.g.map.idx(Math.floor(x / 32), Math.floor(y / 32))] > 5;
@@ -38,6 +46,6 @@ export class PlayerUI {
   place() { if (this.g.placeBuilding(0, this.hoverTile.x, this.hoverTile.y)) this.placing = null; }
   beginTargeting() { if (this.g.superReady(0)) { this.targeting = true; this.placing = null; } }
   fireAt(x, y) { if (this.g.fireSuper(0, x, y)) this.targeting = false; }
-  cancel() { this.placing = null; this.box = null; this.targeting = false; }
-  cancelPlacingOr(fn) { if (this.placing || this.targeting) { this.placing = null; this.targeting = false; } else fn(); }
+  cancel() { this.placing = null; this.box = null; this.targeting = false; this.deploying = null; this.burrowing = null; }
+  cancelPlacingOr(fn) { if (this.placing || this.targeting || this.deploying || this.burrowing) this.cancel(); else fn(); }
 }

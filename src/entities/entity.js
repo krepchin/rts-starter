@@ -21,5 +21,5 @@ export class Entity {
       this.game.effects.push({ t: 0.12, x1: this.x, y1: this.y, x2: target.x, y2: target.y, color: w.color }); }
     return true;
   }
-  canHit(t) { const w = this.stats.weapon; return w && this.game.combat && !t.dead && t.team !== this.team && (!t.isAir || w.air); }
+  canHit(t) { const w = this.stats.weapon; return w && this.game.combat && !t.dead && !t.under && t.team !== this.team && (!t.isAir || w.air); }
 }

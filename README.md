@@ -1,9 +1,22 @@
-# Tiberium Skirmish — RTS Starter (v7)
+# Tiberium Skirmish — RTS Starter (v8)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
-Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets (all art is procedural canvas drawing).
+Plain HTML5 Canvas + ES modules. No build step, no dependencies. Art is a mix of image sprites in `assets/` (buildings, tanks, harvester, air units, soldiers) with procedural canvas drawing as the fallback, plus code-drawn art (terrain, effects, and the v8 Mobile Yard / Base Walker).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v8: mobile command centre
+Select your **Construction Yard** to get two new move modes (sidebar buttons, mouse or touch):
+- **Pack**: the yard folds alone into a slow armored crawler (Mobile Yard). Move it anywhere, then **Deploy**.
+- **Transform**: the yard plus the nearest barracks, one power plant and the war factory (within 10 tiles) slide together into the **Base Walker** robot from the concept art (`mcv-robot-concept.jpg`): command-centre torso with crane, barracks arm, war-factory cannon arm, cooling towers on its back. It carries whatever of those exists.
+- **Deploy** shows a placement preview of the full footprint (yard, barracks left, factory right, power behind; green/red per tile). Buildings unfold at the new spot with HP kept proportionally to the walker's HP.
+- **Weapon toggle** (Base Walker, switchable mid-battle):
+  - **Tiberium sprayer**: short-range shoulder cone (3.5 tiles) that melts structures fast (300/s), moderate vs units (45/s).
+  - **Drill arms**: close-range drilling, and **Burrow**: dig underground (untargetable, immune to Ion), tunnel to a chosen spot and erupt (220 damage in a 2.6-tile radius). 30 s cooldown.
+- **Trade-offs**: while packing, packed or walking there is no building or production, and carried power plants are offline. Carried bases are armored (take 60% damage) but can be destroyed. Pack takes 2.5 s, transform 4 s, deploy 2.5 s / 4 s. The build radius now follows the deployed yard (within 12 tiles of a yard).
+- **AI**: when its yard is under siege (below 45% HP with an attacker close), the AI transforms its base, walks away from the attacker, burrows out if the walker gets badly hurt, and redeploys at the nearest valid spot.
+- Looks: buildings slide together and glow, the walker assembles and stomps with dust, spray particles and melting fumes, burrow dirt and tunnel mound, eruption burst, reverse unfold.
+- Tests: `tests/v8_mobile_base.py` (Chromium, Firefox, WebKit; desktop and phone touch viewports).
 
 ## What's new in v7 (bug fix: "units flew off the screen")
 - **Root cause:** Interceptors returning to re-dock crowded around their Carrier, and unit separation pushed the Carrier away from them.

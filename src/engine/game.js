@@ -4,6 +4,8 @@ import { Fog } from '../world/fog.js';
 import { Building } from '../entities/building.js';
 import { Unit, Harvester } from '../entities/unit.js';
 import { Carrier, Interceptor } from '../entities/carrier.js';
+import { MobileBase, FORMATION } from '../entities/mcv.js';
+export const MORPH_TIME = { pack: 2.5, transform: 4 };
 
 const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
@@ -15,7 +17,7 @@ export class Game {
   constructor(opts = {}) {
     this.map = new GameMap(88, 88);
     this.graceUntil = opts.grace ? GRACE_SECONDS : 0;
-    this.units = []; this.buildings = []; this.effects = [];
+    this.units = []; this.buildings = []; this.effects = []; this.morphs = [];
     this.teams = [0, 1].map(id => ({ id, credits: ECONOMY.startCredits, powerMade: 0, powerUsed: 0, lowPower: false, radar: false,
       queues: { building: [], infantry: [], vehicle: [], aircraft: [] }, paused: {}, stalled: {}, rr: {}, readyBuilding: null }));
     this.fog = new Fog(this.map, 0);
@@ -60,8 +62,8 @@ export class Game {
   }
   get combat() { return this.time >= this.graceUntil; } // false during the ceasefire: no damage, targeting, attacks or Ion
   graceLeft() { return Math.max(0, this.graceUntil - this.time); }
-  has(team, type) { return this.buildings.some(b => b.team === team && b.type === type && !b.dead); }
-  producers(team, cat) { return this.buildings.filter(b => b.team === team && !b.dead && b.type === PRODUCER[cat]); }
+  has(team, type) { return this.buildings.some(b => b.team === team && b.type === type && !b.dead && !b.packing); }
+  producers(team, cat) { return this.buildings.filter(b => b.team === team && !b.dead && !b.packing && b.type === PRODUCER[cat]); }
   entityAt(px, py) {
     for (let i = this.units.length - 1; i >= 0; i--) { const u = this.units[i]; if (!u.dead && Math.hypot(u.x - px, u.y - py) <= u.radius + 4) return u; }
     return this.buildings.find(b => !b.dead && b.contains(px, py)) || null;
@@ -98,7 +100,9 @@ export class Game {
     if (tx < 0 || ty < 0 || tx + s.w > this.map.w || ty + s.h > this.map.h) return false;
     for (const b of this.buildings) if (!b.dead && tx < b.tx + b.w && tx + s.w > b.tx && ty < b.ty + b.h && ty + s.h > b.ty) return false;
     for (let y = ty; y < ty + s.h; y++) for (let x = tx; x < tx + s.w; x++) if (this.map.tib[this.map.idx(x, y)] > 0) return false;
-    // Must be near an existing own building (C&C build radius).
+    // Build radius follows the deployed Construction Yard(s): within 12 tiles of a yard, and next to an own building.
+    const cx = (tx + s.w / 2) * TILE, cy = (ty + s.h / 2) * TILE;
+    if (!this.buildings.some(b => !b.dead && !b.packing && b.team === team && b.type === 'cy' && Math.hypot(b.x - cx, b.y - cy) <= 12 * TILE)) return false;
     return this.buildings.some(b => !b.dead && b.team === team && Math.abs(b.x - (tx + s.w / 2) * TILE) < (b.w / 2 + s.w / 2 + 5) * TILE && Math.abs(b.y - (ty + s.h / 2) * TILE) < (b.h / 2 + s.h / 2 + 5) * TILE);
   }
   placeBuilding(team, tx, ty) {
@@ -120,16 +124,75 @@ export class Game {
   fireSuper(team, x, y) {
     const src = this.superReady(team); if (!src || !this.combat) return false;
     const sw = src.stats.superweapon, r = sw.radius * TILE; src.charge = 0;
-    for (const e of this.entities) if (!e.dead && Math.hypot(e.x - x, e.y - y) <= r + e.radius * 0.5) e.damage(sw.damage, src);
+    for (const e of this.entities) if (!e.dead && !e.under && Math.hypot(e.x - x, e.y - y) <= r + e.radius * 0.5) e.damage(sw.damage, src);
     this.effects.push({ t: 1.4, ion: true, x, y, r }); return true;
+  }
+  // ---- v8 mobile command centre
+  // Pack alone: the yard folds into a slow armored crawler. Transform base: yard + nearest barracks, one power plant and
+  // the war factory (within 10 tiles) slide together into the Base Walker. While packing/packed nothing builds and the
+  // carried power plant is offline.
+  canMorph(team, cy) { return !!cy && !cy.dead && cy.team === team && cy.type === 'cy' && !cy.packing && cy.age > 1.5; }
+  transformParts(cy) {
+    const parts = [cy];
+    for (const type of ['barracks', 'power', 'factory']) {
+      let best = null, bd = 10 * TILE;
+      for (const b of this.buildings) if (b.team === cy.team && b.type === type && !b.dead && !b.packing) { const d = b.dist(cy); if (d < bd) { bd = d; best = b; } }
+      if (best) parts.push(best);
+    }
+    return parts;
+  }
+  packYard(team, cy) { return this.startMorph(team, cy, 'pack'); }
+  transformBase(team, cy) { return this.startMorph(team, cy, 'transform'); }
+  startMorph(team, cy, mode) {
+    if (!this.canMorph(team, cy)) return false;
+    const parts = mode === 'pack' ? [cy] : this.transformParts(cy);
+    for (const b of parts) { b.packing = true; b.repairing = false; b.slide = { dx: cy.x - b.x, dy: cy.y - b.y, k: 0 }; }
+    this.morphs.push({ team, cy, mode, parts, t: 0, dur: MORPH_TIME[mode] }); return true;
+  }
+  updateMorphs(dt) {
+    for (const m of this.morphs) {
+      m.t += dt; const p = Math.min(1, m.t / (m.dur * 0.8));
+      if (m.cy.dead) { for (const b of m.parts) { b.packing = false; b.slide = null; } m.done = true; continue; } // yard destroyed mid-pack
+      m.parts = m.parts.filter(b => !b.dead);
+      for (const b of m.parts) { b.slide.k = p * p * (3 - 2 * p);
+        if (Math.random() < dt * 10 && this.effects.length < 700) this.effects.push({ part: true, x: b.x + b.slide.dx * b.slide.k + (Math.random() - .5) * b.w * TILE, y: b.y + b.slide.dy * b.slide.k + b.h * TILE / 2, vx: (Math.random() - .5) * 40, vy: -10, g: 0, size: 6, color: '#bfae8c', t: 0.9, life: 0.9 }); }
+      if (m.t < m.dur) continue;
+      m.done = true;
+      const carried = m.parts.map(b => ({ type: b.type, hpFrac: b.hp / b.stats.hp }));
+      for (const b of m.parts) this.removeQuiet(b);
+      const u = new MobileBase(this, m.mode === 'pack' ? 'mcv' : 'robot', m.team, m.cy.x, m.cy.y + TILE, carried);
+      this.units.push(u); m.cy.becameUnit = u;
+      this.effects.push({ t: 0.6, sell: true, x: u.x, y: u.y, r: 50 });
+    }
+    this.morphs = this.morphs.filter(m => !m.done);
+  }
+  fits(team, type, tx, ty, ignore) {
+    const s = BUILDINGS[type];
+    if (tx < 0 || ty < 0 || tx + s.w > this.map.w || ty + s.h > this.map.h) return false;
+    for (const b of this.buildings) if (!b.dead && tx < b.tx + b.w && tx + s.w > b.tx && ty < b.ty + b.h && ty + s.h > b.ty) return false;
+    for (let y = ty; y < ty + s.h; y++) for (let x = tx; x < tx + s.w; x++) if (this.map.tib[this.map.idx(x, y)] > 0) return false;
+    return true;
+  }
+  // tx,ty = where the yard's top-left tile goes; the rest of the carried base unfolds around it (FORMATION).
+  canDeploy(mb, tx, ty) { return mb.footprint().every(f => this.fits(mb.team, f.type, tx + f.dx, ty + f.dy)); }
+  finishDeploy(mb) {
+    const { tx, ty } = mb.deployAt; if (!this.canDeploy(mb, tx, ty)) return false;
+    const frac = mb.hp / mb.stats.hp; let cy = null;
+    for (const c of mb.carried) {
+      const [dx, dy] = FORMATION[c.type], b = new Building(this, c.type, mb.team, tx + dx, ty + dy);
+      b.hp = Math.max(1, b.stats.hp * frac); b.age = 9; b.unfold = { fx: mb.x - b.x, fy: mb.y - 20 - b.y, t: 1.2, dur: 1.2 };
+      this.buildings.push(b); if (c.type === 'cy') cy = b;
+    }
+    this.removeQuiet(mb); mb.becameBuilding = cy; this.effects.push({ t: 0.8, sell: true, x: mb.x, y: mb.y, r: 70 });
+    return true;
   }
   // ---- tick
   update(dt) {
     if (this.over) return;
-    this.time += dt; this.map.update(dt);
+    this.time += dt; this.map.update(dt); this.updateMorphs(dt);
     for (const t of this.teams) {
       t.powerMade = 0; t.powerUsed = 0;
-      for (const b of this.buildings) if (b.team === t.id && !b.dead) { if (b.stats.power > 0) t.powerMade += b.stats.power; else t.powerUsed -= b.stats.power; }
+      for (const b of this.buildings) if (b.team === t.id && !b.dead && !b.packing) { if (b.stats.power > 0) t.powerMade += b.stats.power; else t.powerUsed -= b.stats.power; }
       t.lowPower = t.powerUsed > t.powerMade;
       const pf = t.lowPower ? Math.max(ECONOMY.minPowerSpeed, t.powerMade / t.powerUsed) : 1;
       t.radar = !t.lowPower && this.has(t.id, 'radar');
@@ -170,8 +233,9 @@ export class Game {
       u.x = Math.max(4, Math.min(this.map.pxW - 4, u.x)); u.y = Math.max(4, Math.min(this.map.pxH - 4, u.y)); u.lastX = u.x; u.lastY = u.y;
     }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
-    for (const e of this.effects) e.t -= dt; this.effects = this.effects.filter(e => e.t > 0);
+    for (const e of this.effects) { e.t -= dt; if (e.part) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += (e.g || 0) * dt; e.vx *= 0.97; } }
+    for (const b of this.buildings) if (b.unfold) { b.unfold.t -= dt; if (b.unfold.t <= 0) b.unfold = null; } this.effects = this.effects.filter(e => e.t > 0);
     this.fog.update(this.entities);
-    for (const team of [0, 1]) if (!this.buildings.some(b => b.team === team)) { this.over = team === 0 ? 'lose' : 'win'; this.winner = 1 - team; }
+    for (const team of [0, 1]) if (!this.buildings.some(b => b.team === team) && !this.units.some(u => u.team === team && u.carried)) { this.over = team === 0 ? 'lose' : 'win'; this.winner = 1 - team; }
   }
 }

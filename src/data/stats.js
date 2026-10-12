@@ -25,6 +25,9 @@ export const UNITS = {
                weapon: { range: 5, damage: 35, cooldown: 1.2, air: false, color: '#fd6' } },
   carrier:   { name: 'Carrier', from: 'aircraft', hp: 1400, cost: 2500, time: 20, speed: 30, radius: 22, sight: 9, air: true,
                interceptors: 6, launchRange: 8, rebuildTime: 5, leashRange: 11 },
+  // v8 mobile command centre (not buildable: made by packing / transforming a Construction Yard; hp = carried buildings)
+  mcv:       { name: 'Mobile Yard', hp: 1500, speed: 32, radius: 18, sight: 6, buildable: false },
+  robot:     { name: 'Base Walker', hp: 3900, speed: 24, radius: 30, sight: 8, buildable: false },
   interceptor: { name: 'Interceptor', hp: 40, speed: 160, radius: 4, sight: 4, air: true, buildable: false,
                weapon: { range: 2.2, damage: 6, cooldown: 0.35, air: true, color: '#aff' } },
 };

@@ -69,3 +69,7 @@ html,body{margin:0;height:100%;background:#05080c;color:#cfe;font:13px system-ui
 @media (max-width:700px){#buildMenu button{height:46px}}
 #findBtn{display:block;width:100%;height:30px;margin:4px 0 0;background:#10283a;color:#cfe;border:1px solid #2a6c88;border-radius:4px;font:inherit;font-size:12px;cursor:pointer;touch-action:manipulation;white-space:nowrap;overflow:hidden}
 @media (max-width:700px){#findBtn{width:134px}}
+
+/* v8: 4-5 actions for yard / Base Walker */
+#selActions.two{height:78px}
+#selInfo{white-space:pre-line}
