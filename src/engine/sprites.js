@@ -2,7 +2,7 @@
 // team 0 = original steel-blue art, team 1 = red/rust tinted copy so factions stay distinct.
 // get() returns null until loaded or if loading failed, so callers fall back to procedural drawing.
 const TINT = { 1: 'rgba(255,70,40,0.42)' };
-const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser'];
+const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_drone', 'icp_jet', 'icp_vtol'];
 const cache = {};
 
 function tinted(img, team) {
@@ -22,3 +22,7 @@ export function loadSprites() {
 }
 export function getSprite(name, team) { const s = cache[name]; return s ? { img: s[team] || s[0], aspect: s.aspect } : null; }
 export const TANK_VARIANTS = ['tank_hover', 'tank_heavy', 'tank_laser'];
+// Strike drone is the main interceptor look; jet + VTOL gunship mixed in cosmetically.
+export const INTERCEPTOR_VARIANTS = ['icp_drone', 'icp_drone', 'icp_jet', 'icp_drone', 'icp_vtol'];
+// Which way each isometric artwork faces natively (we flip horizontally by heading).
+export const NATIVE_RIGHT = { icp_jet: true };

@@ -1,6 +1,6 @@
 import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
 import { drawBuildingArt } from './buildingArt.js';
-import { getSprite, TANK_VARIANTS } from './sprites.js';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -71,6 +71,7 @@ export class Renderer {
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
     if (u.type === 'tank' && this.drawTankSprite(u, sel, col, r)) return;
+    if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
     ctx.rotate(u.angle);
@@ -102,6 +103,21 @@ export class Renderer {
     ctx.drawImage(spr.img, -w / 2, 6 - h, w, h); ctx.restore();
     this.hpBar(u, u.x - r, u.y - h + 2, r * 2, sel);
     if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.5, h * 0.38, 0, 0, 7); ctx.stroke(); }
+    return true;
+  }
+  // Air units: isometric art flipped by heading, hovering above a soft ground shadow.
+  drawAirSprite(u, sel, col, r, t) {
+    const name = u.type === 'carrier' ? 'carrier' : INTERCEPTOR_VARIANTS[u.id % INTERCEPTOR_VARIANTS.length];
+    const spr = getSprite(name, u.team); if (!spr) return false;
+    const ctx = this.ctx, c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
+    const big = u.type === 'carrier', w = big ? 72 : 22, h = w * spr.aspect, lift = big ? 16 : 10, bob = Math.sin(t * 2 + u.id) * (big ? 2 : 1.5);
+    ctx.save(); ctx.filter = 'blur(3px)'; ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.4, h * 0.25, 0, 0, 7); ctx.fill(); ctx.restore();
+    if (big) { ctx.strokeStyle = col; ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.45, h * 0.3, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1; }
+    ctx.save(); ctx.translate(u.x, u.y + bob); if (u.faceRight !== !!NATIVE_RIGHT[name]) ctx.scale(-1, 1);
+    ctx.drawImage(spr.img, -w / 2, -h / 2, w, h); ctx.restore();
+    if (!big) { ctx.fillStyle = col; ctx.fillRect(u.x - 1.5, u.y + bob - h / 2 - 3, 3, 3); return true; } // team marker
+    this.hpBar(u, u.x - w * 0.35, u.y + bob - h / 2 - 6, w * 0.7, sel);
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + lift, w * 0.5, h * 0.36, 0, 0, 7); ctx.stroke(); }
     return true;
   }
   hpBar(e, x, y, w, always) {

@@ -7,7 +7,7 @@ Plain HTML5 Canvas + ES modules. No build step, no dependencies, no image assets
 
 ## What's new in v3 (visual only)
 Approved isometric artwork for the Construction Yard (both factions, enemy red-tinted) and three cosmetic Light Tank variants
-(hover/railgun, heavy twin-cannon, six-wheeled laser; cycled per unit, flipped by heading, team-color ring + tint).
+(hover/railgun, heavy twin-cannon, six-wheeled laser; cycled per unit, flipped by heading, team-color ring + tint), plus the Carrier and its Interceptors (strike drone main look, jet + VTOL gunship mixed in) with hover bob and soft ground shadows.
 Sprites live in `assets/` (1x + @2x), preload via `src/engine/sprites.js`, and fall back to procedural art if they fail. Gameplay unchanged.
 
 ## What's new in v2
