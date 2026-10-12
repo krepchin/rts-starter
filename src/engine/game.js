@@ -81,7 +81,7 @@ export class Game {
     const t = this.teams[team], q = t.queues[this.catOf(key, isB)], s = isB ? BUILDINGS[key] : UNITS[key];
     if (!this.canProduce(team, key, isB)) return false;
     if (isB ? (q.length || t.readyBuilding) : q.length >= ECONOMY.queueMax) return false;
-    q.push({ key, isB, progress: 0, time: s.time, cost: s.cost, paid: 0 }); return true;
+    q.push({ key, isB, progress: 0, time: s.time, cost: s.cost, paid: 0 }); if (team === 0) this.sfx?.('queue'); return true;
   }
   startProduction(team, key, isB) { return this.enqueue(team, key, isB); } // backwards-compatible alias
   // Cancel the last queued item of `key` (or the last item in the category). Refunds what was paid.
@@ -107,7 +107,7 @@ export class Game {
   }
   placeBuilding(team, tx, ty) {
     const t = this.teams[team]; if (!t.readyBuilding || !this.canPlace(team, t.readyBuilding, tx, ty)) return false;
-    this.addBuilding(t.readyBuilding, team, tx, ty); t.readyBuilding = null; return true;
+    this.addBuilding(t.readyBuilding, team, tx, ty); t.readyBuilding = null; if (team === 0) this.sfx?.('build'); return true;
   }
   // ---- building abilities
   sell(team, b) {
@@ -147,7 +147,7 @@ export class Game {
     if (!this.canMorph(team, cy)) return false;
     const parts = mode === 'pack' ? [cy] : this.transformParts(cy);
     for (const b of parts) { b.packing = true; b.repairing = false; b.slide = { dx: cy.x - b.x, dy: cy.y - b.y, k: 0 }; }
-    this.morphs.push({ team, cy, mode, parts, t: 0, dur: MORPH_TIME[mode] }); return true;
+    this.morphs.push({ team, cy, mode, parts, t: 0, dur: MORPH_TIME[mode] }); if (team === 0) this.sfx?.('transform'); return true;
   }
   updateMorphs(dt) {
     for (const m of this.morphs) {
@@ -183,7 +183,7 @@ export class Game {
       b.hp = Math.max(1, b.stats.hp * frac); b.age = 9; b.unfold = { fx: mb.x - b.x, fy: mb.y - 20 - b.y, t: 1.2, dur: 1.2 };
       this.buildings.push(b); if (c.type === 'cy') cy = b;
     }
-    this.removeQuiet(mb); mb.becameBuilding = cy; this.effects.push({ t: 0.8, sell: true, x: mb.x, y: mb.y, r: 70 });
+    this.removeQuiet(mb); mb.becameBuilding = cy; if (mb.team === 0) this.sfx?.('build'); this.effects.push({ t: 0.8, sell: true, x: mb.x, y: mb.y, r: 70 });
     return true;
   }
   // ---- tick

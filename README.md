@@ -1,9 +1,16 @@
-# Tiberium Skirmish — RTS Starter (v8)
+# Tiberium Skirmish — RTS Starter (v8.1)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies. Art is a mix of image sprites in `assets/` (buildings, tanks, harvester, air units, soldiers) with procedural canvas drawing as the fallback, plus code-drawn art (terrain, effects, and the v8 Mobile Yard / Base Walker).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v8.1
+- **Base Walker and Mobile Yard art from the approved sketch.** Pencil-and-ink sprites cut from `mcv-robot-ingame-preview-v2.jpg` (`assets/mw_*.png`, 1x + @2x): the walker is layered (cooling towers, two legs, body) so legs lift alternately, the body bobs and stomps, and the towers only show when a power plant is carried. The crawler is the yard on hand-drawn tracks. Code-drawn art remains as the fallback. Packing slide, unfold, spray, burrow and eruption animations are unchanged.
+- **Sound** (all synthesized with WebAudio: no audio files, works in Safari/WebKit): a looping background track plus effects for select, move, attack, queue, build/place, transform, deploy and burrow eruption. Audio starts only after the first tap/click/key (mobile autoplay rules). **Sound** button in the sidebar cycles off / low / med / high and is remembered in `localStorage`.
+- Phone: the walker's action buttons use two columns with short labels (no more "Depl…").
+- Version label on the start menu; tab title shows v8.1.
+- Credits: sound is original synthesized code in `src/engine/audio.js` (no third-party assets). Walker/crawler art is derived from the project's own approved concept images.
 
 ## What's new in v8: mobile command centre
 Select your **Construction Yard** to get two new move modes (sidebar buttons, mouse or touch):

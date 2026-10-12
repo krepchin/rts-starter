@@ -8,10 +8,14 @@ import { Sidebar } from './ui/sidebar.js';
 import { Minimap } from './ui/minimap.js';
 import { EnemyAI } from './ai/enemyAI.js';
 import { loadSprites } from './engine/sprites.js';
+import { Sound } from './engine/audio.js';
 
 loadSprites();
 
 const game = new Game();
+const sound = new Sound(); game.sfx = n => sound.play(n);
+const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇 Sound off', '🔈 Sound low', '🔉 Sound med', '🔊 Sound high'];
+volBtn.textContent = VOL_ICON[sound.level]; volBtn.addEventListener('click', () => { sound.start(); volBtn.textContent = VOL_ICON[sound.cycle()]; sound.play('select'); });
 const camera = new Camera(game.map);
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas, game, camera);
@@ -49,4 +53,4 @@ startLoop(dt => {
     graceEl.textContent = left > 0 ? `Ceasefire: no attacks ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}` : 'Ceasefire over: combat enabled!'; }
   renderer.render(ui); sidebar.update(); minimap.render(); });
 
-window.game = game; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests
+window.game = game; window.sound = sound; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests

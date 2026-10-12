@@ -35,7 +35,7 @@ export class MobileBase extends Unit {
   }
   startDeploy(tx, ty) {
     if (this.state !== 'ready' || !this.game.canDeploy(this, tx, ty)) return false;
-    this.deployAt = { tx, ty }; this.state = 'deploying'; this.stateT = 0; this.order = null; return true;
+    this.deployAt = { tx, ty }; if (this.team === 0) this.game.sfx?.('deploy'); this.state = 'deploying'; this.stateT = 0; this.order = null; return true;
   }
   burst(x, y, n, color, spd, size, life, up = 0) {
     const fx = this.game.effects; if (fx.length > 700) return;
@@ -105,7 +105,7 @@ export class MobileBase extends Unit {
   erupt() {
     const g = this.game, r = 2.6 * TILE; this.burrowCd = 30;
     if (g.combat) for (const e of [...g.buildings, ...g.units]) if (e.team !== this.team && !e.dead && !e.isAir && Math.hypot(e.x - this.x, e.y - this.y) <= r + e.radius * 0.5) e.damage(220, this);
-    g.effects.push({ t: 0.9, erupt: true, x: this.x, y: this.y, r });
+    g.sfx?.('boom'); g.effects.push({ t: 0.9, erupt: true, x: this.x, y: this.y, r });
     this.burst(this.x, this.y, 40, '#7a5a3a', 160, 6, 1.1, 140); this.burst(this.x, this.y, 16, '#8f5', 120, 3, 0.8, 100);
   }
   stride(d) {

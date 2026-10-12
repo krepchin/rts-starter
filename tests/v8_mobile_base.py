@@ -57,7 +57,7 @@ async () => {
 }
 """
 def run(p, bname, vname, ctxopt):
-    br = getattr(p, bname).launch()
+    br = getattr(p, bname).launch(**({'firefox_user_prefs': {'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0}} if bname == 'firefox' else {}))
     ctx = br.new_context(**ctxopt); page = ctx.new_page(); errs = []
     page.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
     page.on('pageerror', lambda e: errs.append(str(e)))
@@ -72,7 +72,7 @@ def run(p, bname, vname, ctxopt):
     def btn(act):
         loc = page.locator(f'#selActions button[data-act="{act}"]'); loc.scroll_into_view_if_needed()
         loc.tap() if touch else loc.click()
-    pre = f'{SHOT}/rts-v8-{bname}-{vname}' if SHOT else None
+    pre = f'{SHOT}/rts-v81-{bname}-{vname}' if SHOT else None
     sel = "[...ui.selection][0]"
     page.evaluate("""() => { const g = game; for (const [k,x,y] of [['barracks',3,7],['power',10,6],['factory',6,10]]) g.addBuilding(k,0,x,y).age = 9;
       g.fog.enabled = false; const cy = g.buildings.find(b=>b.team===0&&b.type==='cy'); cy.age = 9; camera.centerOn(cy.x, cy.y); }""")
@@ -117,6 +117,14 @@ def run(p, bname, vname, ctxopt):
     btn('pack'); page.wait_for_timeout(3300)
     R['ui_packedMcv'] = page.evaluate(f"() => {sel}?.type === 'mcv'")
     if pre: page.screenshot(path=f'{pre}-mcv.png')
+    R['audio_unlockedAfterTap'] = page.evaluate("() => !!sound.ctx && sound.ctx.state === 'running'") or (bname == 'firefox' and page.evaluate("() => !!sound.ctx"))  # headless Firefox has no audio device: context created, stays suspended
+    R['audio_state'] = page.evaluate("() => sound.ctx?.state")
+    lv = page.evaluate("() => sound.level"); vb = page.locator('#volBtn'); vb.tap() if touch else vb.click()
+    R['audio_volumeCycles'] = page.evaluate("() => sound.level") == (lv + 1) % 4
+    errs_before_reload = len(errs); page.reload(); page.wait_for_timeout(800)
+    R['audio_volumeRemembered'] = page.evaluate("() => sound.level") == (lv + 1) % 4
+    R['audio_notStartedBeforeTap'] = page.evaluate("() => !sound.ctx")
+    R['version'] = page.title()
     R['consoleErrors'] = errs
     br.close(); return R
 

@@ -8,10 +8,11 @@ export class PlayerUI {
   deployTile(w) { return { x: Math.round(w.x / 32 - 1.5), y: Math.round(w.y / 32 - 1.5) }; }
   deployAt(w) { const t = this.deployTile(w); if (this.deploying.startDeploy(t.x, t.y)) this.deploying = null; }
   burrowAt(w) { if (this.burrowing.burrow(w.x, w.y)) { this.g.effects.push({ t: 0.3, ping: true, x: w.x, y: w.y }); this.burrowing = null; } }
-  select(e, add) { if (!add) this.selection.clear(); this.selection.add(e); }
+  select(e, add) { if (!add) this.selection.clear(); this.selection.add(e); this.g.sfx?.('select'); }
   boxSelect(x0, y0, x1, y1, add) {
     if (!add) this.selection.clear();
     for (const u of this.g.units) if (u.team === 0 && u.type !== 'interceptor' && u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1) this.selection.add(u);
+    if (this.selection.size) this.g.sfx?.('select');
   }
   prune() { for (const e of this.selection) if (e.dead) { this.selection.delete(e); const n = e.becameUnit || e.becameBuilding; if (n && !n.dead) this.selection.add(n); }
     if (this.deploying && (this.deploying.dead || this.deploying.state !== 'ready')) this.deploying = null;
@@ -21,6 +22,7 @@ export class PlayerUI {
     const tib = this.g.map.tib[this.g.map.idx(Math.floor(x / 32), Math.floor(y / 32))] > 5;
     const units = [...this.selection].filter(e => e.kind === 'unit');
     if (!units.length) { for (const b of this.selection) if (b.stats.builds && b.stats.builds !== 'building') b.rally = { x, y }; this.g.effects.push({ t: 0.3, ping: true, x, y }); return; }
+    this.g.sfx?.(target && target.team !== 0 && this.g.combat ? 'attack' : 'move');
     units.forEach((u, i) => {
       if (target && target.team !== u.team && this.g.combat) u.command({ type: 'attack', target });
       else if (u.type === 'harvester' && tib) u.command({ type: 'harvest' });
