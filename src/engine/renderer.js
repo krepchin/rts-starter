@@ -1,5 +1,6 @@
 import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
 import { drawBuildingArt } from './buildingArt.js';
+import { getSprite, TANK_VARIANTS } from './sprites.js';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -69,6 +70,7 @@ export class Renderer {
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
+    if (u.type === 'tank' && this.drawTankSprite(u, sel, col, r)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
     ctx.rotate(u.angle);
@@ -88,6 +90,19 @@ export class Renderer {
     ctx.restore();
     if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
     if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
+  }
+  // Cosmetic tank variants (cycled by unit id). Isometric art: flip horizontally by heading instead of rotating.
+  drawTankSprite(u, sel, col, r) {
+    const spr = getSprite(TANK_VARIANTS[u.id % 3], u.team); if (!spr) return false;
+    const ctx = this.ctx, c = Math.cos(u.angle); if (Math.abs(c) > 0.2) u.faceRight = c > 0;
+    const w = 38, h = w * spr.aspect;
+    ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.ellipse(u.x + 2, u.y + 4, w * 0.42, h * 0.3, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.44, h * 0.32, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.save(); ctx.translate(u.x, u.y); if (u.faceRight) ctx.scale(-1, 1);
+    ctx.drawImage(spr.img, -w / 2, 6 - h, w, h); ctx.restore();
+    this.hpBar(u, u.x - r, u.y - h + 2, r * 2, sel);
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, w * 0.5, h * 0.38, 0, 0, 7); ctx.stroke(); }
+    return true;
   }
   hpBar(e, x, y, w, always) {
     if (!always && e.hp >= e.stats.hp) return;

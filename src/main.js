@@ -7,6 +7,9 @@ import { PlayerUI } from './ui/selection.js';
 import { Sidebar } from './ui/sidebar.js';
 import { Minimap } from './ui/minimap.js';
 import { EnemyAI } from './ai/enemyAI.js';
+import { loadSprites } from './engine/sprites.js';
+
+loadSprites();
 
 const game = new Game();
 const camera = new Camera(game.map);

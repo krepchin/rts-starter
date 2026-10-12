@@ -1,4 +1,5 @@
 import { TILE } from '../data/stats.js';
+import { getSprite } from './sprites.js';
 
 // Procedural C&C-style 2.5D structures. Each building sits on its tile footprint; height is drawn "up" the screen
 // (oblique projection), so gameplay stays on the flat tile grid. Player = clean blue/steel tech, enemy = red/rust angular.
@@ -226,10 +227,16 @@ export function drawBuildingArt(ctx, b, t, game) {
     charge: b.stats?.superweapon ? b.charge / b.stats.superweapon.chargeTime : 0,
   };
   const build = Math.min(1, (b.age ?? 9) / 1.2); // rise-up animation when placed
+  const spr = b.type === 'cy' ? getSprite('cy', b.team) : null;
   ctx.save();
-  pad(ctx, P, X, Y, W, H);
+  if (!spr) pad(ctx, P, X, Y, W, H);
   if (build < 1) { ctx.beginPath(); ctx.rect(X - 20, Y + H - (H + 80) * build, W + 40, (H + 80) * build + 4); ctx.clip(); }
-  ART[b.type]?.(ctx, P, b, X, Y, W, H, t, s);
+  if (spr) { // approved isometric artwork (enemy copy is red-tinted); footprint stays the 3x3 tile grid
+    const sw = W * 1.38, sh = sw * spr.aspect;
+    ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(X + W / 2 + 4, Y + H - 14, sw * 0.48, sh * 0.28, 0, 0, 7); ctx.fill();
+    ctx.drawImage(spr.img, X + W / 2 - sw / 2, Y + H + 6 - sh, sw, sh);
+    glowDot(ctx, X + W / 2, Y + H - 2, 2.5, P.accent, blink(t, 1.2) ? 1 : 0.3); // team beacon
+  } else ART[b.type]?.(ctx, P, b, X, Y, W, H, t, s);
   ctx.restore();
   if (build < 1) { ctx.strokeStyle = P.glow; ctx.globalAlpha = 0.8; const yy = Y + H - (H + 60) * build; ctx.beginPath(); ctx.moveTo(X, yy); ctx.lineTo(X + W, yy); ctx.stroke(); ctx.globalAlpha = 1; }
   if (b.hp !== undefined && b.hp < b.stats.hp * 0.5) { // damage fire + smoke

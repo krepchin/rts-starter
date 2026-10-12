@@ -1,3 +1,5 @@
 # Assets
-Placeholder. All art is currently drawn as vector shapes in `src/engine/renderer.js`
-(`drawBuilding`, `drawUnit`, `drawCrystals`). Real sprites/sounds go here later; swap the draw functions to use them.
+Approved isometric artwork, cut out to transparent PNGs (1x + @2x for high-DPI):
+- cy.png: Construction Yard (enemy uses a red-tinted copy at runtime)
+- tank_hover / tank_heavy / tank_laser: cosmetic Light Tank variants (cycled per unit)
+Loaded by src/engine/sprites.js; if an image fails the procedural art is used.

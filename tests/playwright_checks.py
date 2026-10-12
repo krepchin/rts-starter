@@ -82,9 +82,9 @@ def run(p, name, ctxargs, browser):
           game.fog.enabled=false; for(let i=0;i<30*2;i++) game.update(1/30);
           game.units.filter(u=>u.team===1).forEach(u=>{u.x=3000;u.y=3000; u.order=null});
           game.buildings.filter(b=>b.type==='ion').forEach(b=>b.charge=120);
-          game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; game.enqueue(0,'tank',false); ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
-          camera.centerOn(mobile? 13*32: 17*32, mobile? 8*32 : 8*32); }""", name != 'desktop')
-        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-buildings-v2{"" if name=="desktop" else "-mobile"}.png')
+          game.buildings.find(b=>b.type==='factory'&&b.team===0).hp*=0.4; for(let i=0;i<3;i++){game.spawnUnit('tank',0,(9+i*1.6)*32,13*32).angle=i==1?0:Math.PI; const e=game.spawnUnit('tank',1,(22+i*1.6)*32,13*32); e.angle=i==1?Math.PI:0;} game.addBuilding('cy',1,24,14).age=9; game.buildings.at(-1).seen=true; ui.clearSelection(); ui.select(game.buildings.find(b=>b.type==='ion'&&b.team===0));
+          camera.centerOn(mobile? 9*32: 17*32, mobile? 10*32 : 9*32); }""", name != 'desktop')
+        pg.wait_for_timeout(1500); pg.screenshot(path=f'/workspace/rts-art-v3{"" if name=="desktop" else "-mobile"}.png')
     c.close()
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/opt/google/chrome/chrome')
