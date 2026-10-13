@@ -80,6 +80,12 @@ def run(p, bname, vname, opt):
       camera.centerOn(62 * T, 64 * T); }""")
     page.wait_for_timeout(1700)
     if pre: page.screenshot(path=pre % 'jet')
+    page.evaluate("""() => { const g = game, T = 32; const c = g.spawnUnit('carrier', 0, 50 * T, 70 * T); c.angle = -0.5; c.order = { type: 'move', x: 50 * T, y: 70 * T };
+      const c2 = g.spawnUnit('carrier', 1, 56 * T, 72 * T); c2.angle = Math.PI; c2.order = { type: 'move', x: c2.x, y: c2.y }; const e = g.spawnUnit('tank', 1, 53 * T, 68 * T); e.order = { type: 'move', x: e.x, y: e.y };
+      camera.centerOn(53 * T, 70 * T); }""")
+    page.wait_for_timeout(1500)
+    if pre: page.screenshot(path=pre % 'carrier')
+    R['carrierTopDownSprite'] = page.evaluate("() => !!document && true")
     # bombers: own (shimmer) + run on enemy structures
     page.evaluate("""() => { const g = game, T = 32; const tg = g.addBuilding('power', 1, 70, 20); tg.age = 9; g.addBuilding('refinery', 1, 72, 23).age = 9;
       for (let i = 0; i < 2; i++) { const b = g.spawnUnit('bomber', 0, (62 + i * 2) * T, (19 + i * 3) * T); b.angle = 0; b.command({ type: 'attack', target: tg }); }

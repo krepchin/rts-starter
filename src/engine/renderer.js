@@ -90,6 +90,7 @@ export class Renderer {
     if (u.stats.inf) { this.drawSoldier(u, sel, col, t); return; }
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if (u.type === 'jet' || u.type === 'bomber') { this.drawStrikeCraft(u, sel, col, t); return; }
+    if (u.type === 'carrier' && this.drawCarrierTD(u, sel, col, t)) return;
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
@@ -111,6 +112,33 @@ export class Renderer {
     ctx.restore();
     if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
+  }
+  // v9.2 carrier: top-down art cut from Kent's approved concept (steel-blue deck, sand camo), rotated to heading, with
+  // the aft island tower, glowing blue thruster pods, a soft ground shadow and a launch strobe on the deck.
+  drawCarrierTD(u, sel, col, t) {
+    const spr = getSprite('carrier_td', u.team); if (!spr) return false;
+    const ctx = this.ctx, L = 96, W = L * spr.aspect, lift = 18, bob = Math.sin(t * 1.6 + u.id) * 1.5, a = u.angle;
+    ctx.save(); ctx.translate(u.x + lift * 0.7, u.y + lift + 8); ctx.rotate(a); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-L / 2, -W * 0.32, L, W * 0.64, 8) : ctx.rect(-L / 2, -W * 0.32, L, W * 0.64); ctx.fill(); ctx.filter = 'none'; ctx.restore();
+    ctx.save(); ctx.translate(u.x, u.y + bob); ctx.rotate(a);
+    // rear thruster plumes
+    for (const y of [-W * 0.18, 0, W * 0.18]) { const g = ctx.createLinearGradient(-L / 2, 0, -L / 2 - 22, 0); g.addColorStop(0, 'rgba(160,220,255,0.9)'); g.addColorStop(1, 'rgba(60,140,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-L / 2 + 2, y - 3); ctx.lineTo(-L / 2 - 16 - 5 * Math.sin(t * 20 + y), y); ctx.lineTo(-L / 2 + 2, y + 3); ctx.fill(); }
+    ctx.drawImage(spr.img, -L / 2, -W / 2, L, W);
+    // side pod thrusters glow (pods in the art sit at ~30% and ~53% of length)
+    ctx.save(); ctx.shadowColor = '#4cb4ff'; ctx.shadowBlur = 10; for (const fx of [-0.2, 0.03]) for (const sy of [-1, 1]) { ctx.fillStyle = `rgba(150,215,255,${0.7 + 0.3 * Math.sin(t * 9 + fx * 10 + sy)})`;
+      ctx.beginPath(); ctx.ellipse(fx * L, sy * W * 0.47, 3.2, 1.8, 0, 0, 7); ctx.fill(); } ctx.restore();
+    // island tower aft (starboard): stacked superstructure with mast
+    const tx = -L * 0.3, ty = -W * 0.2; ctx.fillStyle = '#2b3138'; ctx.fillRect(tx - 7, ty - 4, 14, 8); ctx.fillStyle = '#3d4650'; ctx.fillRect(tx - 5, ty - 3, 10, 5);
+    ctx.fillStyle = '#566270'; ctx.fillRect(tx - 3, ty - 2, 6, 3); ctx.strokeStyle = '#1a1e22'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + 6, ty - 1); ctx.stroke();
+    ctx.fillStyle = (t * 2 % 1) < 0.5 ? '#ff5040' : '#511'; ctx.fillRect(tx + 5.5, ty - 2, 1.6, 1.6); ctx.fillStyle = col; ctx.fillRect(tx - 7, ty + 3, 14, 1.4);
+    // deck launch strobe toward the bow when the wing is out
+    if (u.wing?.length) { const k = (t * 1.5) % 1; ctx.fillStyle = `rgba(255,230,150,${1 - k})`; ctx.fillRect(-L * 0.1 + k * L * 0.5, -1, 4, 2); }
+    ctx.restore();
+    this.hpBar(u, u.x - L * 0.3, u.y + bob - W / 2 - 8, L * 0.6, sel);
+    if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.ellipse(u.x, u.y, L * 0.58, L * 0.3, 0, 0, 7); ctx.stroke(); }
+    if (u.beingRepaired > 0) drawRepairGlint(ctx, u.x, u.y - W / 2 - 14, t);
+    return true;
   }
   // v9.2 Fighter Jet / Stealth Bomber: painted top-down craft, rotated to heading and banked through turns.
   drawStrikeCraft(u, sel, col, t) {
