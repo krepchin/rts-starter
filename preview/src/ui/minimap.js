@@ -1,5 +1,5 @@
-import { ME } from '../engine/local.js?v=10.2p';
-import { TEAM_COLORS } from '../data/stats.js?v=10.2p';
+import { ME } from '../engine/local.js?v=10.2p2';
+import { TEAM_COLORS } from '../data/stats.js?v=10.2p2';
 
 // Minimap needs a powered Comm Center (radar). Without it: static + "RADAR OFFLINE" (still tap/drag to move camera).
 export class Minimap {

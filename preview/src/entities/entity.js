@@ -1,4 +1,4 @@
-import { TILE } from '../data/stats.js?v=10.2p';
+import { TILE } from '../data/stats.js?v=10.2p2';
 let nextId = 1;
 export function resetIds() { nextId = 1; } // multiplayer: both peers must number entities identically
 export class Entity {

@@ -1,5 +1,5 @@
-import { Unit } from './unit.js?v=10.2p';
-import { TILE } from '../data/stats.js?v=10.2p';
+import { Unit } from './unit.js?v=10.2p2';
+import { TILE } from '../data/stats.js?v=10.2p2';
 
 // Home airfield for damaged aircraft (repaired there by Building.update).
 export function homeField(u) { return u.game.nearestOwn(u, 'airfield'); }

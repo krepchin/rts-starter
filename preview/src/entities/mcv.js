@@ -1,5 +1,5 @@
-import { Unit } from './unit.js?v=10.2p';
-import { UNITS, BUILDINGS, TILE } from '../data/stats.js?v=10.2p';
+import { Unit } from './unit.js?v=10.2p2';
+import { UNITS, BUILDINGS, TILE } from '../data/stats.js?v=10.2p2';
 
 // v8 mobile command centre.
 //  'mcv'   = Construction Yard packed alone into a slow armored crawler.

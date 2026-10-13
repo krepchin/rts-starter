@@ -1,5 +1,5 @@
-import { Unit, Harvester } from './unit.js?v=10.2p';
-import { TILE } from '../data/stats.js?v=10.2p';
+import { Unit, Harvester } from './unit.js?v=10.2p2';
+import { TILE } from '../data/stats.js?v=10.2p2';
 
 // v10 special units: Brood Egg, Hive Orb (spawns Spark Drones), Brood Ship (Drop Eggs), Monster Truck (ram + rear rockets), Grazer.
 export class Grazer extends Harvester { constructor(game, team, x, y) { super(game, team, x, y, 'grazer'); } }

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Tiberium Skirmish — RTS Starter PREVIEW v10.2</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="styles.css?v=10.2p">
+<link rel="stylesheet" href="styles.css?v=10.2p2">
 </head>
 <body>
 <div id="app">
@@ -40,22 +40,20 @@
   <div id="startMenu">
     <div class="panel">
       <h1>Tiberium Skirmish</h1>
-      <div id="version">PREVIEW v10.2 · four factions</div>
+      <div id="version">PREVIEW v10.2 · four factions · online</div>
       <div id="factionPick" role="radiogroup" aria-label="Choose your faction">
-        <label class="fac" data-fac="human"><input type="radio" name="faction" value="human" checked><img src="assets/portrait_human.jpg?v=10.2p" alt="" width="320" height="240"><span><b>Humans</b><small>Tiberium-age army: riflemen, snipers, rocket troops, tanks, monster trucks, a transforming Base Walker, jets, stealth bombers and the camo flight-deck Carrier.</small></span></label>
-        <label class="fac" data-fac="reptile"><input type="radio" name="faction" value="reptile"><img src="assets/portrait_reptile.jpg?v=10.2p" alt="" width="320" height="240"><span><b>Reptilians</b><small>Living hive: Raiders, Spitters, Brutes and Shamans, spark and lance drones, the Hive Orb and the egg-laying Brood Ship. Organic buildings heal themselves.</small></span></label>
-        <label class="fac" data-fac="nordic"><input type="radio" name="faction" value="nordic"><img src="assets/portrait_nordic.jpg?v=10.2p" alt="" width="320" height="240"><span><b>Nordics</b><small>Tall, golden-haired visitors with white-and-gold light tech. Few but mighty: Sentinels, Seers that heal, shield Guardians, the Tall White blademaster, Light-craft and the Lightship.</small></span></label>
-        <label class="fac" data-fac="grey"><input type="radio" name="faction" value="grey"><img src="assets/portrait_grey.jpg?v=10.2p" alt="" width="320" height="240"><span><b>Greys</b><small>Big-eyed abductors in a swarm of cheap drones. Psionics stun, Abductors steal soldiers, Hybrids blend in, robot crawlers, probe orbs and tractor-beam saucers lift your army away.</small></span></label>
+        <label class="fac" data-fac="human"><input type="radio" name="faction" value="human" checked><img src="assets/portrait_human.jpg?v=10.2p2" alt="" width="320" height="240"><span><b>Humans</b><small>Tiberium-age army: riflemen, snipers, rocket troops, tanks, monster trucks, a transforming Base Walker, jets, stealth bombers and the camo flight-deck Carrier.</small></span></label>
+        <label class="fac" data-fac="reptile"><input type="radio" name="faction" value="reptile"><img src="assets/portrait_reptile.jpg?v=10.2p2" alt="" width="320" height="240"><span><b>Reptilians</b><small>Living hive: Raiders, Spitters, Brutes and Shamans, spark and lance drones, the Hive Orb and the egg-laying Brood Ship. Organic buildings heal themselves.</small></span></label>
+        <label class="fac" data-fac="nordic"><input type="radio" name="faction" value="nordic"><img src="assets/portrait_nordic.jpg?v=10.2p2" alt="" width="320" height="240"><span><b>Nordics</b><small>Tall, golden-haired visitors with white-and-gold light tech. Few but mighty: Sentinels, Seers that heal, shield Guardians, the Tall White blademaster, Light-craft and the Lightship.</small></span></label>
+        <label class="fac" data-fac="grey"><input type="radio" name="faction" value="grey"><img src="assets/portrait_grey.jpg?v=10.2p2" alt="" width="320" height="240"><span><b>Greys</b><small>Big-eyed abductors in a swarm of cheap drones. Psionics stun, Abductors steal soldiers, Hybrids blend in, robot crawlers, crackling white orb drones, classic flying saucers with green tractor beams, and a Mothership that launches six saucers.</small></span></label>
       </div>
       <label class="opt"><input type="checkbox" id="graceOpt" checked> <span><b>No attacks for the first 10 minutes</b><br><small>Ceasefire for both sides: no damage, no targeting, no AI attacks, no Ion strikes. Building and harvesting continue.</small></span></label>
-      <button id="startBtn">Start Skirmish</button>
-      <button id="mpBtn" class="secondary">Multiplayer 1v1 (beta)</button>
+      <div class="mprow playrow"><button id="startBtn">Play vs AI</button><button id="mpBtn" class="secondary">Play Online</button></div>
       <div id="mpPanel" hidden>
-        <p class="mpnote">Peer-to-peer over WebRTC, no server. Host makes a code, sends it to the other player (chat, email…), they paste it and send back their answer code.</p>
-        <div class="mprow"><button id="mpHost">Host game</button><button id="mpJoin">Join game</button></div>
-        <label id="mpOfferL" hidden>Code to send / paste here:<textarea id="mpOffer" rows="3" spellcheck="false"></textarea></label>
-        <div class="mprow"><button id="mpCopy" hidden>Copy code</button><button id="mpGo" hidden>Connect</button></div>
-        <label id="mpAnswerL" hidden>Paste the other player's code:<textarea id="mpAnswer" rows="3" spellcheck="false"></textarea></label>
+        <p class="mpnote">2-player online, peer-to-peer. Both players pick their faction above. One taps <b>Create room</b> and reads out the 5-letter code; the other types it and taps <b>Join</b>.</p>
+        <div class="mprow"><button id="mpHost">Create room</button></div>
+        <div id="mpCodeBox" hidden>Room code: <b id="mpCode"></b></div>
+        <div class="mprow"><input id="mpJoinCode" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="mpJoin">Join</button></div>
         <div id="mpStatus" aria-live="polite"></div>
       </div>
     </div>
@@ -78,6 +76,6 @@
   document.addEventListener('click', function (e) { if (e.target && e.target.id === 'startBtn' && !window.startGame) { window.__wantStart = true; e.target.textContent = 'Loading...'; } }, true);
 })();
 </script>
-<script type="module" src="src/main.js?v=10.2p"></script>
+<script type="module" src="src/main.js?v=10.2p2"></script>
 </body>
 </html>

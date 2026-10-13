@@ -1,5 +1,5 @@
-import { Unit } from './unit.js?v=10.2p';
-import { TILE } from '../data/stats.js?v=10.2p';
+import { Unit } from './unit.js?v=10.2p2';
+import { TILE } from '../data/stats.js?v=10.2p2';
 
 // v9.1 Dropship: cloaking tilt-rotor transport (StarCraft-style). 8 cargo slots: infantry 1, vehicles 4; the walker / yard
 // crawler, harvesters and aircraft can't board. Units with a {type:'board', target: ds} order walk to it and get stored.

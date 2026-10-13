@@ -1,8 +1,8 @@
-import { ME } from './local.js?v=10.2p';
+import { ME } from './local.js?v=10.2p2';
 // v10 art: Reptilian units (sprites cut from Kent's concept art, assets/r_*.png, with code fallbacks), drones, Brood Ship, eggs,
 // organic structures (painted code art), the human Dune Buggy and Monster Truck, and new weapon effects.
-import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.2p';
-import { getSprite } from './sprites.js?v=10.2p';
+import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.2p2';
+import { getSprite } from './sprites.js?v=10.2p2';
 
 const SPR = { raider: ['r_raider', 30], spitter: ['r_spitter', 28], brute: ['r_brute', 44], shaman: ['r_shaman', 38], hatchling: ['r_raider', 19],
   spark: ['r_spark', 20], lance: ['r_lance', 30], hiveorb: ['r_hive', 54],

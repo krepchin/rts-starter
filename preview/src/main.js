@@ -1,17 +1,17 @@
-import { ME, setMe } from './engine/local.js?v=10.2p';
-import { net } from './net/lockstep.js?v=10.2p';
-import { Game, GRACE_SECONDS } from './engine/game.js?v=10.2p';
-import { BUILDINGS } from './data/stats.js?v=10.2p';
-import { Camera } from './engine/camera.js?v=10.2p';
-import { Renderer } from './engine/renderer.js?v=10.2p';
-import { Input } from './engine/input.js?v=10.2p';
-import { startLoop } from './engine/loop.js?v=10.2p';
-import { PlayerUI } from './ui/selection.js?v=10.2p';
-import { Sidebar } from './ui/sidebar.js?v=10.2p';
-import { Minimap } from './ui/minimap.js?v=10.2p';
-import { EnemyAI } from './ai/enemyAI.js?v=10.2p';
-import { loadSprites } from './engine/sprites.js?v=10.2p';
-import { Sound } from './engine/audio.js?v=10.2p';
+import { ME, setMe } from './engine/local.js?v=10.2p2';
+import { net } from './net/lockstep.js?v=10.2p2';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=10.2p2';
+import { BUILDINGS } from './data/stats.js?v=10.2p2';
+import { Camera } from './engine/camera.js?v=10.2p2';
+import { Renderer } from './engine/renderer.js?v=10.2p2';
+import { Input } from './engine/input.js?v=10.2p2';
+import { startLoop } from './engine/loop.js?v=10.2p2';
+import { PlayerUI } from './ui/selection.js?v=10.2p2';
+import { Sidebar } from './ui/sidebar.js?v=10.2p2';
+import { Minimap } from './ui/minimap.js?v=10.2p2';
+import { EnemyAI } from './ai/enemyAI.js?v=10.2p2';
+import { loadSprites } from './engine/sprites.js?v=10.2p2';
+import { Sound } from './engine/audio.js?v=10.2p2';
 
 loadSprites();
 
@@ -34,7 +34,7 @@ const input = new Input(canvas, game, camera, ui);
 const sidebar = new Sidebar(game, ui);
 const minimap = new Minimap(document.getElementById('minimap'), game, camera); minimap.sel = ui.selection;
 document.getElementById('findBtn').addEventListener('click', () => ui.find(camera));
-const ai = new EnemyAI(game, 1);
+let ai = new EnemyAI(game, 1);
 const banner = document.getElementById('banner'), graceEl = document.getElementById('graceTimer');
 let started = false;
 // Start menu: optional 10-minute ceasefire for both sides (default ON). ?grace=0|1 overrides; ?autostart=1 skips the menu.
@@ -56,22 +56,20 @@ const $ = id => document.getElementById(id), mpStatus = $('mpStatus');
 const pickF = () => document.querySelector('input[name=faction]:checked')?.value || myFaction;
 const show = (...ids) => { for (const id of ids) $(id).hidden = false; };
 $('mpBtn').addEventListener('click', () => { $('mpPanel').hidden = !$('mpPanel').hidden; });
-$('mpCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('mpOffer').value); mpStatus.textContent = 'Copied.'; } catch { $('mpOffer').select(); mpStatus.textContent = 'Select the text and copy it.'; } });
-$('mpHost').addEventListener('click', async () => { mpStatus.textContent = 'Creating host code…'; sound.start();
-  try { const code = await net.host({ faction: pickF(), lowFx: game.lowFx }); $('mpOffer').value = code; show('mpOfferL', 'mpCopy', 'mpAnswerL', 'mpGo');
-    mpStatus.textContent = 'Send this code to your opponent, then paste their answer code below and press Connect.'; $('mpGo').onclick = async () => {
-      try { await net.accept($('mpAnswer').value); mpStatus.textContent = 'Connecting…'; } catch (e) { mpStatus.textContent = 'Bad answer code: ' + e.message; } };
-  } catch (e) { mpStatus.textContent = 'WebRTC unavailable: ' + e.message; } });
-$('mpJoin').addEventListener('click', () => { show('mpAnswerL', 'mpGo'); $('mpAnswerL').firstChild.textContent = "Paste the host's code:"; sound.start();
-  mpStatus.textContent = "Paste the host's code and press Connect."; $('mpGo').onclick = async () => {
-    try { const code = await net.join($('mpAnswer').value, { faction: pickF(), lowFx: game.lowFx }); $('mpOffer').value = code; show('mpOfferL', 'mpCopy');
-      $('mpOfferL').firstChild.textContent = 'Send this answer code back to the host:'; mpStatus.textContent = 'Waiting for the host to connect…';
-    } catch (e) { mpStatus.textContent = 'Bad host code: ' + e.message; } }; });
+$('mpHost').addEventListener('click', async () => { mpStatus.textContent = 'Creating room…'; sound.start(); $('mpHost').disabled = true;
+  try { const code = await net.hostRoom({ faction: pickF(), lowFx: game.lowFx }); $('mpCode').textContent = code; $('mpCodeBox').hidden = false;
+    mpStatus.textContent = 'Waiting for your opponent to join with this code…'; } catch (e) { $('mpHost').disabled = false; mpStatus.textContent = 'Could not create a room: ' + (e.message || e.type); } });
+$('mpJoin').addEventListener('click', async () => { const code = $('mpJoinCode').value.trim(); if (code.length < 5) { mpStatus.textContent = 'Enter the 5-letter room code.'; return; }
+  sound.start(); mpStatus.textContent = 'Joining room ' + code.toUpperCase() + '…'; $('mpJoin').disabled = true;
+  try { await net.joinRoom(code, { faction: pickF(), lowFx: game.lowFx }); mpStatus.textContent = 'Connected, starting…'; } catch (e) { $('mpJoin').disabled = false; net.leave(); mpStatus.textContent = 'Could not join: ' + e.message; } });
+net.onClose = () => { if (!net.active) { mpStatus.textContent = 'Connection lost. Try again.'; $('mpHost').disabled = $('mpJoin').disabled = false; return; }
+  // mid-match: the AI takes over the missing player's side so the game carries on
+  net.active = false; if (net.restoreRandom) net.restoreRandom(); ai = new EnemyAI(game, 1 - ME); window.__aiTakeover = true; };
 net.onOpen = () => { mpStatus.textContent = 'Connected.'; if (!net.isHost) return;
   const seed = (Math.random() * 2 ** 31) | 0, hF = net.helloLocal.faction, gF = net.helloRemote?.faction || 'human';
   const msg = { k: 'start', seed, grace: graceOpt.checked, lowFx: !!(net.helloLocal.lowFx || net.helloRemote?.lowFx), factions: [hF, gF] };
-  net.send(msg); beginMP(msg, 0); };
-net.onMessage = m => { if (m.k === 'start' && !net.isHost) beginMP(m, 1); };
+  msg.hostHello = net.helloLocal; net.send(msg); beginMP(msg, 0); };
+net.onMessage = m => { if (m.k === 'start' && !net.isHost) beginMP(m, 1); if (m.k === 'full') mpStatus.textContent = 'That room is already full.'; };
 function beginMP(m, me) {
   net.install(game); setMe(me); game.reset({ factions: m.factions, me, mp: true }); game.graceUntil = m.grace ? GRACE_SECONDS : 0; game.lowFx = m.lowFx;
   game.sfx = (n, src) => sound.play(n, src, camera); ui.selection.clear(); ui.cancel();
@@ -93,8 +91,8 @@ startLoop(dt => {
   if (net.active) net.update(dt); else { ai.update(dt); game.update(dt); }
   ui.prune();
   if (game.over && banner.hidden) { banner.hidden = false; banner.textContent = (game.over === 'win') === (ME === 0) ? 'VICTORY' : 'DEFEAT'; }
-  if (net.active && window.netBadge) { const b = window.netBadge; b.classList.toggle('bad', !!net.desync || net.status === 'disconnected');
-    b.textContent = net.desync ? `DESYNC at turn ${net.desync.turn}` : net.status === 'disconnected' ? 'Opponent disconnected' : `P${ME + 1} · turn ${net.turn} · ${Math.round(net.rtt)} ms${net.waiting ? ' · waiting…' : ''}`; }
+  if ((net.active || window.__aiTakeover) && window.netBadge) { const b = window.netBadge; b.classList.toggle('bad', !!net.desync || net.status === 'disconnected');
+    b.textContent = net.desync ? `DESYNC at turn ${net.desync.turn}` : net.status === 'disconnected' ? (window.__aiTakeover ? 'Opponent left · AI took over' : 'Opponent disconnected') : `P${ME + 1} · turn ${net.turn} · ${Math.round(net.rtt)} ms${net.waiting ? ' · waiting…' : ''}`; }
   if (ui.placing && !BUILDINGS[ui.placing]?.instant && !game.teams[ME].readyBuilding) ui.placing = null;
 }, () => {
   const left = game.graceLeft(), after = game.time - game.graceUntil;

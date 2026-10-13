@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=10.2p';
-import { UNITS, TILE } from '../data/stats.js?v=10.2p';
+import { Entity } from './entity.js?v=10.2p2';
+import { UNITS, TILE } from '../data/stats.js?v=10.2p2';
 
 // Orders: {type:'move',x,y} | {type:'attack',target} | {type:'attackMove',x,y} | {type:'harvest'} | idle (null)
 export class Unit extends Entity {

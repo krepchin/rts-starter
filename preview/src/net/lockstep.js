@@ -3,14 +3,15 @@
 // - Both peers run the same simulation. Player actions are not applied locally: they are captured, serialized, scheduled DELAY turns ahead,
 //   exchanged, and executed by both peers at the same turn in the same order (host first). Math.random is replaced by a shared seeded PRNG
 //   while the simulation runs. Every HASH_EVERY turns both peers exchange a state checksum; a mismatch is reported as a desync.
-import { Unit, Harvester } from '../entities/unit.js?v=10.2p';
-import { Building } from '../entities/building.js?v=10.2p';
-import { Game } from '../engine/game.js?v=10.2p';
-import * as Carr from '../entities/carrier.js?v=10.2p';
-import * as Drop from '../entities/dropship.js?v=10.2p';
-import * as Mcv from '../entities/mcv.js?v=10.2p';
-import * as Rep from '../entities/reptile.js?v=10.2p';
-import * as Air from '../entities/air.js?v=10.2p';
+import { Unit, Harvester } from '../entities/unit.js?v=10.2p2';
+import { Building } from '../entities/building.js?v=10.2p2';
+import { Game } from '../engine/game.js?v=10.2p2';
+import * as Carr from '../entities/carrier.js?v=10.2p2';
+import * as Drop from '../entities/dropship.js?v=10.2p2';
+import * as Mcv from '../entities/mcv.js?v=10.2p2';
+import * as Rep from '../entities/reptile.js?v=10.2p2';
+import * as Air from '../entities/air.js?v=10.2p2';
+import * as Ali from '../entities/aliens.js?v=10.2p2';
 
 export const TICK = 1 / 30, TICKS_PER_TURN = 3, DELAY = 2, HASH_EVERY = 10;
 const ENTITY_METHODS = ['command', 'useAbility', 'castAt', 'unloadAt', 'loadNearby', 'toggleMode', 'setCloak', 'layEgg', 'toggleLock'];
@@ -39,7 +40,7 @@ export class Lockstep {
     pc.onconnectionstatechange = () => { if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) this.status = 'disconnected'; }; return pc; }
   _gather(pc) { return new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 4000);
     pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); }
-  _wire(dc) { this.dc = dc; dc.onopen = () => { this.status = 'connected'; this._ping(); this.onOpen?.(); }; dc.onclose = () => { this.status = 'disconnected'; };
+  _wire(dc) { this.dc = dc; dc.onopen = () => { this.status = 'connected'; this._ping(); this.onOpen?.(); }; dc.onclose = () => { this.status = 'disconnected'; this.onClose?.(); };
     dc.onmessage = e => this._recv(JSON.parse(e.data)); }
   async host(hello) { const pc = await this._pc(); this.isHost = true; this.helloLocal = hello; this._wire(pc.createDataChannel('lockstep', { ordered: true }));
     await pc.setLocalDescription(await pc.createOffer()); await this._gather(pc); this.status = 'waiting for answer';
@@ -49,16 +50,45 @@ export class Lockstep {
     await pc.setRemoteDescription({ type: 'offer', sdp: o.sdp }); await pc.setLocalDescription(await pc.createAnswer()); await this._gather(pc); this.status = 'connecting';
     return pack({ v: 10, sdp: pc.localDescription.sdp, hello }); }
   async accept(code) { const o = unpack(code); this.helloRemote = o.hello; await this.pc.setRemoteDescription({ type: 'answer', sdp: o.sdp }); this.status = 'connecting'; }
+  // ---- v10.2 room codes over PeerJS (public broker only brokers the WebRTC handshake; game data is peer-to-peer)
+  _peerjs() { if (window.Peer) return Promise.resolve(window.Peer); return new Promise((res, rej) => { const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'; s.onload = () => res(window.Peer); s.onerror = () => rej(new Error('could not load PeerJS')); document.head.appendChild(s); }); }
+  _peerOpts() { return { debug: 0, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }] } }; }
+  _wireConn(c) { // PeerJS DataConnection -> same shape as an RTCDataChannel for the rest of the class
+    const dc = { get readyState() { return c.open ? 'open' : 'closed'; }, send: d => c.send(d), close: () => c.close() }; this.dc = dc; this.conn = c;
+    const open = () => { this.status = 'connected'; this._ping(); this.onOpen?.(); };
+    if (c.open) open(); else c.on('open', open);
+    c.on('data', d => this._recv(typeof d === 'string' ? JSON.parse(d) : d));
+    const lost = () => { if (this.status === 'disconnected') return; this.status = 'disconnected'; this.onClose?.(); };
+    c.on('close', lost); c.on('error', lost); c.peerConnection && (c.peerConnection.oniceconnectionstatechange = () => { if (['failed', 'disconnected', 'closed'].includes(c.peerConnection.iceConnectionState)) lost(); }); }
+  async hostRoom(hello) { const Peer = await this._peerjs(); this.isHost = true; this.helloLocal = hello;
+    for (let tries = 0; tries < 4; tries++) { const code = Array.from({ length: 5 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.random() * 32 | 0]).join('');
+      try { await new Promise((res, rej) => { const p = new Peer('tibsk-' + code, this._peerOpts()); this.peer = p; p.on('open', res); p.on('error', e => { if (!this.dc) rej(e); }); });
+        this.room = code; this.status = 'waiting for opponent';
+        this.peer.on('connection', c => { if (this.conn) { c.on('open', () => { c.send(JSON.stringify({ k: 'full' })); setTimeout(() => c.close(), 300); }); return; }
+          this.helloRemote = c.metadata?.hello; this._wireConn(c); });
+        this.peer.on('disconnected', () => { if (!this.dc) this.peer.reconnect(); });
+        return code; } catch (e) { this.peer?.destroy(); if (e.type !== 'unavailable-id') throw e; } }
+    throw new Error('no free room code, try again'); }
+  async joinRoom(code, hello) { const Peer = await this._peerjs(); this.isHost = false; this.helloLocal = hello; code = String(code).trim().toUpperCase();
+    await new Promise((res, rej) => { const p = new Peer(this._peerOpts()); this.peer = p; p.on('open', res); p.on('error', rej); });
+    return new Promise((res, rej) => { const c = this.peer.connect('tibsk-' + code, { reliable: true, serialization: 'raw', metadata: { hello } });
+      const t = setTimeout(() => rej(new Error('room not found (check the code)')), 12000);
+      this.peer.on('error', e => { clearTimeout(t); rej(new Error(e.type === 'peer-unavailable' ? 'room not found (check the code)' : e.message)); });
+      c.on('open', () => { clearTimeout(t); res(); }); this._wireConn(c); this.status = 'connecting'; }); }
+  leave() { try { this.conn?.close(); this.peer?.destroy(); } catch {} }
   send(o) { if (this.dc?.readyState === 'open') this.dc.send(JSON.stringify(o)); }
   _ping() { this.send({ k: 'ping', t: performance.now() }); }
   _recv(m) {
     if (m.k === 'ping') return this.send({ k: 'pong', t: m.t }); if (m.k === 'pong') { this.rtt = performance.now() - m.t; return; }
+    if (m.k === 'full') { this.status = 'room full'; this.onMessage?.(m); return; }
+    if (m.k === 'start' && m.hostHello) this.helloRemote = m.hostHello;
     if (m.k === 'turn') { this.remote.set(m.n, m.c); return; }
     if (m.k === 'hash') { const mine = this.hashes.get(m.n); if (mine !== undefined && mine !== m.h && !this.desync) this.desync = { turn: m.n, mine, theirs: m.h }; else this.remoteHashes = (this.remoteHashes || new Map()).set(m.n, m.h); return; }
     this.onMessage?.(m); }
   // ---- command capture: wrap every UI-reachable state-changing method; while not executing a turn, calls are queued instead of applied
   install(game) { if (this.installed) return; this.installed = true; this.game = game; const self = this;
-    const protos = new Set([Unit, Harvester, Building, ...Object.values(Carr), ...Object.values(Drop), ...Object.values(Mcv), ...Object.values(Rep), ...Object.values(Air)].filter(c => typeof c === 'function' && c.prototype).map(c => c.prototype));
+    const protos = new Set([Unit, Harvester, Building, ...Object.values(Carr), ...Object.values(Drop), ...Object.values(Mcv), ...Object.values(Rep), ...Object.values(Air), ...Object.values(Ali)].filter(c => typeof c === 'function' && c.prototype).map(c => c.prototype));
     for (const P of protos) for (const m of ENTITY_METHODS) if (Object.prototype.hasOwnProperty.call(P, m)) { const orig = P[m];
       P[m] = function (...a) { if (!self.active || self.exec) return orig.apply(this, a); self.local.push({ e: this.id, m, a: ser(a) }); return true; }; }
     for (const m of GAME_METHODS) { const orig = Game.prototype[m]; if (!orig) continue;

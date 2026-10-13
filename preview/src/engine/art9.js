@@ -1,8 +1,8 @@
-import { ME } from './local.js?v=10.2p';
+import { ME } from './local.js?v=10.2p2';
 // v9 painted-style art drawn in code: staged transform sequence, walls/gates/turret, four infantry types, tiberium clusters.
-import { TILE, TEAM_COLORS } from '../data/stats.js?v=10.2p';
-import { drawBuildingArt } from './buildingArt.js?v=10.2p';
-import { getSprite } from './sprites.js?v=10.2p';
+import { TILE, TEAM_COLORS } from '../data/stats.js?v=10.2p2';
+import { drawBuildingArt } from './buildingArt.js?v=10.2p2';
+import { getSprite } from './sprites.js?v=10.2p2';
 
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const easeOut = k => 1 - (1 - k) * (1 - k);

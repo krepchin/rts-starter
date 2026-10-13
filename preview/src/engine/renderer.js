@@ -1,13 +1,13 @@
-import { ME } from './local.js?v=10.2p';
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.2p';
-import { drawBuildingArt } from './buildingArt.js?v=10.2p';
-import { Terrain } from '../world/terrain.js?v=10.2p';
-import { drawMobileBase } from './mcvArt.js?v=10.2p';
-import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.2p';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.2p';
-import { FORMATION } from '../entities/mcv.js?v=10.2p';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.2p';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.2p';
+import { ME } from './local.js?v=10.2p2';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.2p2';
+import { drawBuildingArt } from './buildingArt.js?v=10.2p2';
+import { Terrain } from '../world/terrain.js?v=10.2p2';
+import { drawMobileBase } from './mcvArt.js?v=10.2p2';
+import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.2p2';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.2p2';
+import { FORMATION } from '../entities/mcv.js?v=10.2p2';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.2p2';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.2p2';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
