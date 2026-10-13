@@ -1,9 +1,30 @@
-# Tiberium Skirmish — RTS Starter (v8.1)
+# Tiberium Skirmish — RTS Starter (v9)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies. Art is a mix of image sprites in `assets/` (buildings, tanks, harvester, air units, soldiers) with procedural canvas drawing as the fallback, plus code-drawn art (terrain, effects, and the v8 Mobile Yard / Base Walker).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v9 (painted style, infantry, defenses)
+- **Painted look** matching Kent's painted preview: sandy desert terrain with dirt texture and ridges, glowing green tiberium clusters, gritty gray/olive
+  units and buildings with soft shadows (colour graded at load), thin yellow-green selection ellipses, green-on-black health bars.
+- **Base Walker** is drawn from layers cut out of the painted robot (`assets/pw_*.png`): carried towers/arms only show if that building is carried.
+  Smoother gait (legs swing and plant), bob and sway tied to steps, eased turning, acceleration/braking, footfall thuds, dust and slight screen shake.
+  The code-drawn walker is still there as a fallback.
+- **Staged transform (~4 s):** warning lights, buildings lift on hydraulic jacks with steam, then fold one by one (barracks → arm, factory → cannon,
+  power towers → back, yard → body) and swing in on arcs with overshoot, sparks and clanks; legs unfold, final stomp and dust ring.
+  Deploy plays it in reverse. Pack-alone crawler gets a shorter version.
+- **Gunmetal sidebar:** dark top display (credits, power, minimap), four icon tabs (Base / Vehicles / Infantry / Defenses), a 3x3 grid of recessed
+  build slots with icons, an info panel with action buttons, and a bottom strip with a radar sweep, Sound / Find / Pause / Cancel buttons and a power dial.
+- **Four infantry types** (Barracks): Rifleman (Stim), Sniper (long range, strong vs infantry, Cloak; needs Refinery), Rocket Trooper (anti-vehicle
+  and anti-air, Dig in), Engineer (no gun; repairs nearby, Capture or Demo charge on enemy buildings; needs Refinery). The AI builds a mix and uses abilities.
+- **Defenses tab:** Walls ($50 per tile; tap or drag a line; auto-connect; damage states; block movement), Gates (placed next to a wall; open for your
+  units, closed to enemies, Lock toggle), Tiberium Cannon turret (needs power, twin barrels, green bolts, ground only). The AI builds a short wall
+  with a gate plus turrets. The walker's sprayer melts walls fast.
+- **Music:** a new sectioned industrial/electronic loop (intro, groove, stabs, breakdown) mixed under the SFX, plus new SFX for every ability,
+  weapon, wall and transform step. Still all synthesized with WebAudio (no files); the Sound button and saved setting still control it.
+- Tests: `tests/v9_features.py` (infantry, abilities, walls/gates/turret, AI, sidebar UI) on Chromium, Firefox and WebKit, desktop and phone.
+- Credits: art is derived from Kent's concept and preview images; all audio is synthesized in code.
 
 ## What's new in v8.1
 - **Base Walker and Mobile Yard art from the approved sketch.** Pencil-and-ink sprites cut from `mcv-robot-ingame-preview-v2.jpg` (`assets/mw_*.png`, 1x + @2x): the walker is layered (cooling towers, two legs, body) so legs lift alternately, the body bobs and stomps, and the towers only show when a power plant is carried. The crawler is the yard on hand-drawn tracks. Code-drawn art remains as the fallback. Packing slide, unfold, spray, burrow and eruption animations are unchanged.

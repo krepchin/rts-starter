@@ -26,10 +26,23 @@ export class EnemyAI {
     const qlen = c => t.queues[c].length;
     if (harvs < Math.min(4, count('refinery') * 2) && !g.queued(me, 'harvester', false)) g.enqueue(me, 'harvester', false);
     if (t.credits > 300 || g.time > 240) {
-      if (qlen('infantry') < 2) g.enqueue(me, 'infantry', false);
+      if (qlen('infantry') < 2) { // v9 infantry mix: riflemen, plus snipers / rocket troopers / the odd engineer once unlocked
+        const mix = ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], k = mix[(this.inf = (this.inf || 0) + 1) % mix.length];
+        g.enqueue(me, g.canProduce(me, k, false) ? k : 'infantry', false); }
       if (qlen('vehicle') < 2) g.enqueue(me, 'tank', false);
       if (qlen('aircraft') < 1 && army.length > 6) g.enqueue(me, 'carrier', false);
     }
+    // 3b) v9 defenses: a short wall arc with a gate toward the enemy, plus turrets (stops once a handful exist).
+    if (g.has(me, 'barracks') && t.credits > 600 && g.time > 150) this.buildWalls(g, me, count);
+    // 3c) Infantry abilities: stim when fighting, cloak snipers when hurt, dig in rockets on defense; engineers sabotage.
+    for (const u of g.units) { if (u.team !== me || !u.stats.inf || u.dead) continue;
+      const fighting = u.target && !u.target.dead && u.dist(u.target) < u.stats.range * TILE * 1.2;
+      if (u.type === 'infantry' && fighting && u.hp > 40 && u.canUse()) u.useAbility();
+      else if (u.type === 'sniper' && u.hp < u.stats.hp * 0.6 && u.canUse()) u.useAbility();
+      else if (u.type === 'rocket' && !u.order && fighting && !u.dug && u.canUse()) u.useAbility();
+      else if (u.type === 'engineer' && g.combat && !u.order && (this.engT = (this.engT || 0) + 1) % 20 === 0) {
+        const foes = g.buildings.filter(b => b.team !== me && !b.packing && !b.stats.wall).sort((a, b) => a.dist(u) - b.dist(u)); const b = foes[0];
+        if (b && b.dist(u) < 30 * TILE) u.command({ type: b.stats.cost >= 1000 && (u.abCd || 0) <= 0 ? 'demo' : 'capture', target: b }); } }
     // 4) Repair damaged structures when we can afford it.
     for (const b of g.buildings) if (b.team === me && !b.repairing && b.hp < b.stats.hp * 0.6 && t.credits > 500) g.toggleRepair(me, b);
     // 5) Superweapon: hit the densest cluster of known enemy structures.
@@ -73,6 +86,21 @@ export class EnemyAI {
       if (g.canDeploy(mb, tx, ty)) { mb.startDeploy(tx, ty); this.reloc = null; return; }
     }
     this.reloc = { x: mb.x + (Math.random() - .5) * 8 * TILE, y: mb.y + (Math.random() - .5) * 8 * TILE }; // blocked: try elsewhere
+  }
+  buildWalls(g, me, count) {
+    if (count('wall') >= 10 && count('gate') >= 1) return;
+    if (count('wall') >= 3 && !count('gate')) { // gate: any free tile touching one of our walls, toward the enemy side
+      for (const w of g.buildings) if (w.team === me && w.stats.wall) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (g.placeInstant(me, 'gate', w.tx + dx, w.ty + dy)) return; }
+    if (count('wall') >= 8) return;
+    const cy = g.buildings.find(b => b.team === me && b.type === 'cy' && !b.packing), foe = g.buildings.find(b => b.team !== me && b.type === 'cy') || { x: g.map.pxW / 2, y: g.map.pxH / 2 };
+    if (!cy) return;
+    const dx = foe.x - cy.x, dy = foe.y - cy.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, R = 8;
+    const cx = Math.round(cy.x / TILE + ux * R), cy2 = Math.round(cy.y / TILE + uy * R);
+    // line perpendicular to the enemy direction; the middle tile becomes the gate
+    for (let i = -4; i <= 4; i++) { const tx = Math.round(cx - uy * i), ty = Math.round(cy2 + ux * i);
+      const type = i === 0 ? 'gate' : 'wall'; if (g.wallAt(me, tx, ty) || g.buildings.some(b => b.team === me && b.tx === tx && b.ty === ty)) continue;
+      if (type === 'gate' && !g.canPlaceInstant(me, 'gate', tx, ty)) continue;
+      if (g.placeInstant(me, type, tx, ty)) return; }
   }
   pickTarget() {
     const enemies = this.g.buildings.filter(b => b.team !== this.team);

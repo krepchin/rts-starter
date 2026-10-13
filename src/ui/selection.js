@@ -1,3 +1,4 @@
+import { BUILDINGS } from '../data/stats.js';
 // Player-side command layer: selection, orders, building placement + superweapon targeting state.
 export class PlayerUI {
   constructor(game) { this.g = game; this.selection = new Set(); this.box = null; this.placing = null; this.targeting = false; this.hoverTile = { x: 0, y: 0 }; this.hoverWorld = null; }
@@ -44,10 +45,20 @@ export class PlayerUI {
     const x = list.reduce((s, e) => s + e.x, 0) / list.length, y = list.reduce((s, e) => s + e.y, 0) / list.length;
     camera.centerOn(x, y); this.g.effects.push({ t: 0.3, ping: true, x, y }); return true;
   }
-  beginPlacing(type) { this.placing = type; this.targeting = false; }
-  place() { if (this.g.placeBuilding(0, this.hoverTile.x, this.hoverTile.y)) this.placing = null; }
+  beginPlacing(type) { this.cancel(); this.placing = type; this.targeting = false; }
+  // v9: walls/gates are instant (pay per tile). Walls stay in placing mode so you can keep tapping/dragging; gates place once.
+  place() { const t = this.placing, h = this.hoverTile;
+    if (BUILDINGS[t]?.instant) { if (this.g.placeInstant(0, t, h.x, h.y) && BUILDINGS[t].gate) this.placing = null; return; }
+    if (this.g.placeBuilding(0, h.x, h.y)) this.placing = null; }
+  placeWallLine(d) { let n = 0; for (const [x, y] of this.g.wallLine(d.x0, d.y0, d.x1, d.y1)) if (this.g.placeInstant(0, this.placing, x, y)) n++; return n; }
+  // v9 ability targeting: engineers capture / demo a tapped enemy building.
+  beginAbilityTarget(kind) { const us = [...this.selection].filter(u => u.kind === 'unit' && u.type === 'engineer' && u.team === 0); if (!us.length) return; this.cancel(); this.abilityTarget = { kind, units: us }; }
+  abilityAt(x, y) { const a = this.abilityTarget, b = this.g.entityAt(x, y);
+    if (b && b.kind === 'building' && b.team !== 0) { const us = a.kind === 'capture' ? a.units : a.units.slice(0, 1); for (const u of us) if (!u.dead) u.command({ type: a.kind, target: b });
+      this.g.sfx?.('attack'); this.g.effects.push({ t: 0.3, ping: true, x, y }); this.abilityTarget = null; } }
+  useAbility() { let n = 0; for (const u of this.selection) if (u.kind === 'unit' && u.team === 0 && u.useAbility?.()) n++; return n; }
   beginTargeting() { if (this.g.superReady(0)) { this.targeting = true; this.placing = null; } }
   fireAt(x, y) { if (this.g.fireSuper(0, x, y)) this.targeting = false; }
-  cancel() { this.placing = null; this.box = null; this.targeting = false; this.deploying = null; this.burrowing = null; }
-  cancelPlacingOr(fn) { if (this.placing || this.targeting || this.deploying || this.burrowing) this.cancel(); else fn(); }
+  cancel() { this.placing = null; this.box = null; this.targeting = false; this.deploying = null; this.burrowing = null; this.wallDrag = null; this.abilityTarget = null; }
+  cancelPlacingOr(fn) { if (this.placing || this.targeting || this.deploying || this.burrowing || this.abilityTarget) this.cancel(); else fn(); }
 }

@@ -12,7 +12,8 @@ function vnoise(x, y, s) {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 function fbm(x, y, s, oct = 3) { let f = 0, amp = 0.5, fr = 1; for (let i = 0; i < oct; i++) { f += amp * vnoise(x * fr, y * fr, s + i * 17); amp *= 0.5; fr *= 2; } return f / (1 - Math.pow(0.5, oct)); }
-const DIRT = [74, 62, 46], GRASS = [46, 62, 36], ROCK = [70, 72, 70], STAIN = [58, 84, 40];
+// v9 painted desert: warm sand, darker packed dirt, ochre rock; tiberium-stained ground stays olive
+const DIRT = [168, 122, 78], GRASS = [140, 100, 62], ROCK = [124, 98, 74], STAIN = [104, 112, 58];
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 export class Terrain {
@@ -77,6 +78,11 @@ export class Terrain {
       ctx.fillStyle = `rgb(${l},${l - 4},${l - 10})`; ctx.beginPath(); ctx.ellipse(x, y, rad, rad * 0.7, 0, 0, 7); ctx.fill(); }
     for (let k = 0; k < 80; k++) { const x = r() * CHUNK, y = r() * CHUNK, st = this.stainAt(ox + x, oy + y); if (st < 0.25 || r() > st) continue;
       ctx.fillStyle = `rgba(90,230,120,${0.25 + st * 0.35})`; ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + 1.5, y); ctx.lineTo(x, y + 1); ctx.lineTo(x - 1.5, y); ctx.fill(); }
+    // v9 ridges: soft eroded ridge lines (lit top edge, shadowed lower edge) + tyre-like dirt streaks
+    for (let k = 0; k < 3; k++) { let x = r() * CHUNK, y = r() * CHUNK, a = r() * 0.8 - 0.4; const len = 6 + (r() * 6 | 0), pts = [];
+      for (let p = 0; p < len; p++) { pts.push([x, y]); a += (r() - 0.5) * 0.5; x += Math.cos(a) * 10; y += Math.sin(a) * 4; }
+      for (const [dy, col, w] of [[2.5, 'rgba(70,45,25,0.35)', 4], [0, 'rgba(235,200,150,0.30)', 2.5]]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+        pts.forEach(([px, py], i) => ctx[i ? 'lineTo' : 'moveTo'](px, py + dy)); ctx.stroke(); } }
     this.chunks.set(key, c); return c;
   }
   draw(ctx, x0, y0, x1, y1) {

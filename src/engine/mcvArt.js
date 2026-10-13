@@ -17,24 +17,24 @@ export function drawMobileBase(ctx, u, sel, t) {
   let sink = 0, scaleY = 1;
   if (u.state === 'burrowing') sink = Math.min(1, u.stateT / 1.1);
   else if (u.state === 'emerging') sink = 1 - Math.min(1, u.stateT / 0.8);
-  else if (u.state === 'rising') scaleY = 0.5 + 0.5 * Math.min(1, u.stateT / 0.9);
+  
   const S = u.type === 'robot' ? 1.35 : 1.1, H = (u.type === 'robot' ? 92 : 58) * S;
   ctx.save();
   ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, u.type === 'robot' ? 40 : 28, u.type === 'robot' ? 13 : 9, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = col; ctx.globalAlpha = 0.7; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, u.type === 'robot' ? 44 : 30, u.type === 'robot' ? 15 : 11, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, u.type === 'robot' ? 44 : 30, u.type === 'robot' ? 15 : 11, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
   if (sink > 0) { ctx.beginPath(); ctx.rect(u.x - 120, u.y - 200, 240, 204); ctx.clip(); } // sink below ground line
   const shake = u.state === 'burrowing' || u.state === 'deploying' ? Math.sin(t * 60) * 1.2 : 0;
-  ctx.translate(u.x + shake, u.y + sink * H); ctx.scale((u.faceRight ? 1 : -1) * S, scaleY * S);
+  ctx.translate(u.x + shake, u.y + sink * H); const fk = u.faceK ?? (u.faceRight ? 1 : -1), fs = Math.sign(fk || 1) * Math.max(0.2, Math.abs(fk)); ctx.scale(fs * S, scaleY * S);
   if (!drawSketch(ctx, u, t)) { if (u.type === 'robot') drawWalker(ctx, u, P, t); else drawCrawler(ctx, u, P, t); }
   ctx.restore();
   if (sink > 0) { ctx.fillStyle = '#5b4330'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, 46, 12, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#3a2a1c'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, 34, 8, 0, 0, 7); ctx.fill(); }
   if (u.state === 'deploying') { const k = (t * 2) % 1; ctx.strokeStyle = col; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(u.x, u.y, 30 + k * 60, 10 + k * 20, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   ctx.lineWidth = 1;
   const top = u.y - H * (1 - sink) - 8, w = u.type === 'robot' ? 64 : 40;
-  const f = u.hp / u.stats.hp; ctx.fillStyle = '#e8dcbccc'; ctx.fillRect(u.x - w / 2, top, w, 4); ctx.fillStyle = f > .6 ? '#6f8f2a' : f > .3 ? '#c9a23a' : '#a8432c'; ctx.fillRect(u.x - w / 2, top, w * f, 4); ctx.strokeStyle = '#2b261e'; ctx.strokeRect(u.x - w / 2 - .5, top - .5, w + 1, 5);
+  const f = u.hp / u.stats.hp; ctx.fillStyle = '#0b0d0be0'; ctx.fillRect(u.x - w / 2 - 1, top - 1, w + 2, 5); ctx.fillStyle = f > .5 ? '#3fd84a' : f > .25 ? '#d8c03f' : '#e0443a'; ctx.fillRect(u.x - w / 2, top, w * f, 3);
   if (sel) ring(ctx, u, u.type === 'robot' ? 48 : 32);
 }
-function ring(ctx, u, r) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, r, r * 0.34, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
+function ring(ctx, u, r) { ctx.strokeStyle = '#c8e04a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, r, r * 0.34, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
 
 // Packed yard: low tracked crawler, folded crane on the deck, radar dish, team stripe.
 function drawCrawler(ctx, u, P, t) {
@@ -119,34 +119,51 @@ function drawTunnel(ctx, u, t) {
   if (u.team === 0) { ctx.strokeStyle = '#3fa9ff'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(u.x, u.y, 30, 11, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
 }
 
-// Pencil-and-ink sprites cut from the approved concept (assets/mw_*.png). All walker layers share one 463x442 canvas,
-// so they stay aligned: towers (only if a power plant is carried), back leg, front leg, body. Legs lift alternately,
-// body bobs on each step. Returns false until loaded -> code-drawn fallback above.
-const WALKER_W = 92, CRAWLER_W = 64;
+// v9 painted Base Walker: layers cut from the approved painted preview (assets/pw_*.png), all on one 442x382 canvas so they
+// stay aligned. Towers / barracks arm / cannon arm are only drawn if that building is carried. Keyframed gait: each leg
+// swings (lifted, rotating about its hip) then plants; body bobs and sways with the steps. Legs unfold on rise, fold on deploy.
+const IW = 442, GX = 221, GY = 372, WALKER_W = 96, CRAWLER_W = 56;
+const HIP = { L: [160, 240], R: [285, 240] };
+const eo = k => 1 - (1 - k) * (1 - k);
+function layer(ctx, name, team, s, dx = 0, dy = 0, rot = 0, pivot = null, sy = 1) {
+  const sp = getSprite(name, team); if (!sp) return false; const w = IW * s, h = w * sp.aspect;
+  ctx.save(); ctx.translate(dx, dy);
+  if (pivot) { const px = (pivot[0] - GX) * s, py = (pivot[1] - GY) * s; ctx.translate(px, py); ctx.rotate(rot); ctx.scale(1, sy); ctx.translate(-px, -py); }
+  ctx.drawImage(sp.img, -GX * s, -GY * s, w, h); ctx.restore(); return true;
+}
 function drawSketch(ctx, u, t) {
-  if (u.type === 'robot') {
-    const body = getSprite('mw_body', u.team), A = getSprite('mw_legA', u.team), B = getSprite('mw_legB', u.team);
-    if (!body || !A || !B) return false;
-    const w = WALKER_W, h = w * body.aspect, x = -w * 0.5, y = -h * 0.985;
-    const moving = u.order && u.state === 'ready', ph = u.walkPh;
-    const crouch = u.state === 'deploying' ? Math.min(1, u.stateT / 1.5) * 6 : 0;
-    const la = moving ? Math.max(0, Math.sin(ph)) * 5 : 0, lb = moving ? Math.max(0, Math.sin(ph + Math.PI)) * 5 : 0;
-    const bob = (moving ? Math.abs(Math.sin(ph)) * 2 : 0) - crouch;
-    const tw = u.has('power') && getSprite('mw_towers', u.team);
-    if (tw) ctx.drawImage(tw.img, x, y - bob, w, h);
-    ctx.drawImage(B.img, x, y - lb, w, h); ctx.drawImage(A.img, x, y - la, w, h);
-    ctx.drawImage(body.img, x, y - bob + (u.stomp > 0 ? 1 : 0), w, h);
-    const tipX = w * 0.47, tipY = -h * 0.42 - bob; // cannon muzzle in sprite space
-    if (u.mode === 'drill') inkDrill(ctx, tipX, tipY, t);
-    if (u.spraying > 0) { ctx.save(); ctx.shadowColor = '#b8d84a'; ctx.shadowBlur = 10; ctx.fillStyle = '#d8ec7a'; ctx.beginPath(); ctx.arc(w * 0.08, -h * 0.66 - bob, 3.5, 0, 7); ctx.fill(); ctx.restore(); }
-    teamFlag(ctx, u, -w * 0.35, -h * 0.9 - bob);
-    return true;
+  const s = (u.type === 'robot' ? WALKER_W : CRAWLER_W) / IW;
+  if (!getSprite('pw_body', u.team) || !getSprite('pw_legL', u.team)) return false;
+  // pose: rise (legs unfold, body lifts) / crouch on deploy / walk cycle
+  let unfold = 1;
+  if (u.state === 'rising') unfold = eo(Math.min(1, u.stateT / (u.type === 'robot' ? 1.1 : 0.6)));
+  else if (u.state === 'deploying') unfold = 1 - eo(Math.min(1, u.stateT / (u.type === 'robot' ? 1.3 : 0.8)));
+  if (u.type !== 'robot') { // crawler: armored tracks + the yard body riding low
+    const jig = u.order ? Math.sin(u.walkPh * 3) * 0.6 : 0, tr = (u.walkPh * 6) % 6;
+    ctx.fillStyle = '#26241f'; ctx.fillRect(-27, -12, 54, 13); ctx.fillStyle = '#4a463c'; for (let x = -27 + tr; x < 27; x += 6) ctx.fillRect(x, -12, 3, 13);
+    ctx.fillStyle = '#5e5a4e'; for (let x = -20; x <= 20; x += 10) { ctx.beginPath(); ctx.arc(x, -5, 3.3, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#c9a227'; ctx.fillRect(-27, -14, 54, 2.5);
+    layer(ctx, 'pw_body', u.team, s, 2, -10 + jig + (1 - unfold) * 8, 0, null, 0.55 + 0.45 * unfold);
+    teamFlag(ctx, u, -20, -40); return true;
   }
-  const c = getSprite('mw_crawler', u.team); if (!c) return false;
-  const w = CRAWLER_W, h = w * c.aspect, jig = u.order ? Math.sin(u.walkPh * 3) * 0.6 : 0;
-  ctx.drawImage(c.img, -w * 0.5, -h * 0.97 + jig, w, h);
-  teamFlag(ctx, u, -w * 0.3, -h * 0.84);
-  return true;
+  const amp = Math.min(1, (u.vel || 0) / (u.stats.speed * 0.6)), ph = u.walkPh;
+  const leg = side => { const p = side === 'L' ? ph : ph + Math.PI, sw = Math.sin(p);
+    return { lift: Math.pow(Math.max(0, sw), 1.4) * 7 * amp, dx: Math.cos(p) * 4 * amp, rot: -Math.cos(p) * 0.12 * amp }; };
+  const L = leg('L'), R = leg('R');
+  const bob = (Math.abs(Math.sin(ph)) * 2.6 * amp) + (1 - unfold) * -26 + (u.stomp > 0 ? -1 : 0), sway = Math.sin(ph) * 0.03 * amp;
+  const legSy = 0.25 + 0.75 * unfold;
+  ctx.save(); ctx.rotate(sway);
+  if (u.has('power')) layer(ctx, 'pw_towers', u.team, s, 0, -bob + (1 - unfold) * 6);
+  layer(ctx, 'pw_legR', u.team, s, R.dx, -R.lift, R.rot, HIP.R, legSy);
+  layer(ctx, 'pw_legL', u.team, s, L.dx, -L.lift, L.rot, HIP.L, legSy);
+  layer(ctx, 'pw_body', u.team, s, 0, -bob);
+  if (u.has('barracks')) layer(ctx, 'pw_armL', u.team, s, 0, -bob, Math.sin(ph) * 0.05 * amp, [100, 140]);
+  if (u.has('factory')) layer(ctx, 'pw_armR', u.team, s, 0, -bob, (u.spraying > 0 ? Math.sin(t * 40) * 0.01 : 0) - Math.sin(ph) * 0.04 * amp, [285, 110]);
+  const tip = [(430 - GX) * s, (205 - GY) * s - bob];
+  if (u.mode === 'drill') inkDrill(ctx, tip[0], tip[1], t);
+  if (u.spraying > 0) { ctx.save(); ctx.shadowColor = '#7dff4a'; ctx.shadowBlur = 12; ctx.fillStyle = '#c8ff6a'; ctx.beginPath(); ctx.arc((300 - GX) * s, (100 - GY) * s - bob, 3.5, 0, 7); ctx.fill(); ctx.restore(); }
+  teamFlag(ctx, u, -10, (20 - GY) * s - bob);
+  ctx.restore(); return true;
 }
 function teamFlag(ctx, u, x, y) { ctx.fillStyle = TEAM_COLORS[u.team]; ctx.strokeStyle = '#2b261e'; ctx.lineWidth = 0.8; ctx.fillRect(x, y, 6, 4); ctx.strokeRect(x, y, 6, 4); }
 function inkDrill(ctx, x, y, t) { // hatched steel drill cone with ink outline, spinning hatch lines

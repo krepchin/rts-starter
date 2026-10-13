@@ -1,4 +1,5 @@
 import { Game, GRACE_SECONDS } from './engine/game.js';
+import { BUILDINGS } from './data/stats.js';
 import { Camera } from './engine/camera.js';
 import { Renderer } from './engine/renderer.js';
 import { Input } from './engine/input.js';
@@ -14,7 +15,7 @@ loadSprites();
 
 const game = new Game();
 const sound = new Sound(); game.sfx = n => sound.play(n);
-const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇 Sound off', '🔈 Sound low', '🔉 Sound med', '🔊 Sound high'];
+const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇', '🔈', '🔉', '🔊'];
 volBtn.textContent = VOL_ICON[sound.level]; volBtn.addEventListener('click', () => { sound.start(); volBtn.textContent = VOL_ICON[sound.cycle()]; sound.play('select'); });
 const camera = new Camera(game.map);
 const canvas = document.getElementById('game');
@@ -45,7 +46,7 @@ camera.centerOn(8 * 32, 8 * 32);
 startLoop(dt => {
   input.update(dt); if (!started) return; ai.update(dt); game.update(dt); ui.prune();
   if (game.over && banner.hidden) { banner.hidden = false; banner.textContent = game.over === 'win' ? 'VICTORY' : 'DEFEAT'; }
-  if (ui.placing && !game.teams[0].readyBuilding) ui.placing = null;
+  if (ui.placing && !BUILDINGS[ui.placing]?.instant && !game.teams[0].readyBuilding) ui.placing = null;
 }, () => {
   const left = game.graceLeft(), after = game.time - game.graceUntil;
   graceEl.hidden = !started || !(left > 0 || (game.graceUntil > 0 && after < 4));

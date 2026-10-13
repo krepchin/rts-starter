@@ -5,7 +5,9 @@ import { Building } from '../entities/building.js';
 import { Unit, Harvester } from '../entities/unit.js';
 import { Carrier, Interceptor } from '../entities/carrier.js';
 import { MobileBase, FORMATION } from '../entities/mcv.js';
-export const MORPH_TIME = { pack: 2.5, transform: 4 };
+export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
+// where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
+export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
 
 const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
@@ -17,7 +19,7 @@ export class Game {
   constructor(opts = {}) {
     this.map = new GameMap(88, 88);
     this.graceUntil = opts.grace ? GRACE_SECONDS : 0;
-    this.units = []; this.buildings = []; this.effects = []; this.morphs = [];
+    this.units = []; this.buildings = []; this.effects = []; this.morphs = []; this.charges = []; this.shake = 0;
     this.teams = [0, 1].map(id => ({ id, credits: ECONOMY.startCredits, powerMade: 0, powerUsed: 0, lowPower: false, radar: false,
       queues: { building: [], infantry: [], vehicle: [], aircraft: [] }, paused: {}, stalled: {}, rr: {}, readyBuilding: null }));
     this.fog = new Fog(this.map, 0);
@@ -105,6 +107,21 @@ export class Game {
     if (!this.buildings.some(b => !b.dead && !b.packing && b.team === team && b.type === 'cy' && Math.hypot(b.x - cx, b.y - cy) <= 12 * TILE)) return false;
     return this.buildings.some(b => !b.dead && b.team === team && Math.abs(b.x - (tx + s.w / 2) * TILE) < (b.w / 2 + s.w / 2 + 5) * TILE && Math.abs(b.y - (ty + s.h / 2) * TILE) < (b.h / 2 + s.h / 2 + 5) * TILE);
   }
+  // v9 instant defenses (walls, gates): no queue, pay per placed tile. Gates must touch a wall.
+  wallAt(team, tx, ty) { return this.buildings.find(b => !b.dead && b.team === team && (b.stats.wall || b.stats.gate) && b.tx === tx && b.ty === ty); }
+  canPlaceInstant(team, type, tx, ty) {
+    const s = BUILDINGS[type]; if (!s?.instant || !this.canProduce(team, type, true) || this.teams[team].credits < s.cost || !this.canPlace(team, type, tx, ty)) return false;
+    if (s.gate) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => this.wallAt(team, tx + dx, ty + dy));
+    return true;
+  }
+  placeInstant(team, type, tx, ty) {
+    if (!this.canPlaceInstant(team, type, tx, ty)) return false;
+    this.teams[team].credits -= BUILDINGS[type].cost; const b = this.addBuilding(type, team, tx, ty); b.age = 0.6;
+    if (team === 0) this.sfx?.('wall'); return b;
+  }
+  // Tiles of a straight wall line from (x0,y0) to (x1,y1) (dominant axis), for drag placement.
+  wallLine(x0, y0, x1, y1) { const out = [], h = Math.abs(x1 - x0) >= Math.abs(y1 - y0), n = h ? Math.abs(x1 - x0) : Math.abs(y1 - y0), sx = Math.sign(x1 - x0), sy = Math.sign(y1 - y0);
+    for (let i = 0; i <= Math.min(n, 30); i++) out.push(h ? [x0 + sx * i, y0] : [x0, y0 + sy * i]); return out; }
   placeBuilding(team, tx, ty) {
     const t = this.teams[team]; if (!t.readyBuilding || !this.canPlace(team, t.readyBuilding, tx, ty)) return false;
     this.addBuilding(t.readyBuilding, team, tx, ty); t.readyBuilding = null; if (team === 0) this.sfx?.('build'); return true;
@@ -146,26 +163,36 @@ export class Game {
   startMorph(team, cy, mode) {
     if (!this.canMorph(team, cy)) return false;
     const parts = mode === 'pack' ? [cy] : this.transformParts(cy);
-    for (const b of parts) { b.packing = true; b.repairing = false; b.slide = { dx: cy.x - b.x, dy: cy.y - b.y, k: 0 }; }
+    for (const b of parts) { b.packing = true; b.repairing = false; b.landed = false; }
     this.morphs.push({ team, cy, mode, parts, t: 0, dur: MORPH_TIME[mode] }); if (team === 0) this.sfx?.('transform'); return true;
   }
+  // v9 staged mechanical transform (forward when packing, reversed on deploy). Stage times as fractions of m.dur:
+  //  0-0.2 warning lights + lift on hydraulic jacks (steam); 0.2-0.5 each building folds in turn;
+  //  0.5-0.78 parts swing in on arcs with overshoot (sparks + clank); 0.78 hand-off -> walker/crawler rises (legs unfold, stomp).
   updateMorphs(dt) {
     for (const m of this.morphs) {
-      m.t += dt; const p = Math.min(1, m.t / (m.dur * 0.8));
-      if (m.cy.dead) { for (const b of m.parts) { b.packing = false; b.slide = null; } m.done = true; continue; } // yard destroyed mid-pack
-      m.parts = m.parts.filter(b => !b.dead);
-      for (const b of m.parts) { b.slide.k = p * p * (3 - 2 * p);
-        if (Math.random() < dt * 10 && this.effects.length < 700) this.effects.push({ part: true, x: b.x + b.slide.dx * b.slide.k + (Math.random() - .5) * b.w * TILE, y: b.y + b.slide.dy * b.slide.k + b.h * TILE / 2, vx: (Math.random() - .5) * 40, vy: -10, g: 0, size: 6, color: '#bfae8c', t: 0.9, life: 0.9 }); }
-      if (m.t < m.dur) continue;
+      m.t += dt; const P = m.t / m.dur;
+      if (m.cy.dead) { for (const b of m.parts) { b.packing = false; b.morph = null; } m.done = true; continue; } // yard destroyed mid-pack
+      m.parts = m.parts.filter(b => !b.dead); const gx = m.cy.x, gy = m.cy.y + TILE;
+      m.parts.forEach((b, i) => {
+        b.morph = { P: Math.min(P, 0.78), i, n: m.parts.length, sx: b.x, sy: b.y, ax: gx + ATTACH[m.mode][b.type][0], ay: gy + ATTACH[m.mode][b.type][1], mode: m.mode };
+        if (P < 0.22 && Math.random() < dt * 14) this.puff(b.x + (Math.random() - .5) * b.w * TILE, b.y + b.h * TILE / 2, '#e8e4dc', 18, 7, 1.0, 30); // steam from the jacks
+        const land = 0.5 + i * 0.04 + 0.24; if (!b.landed && P >= land) { b.landed = true; this.sparks(b.morph.ax, b.morph.ay); if (m.team === 0) this.sfx?.('clank'); }
+      });
+      if (m.team === 0) for (const [k, at] of [['alarm', 0], ['hiss', 0.06], ['servo', 0.22]]) if (!m[k] && P >= at) { m[k] = true; this.sfx?.(k); }
+      if (P < 0.78) continue;
       m.done = true;
       const carried = m.parts.map(b => ({ type: b.type, hpFrac: b.hp / b.stats.hp }));
       for (const b of m.parts) this.removeQuiet(b);
-      const u = new MobileBase(this, m.mode === 'pack' ? 'mcv' : 'robot', m.team, m.cy.x, m.cy.y + TILE, carried);
+      const u = new MobileBase(this, m.mode === 'pack' ? 'mcv' : 'robot', m.team, gx, gy, carried);
       this.units.push(u); m.cy.becameUnit = u;
-      this.effects.push({ t: 0.6, sell: true, x: u.x, y: u.y, r: 50 });
     }
     this.morphs = this.morphs.filter(m => !m.done);
   }
+  puff(x, y, color, spd, size, life, up = 0) { if (this.effects.length > 700) return; const a = Math.random() * 7, v = spd * (0.4 + Math.random() * 0.6);
+    this.effects.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.5 - up, g: 0, size, color, t: life, life }); }
+  sparks(x, y) { for (let i = 0; i < 14 && this.effects.length < 700; i++) { const a = Math.random() * 7, v = 60 + Math.random() * 120;
+    this.effects.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 - 60, g: 320, size: 1.6, color: Math.random() < .5 ? '#ffd27a' : '#fff3c0', glow: true, t: 0.5, life: 0.5 }); } }
   fits(team, type, tx, ty, ignore) {
     const s = BUILDINGS[type];
     if (tx < 0 || ty < 0 || tx + s.w > this.map.w || ty + s.h > this.map.h) return false;
@@ -180,7 +207,8 @@ export class Game {
     const frac = mb.hp / mb.stats.hp; let cy = null;
     for (const c of mb.carried) {
       const [dx, dy] = FORMATION[c.type], b = new Building(this, c.type, mb.team, tx + dx, ty + dy);
-      b.hp = Math.max(1, b.stats.hp * frac); b.age = 9; b.unfold = { fx: mb.x - b.x, fy: mb.y - 20 - b.y, t: 1.2, dur: 1.2 };
+      b.hp = Math.max(1, b.stats.hp * frac); b.age = 9; const mode = mb.type === 'robot' ? 'transform' : 'pack', A = ATTACH[mode][c.type] || [0, -20];
+      b.unfold = { t: 0, P: 0.78, dur: mb.type === 'robot' ? 2.8 : 1.4, i: mb.carried.indexOf(c), n: mb.carried.length, ax: mb.x + A[0], ay: mb.y + A[1], mode };
       this.buildings.push(b); if (c.type === 'cy') cy = b;
     }
     this.removeQuiet(mb); mb.becameBuilding = cy; if (mb.team === 0) this.sfx?.('build'); this.effects.push({ t: 0.8, sell: true, x: mb.x, y: mb.y, r: 70 });
@@ -225,6 +253,9 @@ export class Game {
         t.credits -= cost; b.hp += heal;
       }
     }
+    for (const c of this.charges) { c.t -= dt; if (c.t <= 0 && !c.b.dead) { c.b.damage(600, null, true); this.effects.push({ t: 0.7, boom: true, x: c.b.x, y: c.b.y, r: c.b.radius * 1.8 }); this.sfx?.('boom'); this.shake = Math.max(this.shake, 4); } }
+    this.charges = this.charges.filter(c => c.t > 0 && !c.b.dead);
+    this.shake = Math.max(0, this.shake - dt * 12);
     for (const b of this.buildings) if (!b.dead) b.update(dt);
     for (const u of this.units) if (!u.dead) {
       u.update(dt);
@@ -234,7 +265,9 @@ export class Game {
     }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
     for (const e of this.effects) { e.t -= dt; if (e.part) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += (e.g || 0) * dt; e.vx *= 0.97; } }
-    for (const b of this.buildings) if (b.unfold) { b.unfold.t -= dt; if (b.unfold.t <= 0) b.unfold = null; } this.effects = this.effects.filter(e => e.t > 0);
+    for (const b of this.buildings) if (b.unfold) { const u = b.unfold; u.t += dt; u.P = 0.78 * Math.max(0, 1 - u.t / u.dur);
+      if (!u.dust && u.P < 0.05) { u.dust = true; for (let k = 0; k < 10; k++) this.puff(b.x + (Math.random() - .5) * b.w * TILE, b.y + b.h * TILE / 2, '#c9a77a', 40, 6, 0.9); if (b.team === 0) this.sfx?.('clank'); }
+      if (u.t >= u.dur) b.unfold = null; } this.effects = this.effects.filter(e => e.t > 0);
     this.fog.update(this.entities);
     for (const team of [0, 1]) if (!this.buildings.some(b => b.team === team) && !this.units.some(u => u.team === team && u.carried)) { this.over = team === 0 ? 'lose' : 'win'; this.winner = 1 - team; }
   }

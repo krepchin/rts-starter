@@ -14,6 +14,9 @@ export class Building extends Entity {
   contains(px, py) { return px >= this.tx * TILE && py >= this.ty * TILE && px < (this.tx + this.w) * TILE && py < (this.ty + this.h) * TILE; }
   update(dt) {
     this.cool -= dt; this.age += dt; this.flash -= dt;
+    if (this.stats.gate) { // opens for nearby friendly ground units unless locked; always closed to enemies
+      const want = !this.locked && this.game.units.some(u => u.team === this.team && !u.dead && !u.isAir && Math.hypot(u.x - this.x, u.y - this.y) < 1.8 * TILE);
+      this.openK = Math.max(0, Math.min(1, (this.openK || 0) + (want ? 2.5 : -2.5) * dt)); }
     this.powered = !this.game.teams[this.team].lowPower;
     const sw = this.stats.superweapon;
     if (sw && this.powered) this.charge = Math.min(sw.chargeTime, this.charge + dt);

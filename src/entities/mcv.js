@@ -7,7 +7,8 @@ import { UNITS, BUILDINGS, TILE } from '../data/stats.js';
 // Both carry their buildings as { type, hpFrac } and unfold them again on Deploy (HP kept proportionally).
 // Fixed deploy formation (tile offsets from the yard's top-left corner): barracks left, factory right, power behind.
 export const FORMATION = { cy: [0, 0], barracks: [-3, 1], factory: [4, 0], power: [0, -3] };
-export const DEPLOY_TIME = { mcv: 2.5, robot: 4 };
+export const DEPLOY_TIME = { mcv: 0.8, robot: 1.3 }; // crouch / legs fold; then buildings unfold in reverse (see Game.finishDeploy)
+const RISE = { mcv: 0.6, robot: 1.1 };
 const ARMOR = 0.6; // carried bases take 60% damage: armored, but still vulnerable
 
 export class MobileBase extends Unit {
@@ -43,10 +44,10 @@ export class MobileBase extends Unit {
       fx.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.55 - up * Math.random(), g: up ? up * 1.6 : 0, size: size * (0.6 + Math.random() * 0.8), color, t: life, life }); }
   }
   update(dt) {
-    this.cool -= dt; this.burrowCd = Math.max(0, this.burrowCd - dt); this.swapT = Math.max(0, this.swapT - dt);
+    this.cool -= dt; this.stomp = Math.max(0, (this.stomp || 0) - dt); this.burrowCd = Math.max(0, this.burrowCd - dt); this.swapT = Math.max(0, this.swapT - dt);
     this.spraying = Math.max(0, this.spraying - dt); this.stateT += dt;
     const g = this.game;
-    if (this.state === 'rising') { if (this.stateT >= 0.9) { this.state = 'ready'; this.stateT = 0; } }
+    if (this.state === 'rising') { if (this.stateT >= RISE[this.type]) { this.state = 'ready'; this.stateT = 0; this.landStomp(1.6); } }
     else if (this.state === 'deploying') {
       if (Math.random() < dt * 14) this.burst(this.x + (Math.random() - .5) * 50, this.y, 2, '#b9a888', 40, 5, 0.8);
       if (this.stateT >= DEPLOY_TIME[this.type]) { if (!g.finishDeploy(this)) { this.state = 'ready'; this.stateT = 0; } }
@@ -66,6 +67,7 @@ export class MobileBase extends Unit {
     const o = this.order; let moved = false;
     const ox = this.x, oy = this.y;
     if (o?.type === 'move' || o?.type === 'attackMove') { if (this.moveToward(o.x, o.y, dt, 6)) this.order = null; moved = true; }
+    if (!moved) this.vel = Math.max(0, (this.vel || 0) - this.stats.speed * 2.2 * dt);
     const w = this.weapon();
     if (w && g.combat && this.swapT <= 0) {
       let tgt = o?.type === 'attack' && this.canHit(o.target) ? o.target : null;
@@ -78,13 +80,23 @@ export class MobileBase extends Unit {
       }
     } else if (o?.type === 'attack') { if (!this.canHit(o.target)) this.order = null; else { this.moveToward(o.target.x, o.target.y, dt, w ? w.range * TILE : 30); moved = true; } }
     if (moved) { const d = Math.hypot(this.x - ox, this.y - oy); if (Math.abs(this.x - ox) > 0.05) this.faceRight = this.x > ox; this.stride(d); }
+    this.faceK = (this.faceK ?? 1) + ((this.faceRight ? 1 : -1) - (this.faceK ?? 1)) * Math.min(1, dt * 6); // eased flip when turning
     this.separate(dt);
   }
   weapon() {
     if (this.type !== 'robot') return null;
     return this.mode === 'spray' ? { range: 3.5, cone: 0.5, vsB: 300, vsU: 45 } : { range: 1.4, cone: 1.2, vsB: 140, vsU: 70 };
   }
-  canHit(t) { return this.game.combat && t && !t.dead && t.team !== this.team && !t.isAir && !t.under; }
+  // v9: acceleration/deceleration and eased turning (heading lerps toward the travel direction)
+  moveToward(x, y, dt, stop = 4) {
+    const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy); if (d <= stop) { this.vel = Math.max(0, (this.vel || 0) - this.stats.speed * 3 * dt); return true; }
+    const want = Math.atan2(dy, dx); let da = want - (this.heading ?? want); da = Math.atan2(Math.sin(da), Math.cos(da));
+    this.heading = (this.heading ?? want) + da * Math.min(1, dt * 3.5); this.angle = this.heading;
+    const brake = Math.min(1, d / 40), top = this.stats.speed * (Math.abs(da) > 1.2 ? 0.35 : 1) * Math.max(0.25, brake);
+    this.vel = Math.min(top, (this.vel || 0) + this.stats.speed * 1.4 * dt);
+    const step = Math.min(d, this.vel * dt); this.x += Math.cos(this.heading) * step; this.y += Math.sin(this.heading) * step; return false;
+  }
+  canHit(t) { return this.game.combat && t && !t.dead && t.team !== this.team && !t.isAir && !t.under && !t.cloaked; }
   fire(w, tgt, dt) {
     const g = this.game, a = Math.atan2(tgt.y - this.y, tgt.x - this.x); this.aimA = a; this.faceRight = Math.cos(a) >= 0; this.spraying = 0.15;
     for (const e of [...g.buildings, ...g.units]) {
@@ -108,10 +120,15 @@ export class MobileBase extends Unit {
     g.sfx?.('boom'); g.effects.push({ t: 0.9, erupt: true, x: this.x, y: this.y, r });
     this.burst(this.x, this.y, 40, '#7a5a3a', 160, 6, 1.1, 140); this.burst(this.x, this.y, 16, '#8f5', 120, 3, 0.8, 100);
   }
+  landStomp(k) { // final stomp: dust ring + small screen shake
+    const g = this.game; g.effects.push({ t: 0.7, dustRing: true, x: this.x, y: this.y, r: (this.type === 'robot' ? 60 : 36) * k });
+    this.burst(this.x, this.y, 16, '#c9a77a', 90, 6, 1.0); if (this.team === 0) { g.shake = Math.max(g.shake, this.type === 'robot' ? 5 : 2); g.sfx?.('stomp'); }
+  }
   stride(d) {
-    const before = this.walkPh; this.walkPh += d / (this.type === 'robot' ? 22 : 10);
+    const before = this.walkPh; this.walkPh += d / (this.type === 'robot' ? 18 : 10);
     if (this.type === 'robot' && Math.floor(before / Math.PI) !== Math.floor(this.walkPh / Math.PI)) { // foot down: stomp dust
-      const f = Math.floor(this.walkPh / Math.PI) % 2 ? 1 : -1; this.burst(this.x + f * 12, this.y + 4, 7, '#bfae8c', 45, 5, 0.9); this.stomp = 0.15;
+      const f = Math.floor(this.walkPh / Math.PI) % 2 ? 1 : -1; this.burst(this.x + f * 14, this.y + 4, 8, '#c9a77a', 50, 5, 0.9); this.stomp = 0.15;
+      if (this.team === 0 && this.vel > 8) { this.game.shake = Math.max(this.game.shake, 1.2); this.game.sfx?.('step'); }
     } else if (this.type === 'mcv' && Math.random() < 0.15) this.burst(this.x - (this.faceRight ? 22 : -22), this.y + 6, 1, '#bfae8c', 20, 4, 0.7);
   }
 }

@@ -7,16 +7,58 @@ export class Unit extends Entity {
     super(game, 'unit', type, team, x, y, UNITS[type]);
     this.order = null; this.angle = 0;
   }
-  command(order) { this.order = order; this.target = null; if (order?.type === 'attackMove' || order?.type === 'move') this.anchor = null; }
+  command(order) { if (this.dug && (order?.type === 'move' || order?.type === 'attackMove')) this.dug = false;
+    this.order = order; this.target = null; if (order?.type === 'attackMove' || order?.type === 'move') this.anchor = null; }
   moveToward(x, y, dt, stopDist = 4) {
     const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
     if (d <= stopDist) return true;
-    const step = Math.min(d, this.stats.speed * dt);
+    if (this.dug) return false; // dug-in rockets can't move
+    const step = Math.min(d, this.spd() * dt);
     this.x += dx / d * step; this.y += dy / d * step; this.angle = Math.atan2(dy, dx);
     return false;
   }
+  spd() { return this.stats.speed * (this.stimT > 0 ? 1.6 : 1); }
+  // ---- v9 infantry abilities (StarCraft-style). Returns true if used.
+  //  stim (Rifleman): 6 s +60% speed and double fire rate, costs 10 HP. cloak (Sniper): 8 s untargetable.
+  //  digin (Rocket): toggle; immobile, +1.5 range, half damage taken. engineer: capture / demo charge via orders.
+  canUse() { const a = this.stats.ability; if (!a || a === 'engineer') return false; if (a === 'digin') return (this.abCd || 0) <= 0;
+    return (this.abCd || 0) <= 0 && (a !== 'stim' || this.hp > 15); }
+  useAbility() {
+    if (!this.canUse()) return false; const a = this.stats.ability, g = this.game;
+    if (a === 'stim') { this.stimT = 6; this.hp -= 10; this.abCd = 12; }
+    else if (a === 'cloak') { this.cloakT = 8; this.cloaked = true; this.abCd = 25; }
+    else if (a === 'digin') { this.dug = !this.dug; this.abCd = 1.2; if (this.dug) this.order = null; }
+    if (this.team === 0) g.sfx?.(a); return true;
+  }
+  tickAbility(dt) {
+    this.abCd = Math.max(0, (this.abCd || 0) - dt); this.fired = Math.max(0, (this.fired || 0) - dt);
+    if (this.stimT > 0) this.stimT -= dt;
+    if (this.cloakT > 0) { this.cloakT -= dt; if (this.cloakT <= 0) this.cloaked = false; }
+  }
+  // Engineer: move to an enemy building and capture it (engineer is used up) or plant a demo charge (5 s fuse, 600 dmg).
+  // Idle engineers repair nearby damaged own buildings and vehicles for free.
+  engineerUpdate(dt) {
+    const o = this.order, g = this.game;
+    if (o?.type === 'capture' || o?.type === 'demo') {
+      const b = o.target; if (!b || b.dead || b.team === this.team || b.packing) { this.order = null; return true; }
+      if (this.dist(b) > b.radius + 10) { this.moveToward(b.x, b.y, dt, 2); return true; }
+      if (o.type === 'capture') {
+        b.team = this.team; b.repairing = false; b.rally = null; b.seen = true; g.removeQuiet(this);
+        g.effects.push({ t: 0.8, sell: true, x: b.x, y: b.y, r: b.radius }); if (this.team === 0 || b.team === 0) g.sfx?.('capture');
+      } else { g.charges.push({ b, t: 5, team: this.team }); this.order = null; this.abCd = 15; if (this.team === 0) g.sfx?.('demo');
+        this.command({ type: 'move', x: this.x + (this.x - b.x) * 0.8, y: this.y + (this.y - b.y) * 0.8 }); }
+      return true;
+    }
+    if (!o) { // auto-repair
+      let best = null, bd = 2.5 * TILE;
+      for (const e of [...g.buildings, ...g.units]) if (e.team === this.team && !e.dead && e !== this && e.hp < e.stats.hp && !e.stats.inf && !e.isAir) { const d = this.dist(e) - e.radius; if (d < bd) { bd = d; best = e; } }
+      if (best) { best.hp = Math.min(best.stats.hp, best.hp + this.stats.repair * dt); this.repairing = best; } else this.repairing = null;
+    } else this.repairing = null;
+    return false;
+  }
   update(dt) {
-    this.cool -= dt;
+    this.cool -= dt; this.tickAbility(dt);
+    if (this.type === 'engineer' && this.engineerUpdate(dt)) { this.separate(dt); return; }
     const o = this.order;
     if (o?.type === 'move') { if (this.moveToward(o.x, o.y, dt)) { this.order = null; this.anchor = { x: this.x, y: this.y }; } }
     else if (o?.type === 'attack') { // explicit attack order: pursue (player intent), then idle where it ended
@@ -46,7 +88,11 @@ export class Unit extends Entity {
       if (d < min) { const push = (min - d) * 0.5 * Math.min(1, dt * 10); this.x += dx / d * push; this.y += dy / d * push; }
     }
     if (!this.isAir) for (const b of this.game.buildings) {
-      if (b.dead || !b.contains(this.x, this.y)) continue;
+      if (b.dead || !b.contains(this.x, this.y) || (b.stats.gate && b.team === this.team && b.openK > 0.5)) continue;
+      if (b.stats.wall || b.stats.gate) { // walls / closed gates are solid: snap out through the nearest edge
+        const L = b.tx * TILE, T = b.ty * TILE, Rr = L + b.w * TILE, B = T + b.h * TILE, m = 0.5;
+        const opts = [[this.x - L, L - m, null], [Rr - this.x, Rr + m, null], [this.y - T, null, T - m], [B - this.y, null, B + m]].sort((a, c) => a[0] - c[0]);
+        if (opts[0][1] !== null) this.x = opts[0][1]; else this.y = opts[0][2]; this.blocked = (this.blocked || 0) + dt; continue; }
       const dx = this.x - b.x, dy = this.y - b.y, d = Math.hypot(dx, dy) || 1;
       this.x += dx / d * 60 * dt; this.y += dy / d * 60 * dt;
     }

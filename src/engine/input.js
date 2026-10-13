@@ -25,11 +25,12 @@ export class Input {
   }
   pos(e) { const r = this.c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   onDown(e) {
-    e.preventDefault(); this.c.setPointerCapture?.(e.pointerId);
+    e.preventDefault(); try { this.c.setPointerCapture?.(e.pointerId); } catch {}
     const p = this.pos(e); this.pointers.set(e.pointerId, p);
-    if (this.pointers.size === 2) { this.down = null; this.ui.box = null; clearTimeout(this.longTimer); return; } // start pan
+    if (this.pointers.size === 2) { this.down = null; this.ui.box = null; this.ui.wallDrag = null; clearTimeout(this.longTimer); return; } // start pan
     if (this.pointers.size > 2) return;
     this.down = { ...p, button: e.button, type: e.pointerType, moved: false, t: performance.now() };
+    if (this.ui.placing && BUILDINGS[this.ui.placing].wall && e.button === 0) { this.updateHover(p); const h = this.ui.hoverTile; this.ui.wallDrag = { x0: h.x, y0: h.y, x1: h.x, y1: h.y }; return; }
     if (e.pointerType !== 'mouse') this.longTimer = setTimeout(() => { if (this.down && !this.down.moved) { this.ui.clearSelection(); this.down = null; } }, 600);
   }
   onMove(e) {
@@ -45,7 +46,8 @@ export class Input {
     this.pointers.set(e.pointerId, p);
     const d = this.down; if (!d) return;
     if (Math.hypot(p.x - d.x, p.y - d.y) > (d.type === 'mouse' ? 5 : 12)) d.moved = true;
-    if (d.moved && d.button === 0 && !this.ui.placing && !this.ui.targeting && !this.ui.deploying && !this.ui.burrowing) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
+    if (this.ui.wallDrag) { const h = this.ui.hoverTile; this.ui.wallDrag.x1 = h.x; this.ui.wallDrag.y1 = h.y; return; }
+    if (d.moved && d.button === 0 && !this.ui.placing && !this.ui.abilityTarget && !this.ui.targeting && !this.ui.deploying && !this.ui.burrowing) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
   }
   onUp(e) {
     clearTimeout(this.longTimer);
@@ -57,6 +59,8 @@ export class Input {
     if (this.ui.targeting) { this.ui.fireAt(w.x, w.y); return; }
     if (this.ui.deploying) { this.ui.deployAt(w); return; }
     if (this.ui.burrowing) { this.ui.burrowAt(w); return; }
+    if (this.ui.abilityTarget) { this.ui.abilityAt(w.x, w.y); return; }
+    if (this.ui.wallDrag) { const wd = this.ui.wallDrag; this.ui.wallDrag = null; if (wd.x0 !== wd.x1 || wd.y0 !== wd.y1) { this.ui.placeWallLine(wd); return; } }
     if (this.ui.placing) { this.updateHover(p); this.ui.place(); return; }
     if (this.ui.box) { const b = this.ui.box; this.ui.box = null;
       const a = this.cam.toWorld(b.x0, b.y0), c = this.cam.toWorld(b.x1, b.y1); this.ui.boxSelect(a.x, a.y, c.x, c.y, e.shiftKey); return; }
@@ -72,7 +76,7 @@ export class Input {
     else if (d.type !== 'mouse' && this.ui.selection.size) this.ui.commandAt(w.x, w.y);
     else if (!hit) this.ui.clearSelection(); else this.ui.select(hit, false);
   }
-  onCancel(e) { this.pointers.delete(e.pointerId); this.down = null; this.ui.box = null; clearTimeout(this.longTimer); }
+  onCancel(e) { this.pointers.delete(e.pointerId); this.down = null; this.ui.wallDrag = null; this.ui.box = null; clearTimeout(this.longTimer); }
   updateHover(p) {
     this.ui.hoverWorld = this.cam.toWorld(p.x, p.y);
     if (!this.ui.placing) return; const s = BUILDINGS[this.ui.placing], w = this.cam.toWorld(p.x, p.y);
