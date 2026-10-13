@@ -15,7 +15,7 @@ export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, the
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
 
-const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber, dropship: Dropship, egg: Egg, hiveorb: HiveOrb, broodship: BroodShip, truck: Truck, buggy: Truck, grazer: Grazer, harmonizer: FactionHarvester, reaper: FactionHarvester, lightcraft: Lightcraft, saucer: Saucer, mothership: Saucer };
+const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber, dropship: Dropship, egg: Egg, hiveorb: HiveOrb, broodship: BroodShip, truck: Truck, buggy: Truck, bike: Truck, grazer: Grazer, harmonizer: FactionHarvester, reaper: FactionHarvester, lightcraft: Lightcraft, saucer: Saucer, mothership: Carrier, scoutsaucer: Unit, warsaucer: Unit };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
 export const GRACE_SECONDS = 600; // optional ceasefire at game start (applies to both sides)
 export const PRODUCER = { building: 'cy', infantry: 'barracks', vehicle: 'factory', aircraft: 'airfield' };
@@ -61,7 +61,7 @@ export class Game {
     const C = UNIT_CLASSES[type] || Unit; const u = new C(this, ...(C === Unit ? [type, team, x, y] : [team, x, y, type]));
     this.units.push(u); return u;
   }
-  spawnInterceptor(carrier) { const i = new Interceptor(this, carrier); this.units.push(i); return i; }
+  spawnInterceptor(carrier, type) { const i = new Interceptor(this, carrier, type); this.units.push(i); return i; }
   removeQuiet(e) { e.dead = true; e.quiet = true; }
   onDeath(e) { if (!e.quiet) { this.effects.push({ t: 0.6, boom: true, x: e.x, y: e.y, r: e.radius * 1.6 }); this.sfx?.(e.kind === 'building' || e.radius > 20 ? 'boom_l' : e.stats.inf ? 'die_inf' : 'boom_m', e); } }
   // ---- queries
@@ -263,10 +263,15 @@ export class Game {
       u.detected = this.buildings.some(b => !b.dead && b.team !== u.team && (b.type === 'turret' || b.stats.radar || b.stats.detector) && b.powered !== false && Math.hypot(b.x - u.x, b.y - u.y) < R)
         || this.units.some(e => !e.dead && e.team !== u.team && e.stats.detector && Math.hypot(e.x - u.x, e.y - u.y) < R); }
   }
+  // v9.2.3: wall / gate occupancy grid (rebuilt each tick). Friendly gates count as open only while their openK > 0.5.
+  rebuildSolid() { const m = new Map(); for (const b of this.buildings) if (!b.dead && (b.stats.wall || b.stats.gate)) m.set(b.ty * this.map.w + b.tx, b); this._solid = m; }
+  solidAt(px, py, team) { if (!this._solid) return false; const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE); const b = this._solid.get(ty * this.map.w + tx);
+    return !!b && !b.dead && !(b.stats.gate && b.team === team && (b.openK || 0) > 0.5); }
   update(dt) {
     for (const u of this.units) if (u.life !== undefined && !u.dead) { u.life -= dt; if (u.life <= 0) { this.removeQuiet(u); this.puff(u.x, u.y - 6, '#9fdc7a', 30, 3, 0.6, 10); } }
     this.detT = (this.detT || 0) - dt; if (this.detT <= 0) { this.detT = 0.25; this.updateDetection(); }
     if (this.over) return;
+    this.rebuildSolid();
     this.time += dt; this.map.update(dt); this.updateMorphs(dt);
     for (const t of this.teams) {
       t.powerMade = 0; t.powerUsed = 0;
@@ -322,6 +327,9 @@ export class Game {
       if (!Number.isFinite(u.x) || !Number.isFinite(u.y)) { u.x = u.lastX ?? this.map.pxW / 2; u.y = u.lastY ?? this.map.pxH / 2; }
       u.x = Math.max(4, Math.min(this.map.pxW - 4, u.x)); u.y = Math.max(4, Math.min(this.map.pxH - 4, u.y)); u.lastX = u.x; u.lastY = u.y;
     }
+    for (const u of this.units) if (!u.dead && !u.isAir && !u.carried) {
+      if (this.solidAt(u.x, u.y, u.team)) { if (u.safeX !== undefined) { u.x = u.safeX; u.y = u.safeY; } else { const b = this._solid.get(Math.floor(u.y / TILE) * this.map.w + Math.floor(u.x / TILE)); u.y = (b.ty + b.h) * TILE + 6; } }
+      else { u.safeX = u.x; u.safeY = u.y; } }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
     this.updateRockets(dt);
     for (const z of this.zones) { z.t -= dt; if (!this.combat) continue; // acid pools / tiberium storms

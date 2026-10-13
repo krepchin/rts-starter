@@ -16,7 +16,22 @@ export class Unit extends Entity {
     // v10: crystal fields are rough ground (-30% speed) unless the unit is all-terrain, hovering or flying
     const rough = !this.stats.allTerrain && !this.stats.hover && !this.isAir && this.game.map.tib[this.game.map.idx(Math.floor(this.x / TILE), Math.floor(this.y / TILE))] > 5;
     const step = Math.min(d, this.spd() * dt * (rough ? 0.7 : 1));
-    this.x += dx / d * step; this.y += dy / d * step; this.angle = Math.atan2(dy, dx);
+    this.angle = Math.atan2(dy, dx);
+    const g = this.game, ux = dx / d, uy = dy / d;
+    if (this.isAir || !g.solidAt) { this.x += ux * step; this.y += uy * step; return false; }
+    // v9.2.3: walls / closed gates are impassable. Go straight if clear, else slide along the wall, else detour around it.
+    const R = Math.min(this.radius || 6, 10) * 0.7, me = this.team;
+    const free = (x, y) => !g.solidAt(x, y, me) && !g.solidAt(x + R, y, me) && !g.solidAt(x - R, y, me) && !g.solidAt(x, y + R, me) && !g.solidAt(x, y - R, me);
+    const nx = this.x + ux * step, ny = this.y + uy * step;
+    if (free(nx, ny) && !this.detour) { this.x = nx; this.y = ny; this.blockT = 0; return false; }
+    if (this.detour && free(nx, ny) && free(this.x + ux * 24, this.y + uy * 24)) { this.detour = 0; this.x = nx; this.y = ny; return false; }
+    this.blockT = (this.blockT || 0) + dt; this.blocked = this.blockT;
+    if (!this.detour) { if (free(nx, this.y) && Math.abs(ux) > 0.2) { this.x = nx; return false; } if (free(this.x, ny) && Math.abs(uy) > 0.2) { this.y = ny; return false; } }
+    if (!this.detour) { const l = free(this.x - uy * 24, this.y + ux * 24), r = free(this.x + uy * 24, this.y - ux * 24); this.detour = l && !r ? 1 : r && !l ? -1 : ((this.id || 0) % 2 ? 1 : -1); }
+    const px = -uy * this.detour, py = ux * this.detour; // walk along the wall face
+    if (free(this.x + px * step, this.y + py * step)) { this.x += px * step; this.y += py * step; this.angle = Math.atan2(py, px); }
+    else this.detour = -this.detour;
+    if (this.blockT > 12) { this.detour = 0; this.blockT = 0; return true; } // no way round: give up and stop at the wall
     return false;
   }
   spd() { return this.stats.speed * (this.stimT > 0 ? 1.6 : 1); }
@@ -142,7 +157,7 @@ export class Unit extends Entity {
     for (const o of this.game.units) {
       // Interceptors neither push nor get pushed: they swarm around/into their Carrier, and pushing it made Carriers
       // get shoved across (and off) the map while their wing chased them to re-dock.
-      if (o === this || o.isAir !== this.isAir || o.dead || o.type === 'interceptor' || this.type === 'interceptor') continue;
+      if (o === this || o.isAir !== this.isAir || o.dead || !!o.carrier || !!this.carrier) continue;
       const dx = this.x - o.x, dy = this.y - o.y, d = Math.hypot(dx, dy) || 0.01, min = this.radius + o.radius;
       if (d < min) { const push = (min - d) * 0.5 * Math.min(1, dt * 10); this.x += dx / d * push; this.y += dy / d * push; }
     }

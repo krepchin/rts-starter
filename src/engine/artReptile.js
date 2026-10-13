@@ -9,10 +9,10 @@ const SPR = { raider: ['r_raider', 30], spitter: ['r_spitter', 28], brute: ['r_b
   // v10.1 Nordics + Greys (cut from Kent's faction concept sheets)
   sentinel: ['n_sentinel', 30], seer: ['n_seer', 32], guardian: ['n_guardian', 32], tallwhite: ['n_tallwhite', 46], skiff: ['n_skiff', 26], harmonizer: ['n_skiff', 20],
   lightcraft: ['n_lightcraft', 10], lightship: ['n_lightship', 30],
-  greydrone: ['g_drone', 20], psionic: ['g_psionic', 24], abductor: ['g_abductor', 26], hybrid: ['g_hybrid', 28], crawler: ['g_crawler', 15], probe: ['g_orb', 22],
-  reaper: ['g_saucer', 14], saucer: ['g_saucer', 22], mothership: ['g_mothership', 46] };
+  greydrone: ['g_drone', 20], psionic: ['g_psionic', 24], abductor: ['g_abductor', 26], hybrid: ['g_hybrid', 28], crawler: ['g_crawler', 15],
+  reaper: ['g_saucer', 14], };
 const HOVER_GLOW = { nordic: 'rgba(255,245,200,0.5)', grey: 'rgba(190,120,255,0.45)' };
-export const isFactionArt = type => !!SPR[type] || ['egg', 'broodship', 'grazer', 'buggy', 'truck'].includes(type);
+export const isFactionArt = type => !!SPR[type] || ['egg', 'broodship', 'grazer', 'buggy', 'truck', 'bike', 'probe', 'orbling', 'minisaucer', 'scoutsaucer', 'warsaucer', 'saucer', 'mothership'].includes(type);
 const TEAMC = { 0: '#3fa9ff', 1: '#ff4a3a' };
 function shadow(ctx, x, y, rx, ry, a = 0.3) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); }
 function glow(ctx, x, y, r, c, a = 1) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(120,255,80,0)'); ctx.globalAlpha *= a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.globalAlpha /= a; }
@@ -54,7 +54,9 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
     ctx.fillStyle = '#0008'; ctx.fillRect(u.x - 9, u.y + 4, 18, 3); ctx.fillStyle = '#c8ff7a'; ctx.fillRect(u.x - 9, u.y + 4, 18 * k, 3); top = u.y - 20;
   } else if (tp === 'broodship') { top = drawBroodShip(ctx, u, t, face); }
   else if (tp === 'grazer') { top = drawGrazer(ctx, u, t, face, moving); }
-  else if (tp === 'buggy' || tp === 'truck') { top = drawCar(ctx, u, t, face, moving); }
+  else if (tp === 'probe' || tp === 'orbling') { top = drawOrb(ctx, u, t); }
+  else if (SAUCER[tp]) { top = drawSaucer(ctx, u, t, SAUCER[tp]); }
+  else if (tp === 'buggy' || tp === 'truck' || tp === 'bike') { top = drawCar(ctx, u, t, face, moving); }
   if (u.life !== undefined && u.lifeMax) { const f = Math.max(0, u.life / u.lifeMax); ctx.globalAlpha = 1; ctx.fillStyle = '#0009'; ctx.fillRect(u.x - 8, top - 4, 16, 2); ctx.fillStyle = '#ffd24a'; ctx.fillRect(u.x - 8, top - 4, 16 * f, 2); }
   ctx.globalAlpha = 1;
   if (u.healing && !u.healing.dead) { ctx.strokeStyle = `rgba(120,255,160,${0.4 + 0.3 * Math.sin(t * 14)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(u.x, u.y - 30); ctx.quadraticCurveTo((u.x + u.healing.x) / 2, Math.min(u.y, u.healing.y) - 40, u.healing.x, u.healing.y - 10); ctx.stroke(); ctx.lineWidth = 1; }
@@ -98,6 +100,7 @@ function drawGrazer(ctx, u, t, face, moving) {
 function wheel(ctx, x, y, r, spin) { ctx.fillStyle = '#1d1c19'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.strokeStyle = '#3c3a34'; ctx.lineWidth = r * 0.28; ctx.beginPath(); ctx.arc(x, y, r * 0.78, 0, 7); ctx.stroke();
   ctx.lineWidth = 1; ctx.fillStyle = '#6a685f'; ctx.beginPath(); ctx.arc(x, y, r * 0.35, 0, 7); ctx.fill(); ctx.strokeStyle = '#121110'; for (let i = 0; i < 6; i++) { const a = spin + i; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 0.62, y + Math.sin(a) * r * 0.62); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); } }
 function drawCar(ctx, u, t, face, moving) {
+  if (u.type === 'bike') return drawBike(ctx, u, t, face, moving);
   const truck = u.type === 'truck', bounce = moving ? Math.abs(Math.sin(t * (truck ? 10 : 16) + (u.id || 0))) * (truck ? 1.8 : 1.2) : 0, spin = moving ? t * 14 : 0;
   shadow(ctx, u.x, u.y + 2, truck ? 22 : 15, truck ? 7 : 5);
   ctx.save(); ctx.translate(u.x, u.y); ctx.scale(face, 1);
@@ -210,3 +213,66 @@ export function drawAlienBuilding(ctx, b, t) {
   if (s.weapon && b.flash > 0 && b.target) { ctx.strokeStyle = s.weapon.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, Y - 6); ctx.lineTo(b.target.x, b.target.y); ctx.stroke(); ctx.lineWidth = 1; }
 }
 export const isAlienBuilding = s => s && (s.faction === 'nordic' || s.faction === 'grey');
+
+// ---- v10.2 Grey air: classic flying saucers (metal disc, dome, ring of lights underneath, slow spin + wobble) and white electric orbs
+const SAUCER = { minisaucer: 9, scoutsaucer: 13, saucer: 19, warsaucer: 23, mothership: 46 };
+function saucerShape(ctx, x, y, R, t, id, tilt, lights = 10) {
+  const H = R * 0.32;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+  // underside glow + rotating light ring
+  glow(ctx, 0, H * 0.5, R * 0.9, 'rgba(160,255,140,0.35)');
+  for (let i = 0; i < lights; i++) { const a = t * 1.6 + i / lights * Math.PI * 2, lx = Math.cos(a) * R * 0.72, ly = H * 0.35 + Math.sin(a) * H * 0.35; if (Math.sin(a) < -0.2) continue;
+    const on = 0.55 + 0.45 * Math.sin(t * 8 + i * 1.7); ctx.fillStyle = i % 3 === 0 ? `rgba(255,120,90,${on})` : `rgba(170,255,150,${on})`; ctx.beginPath(); ctx.arc(lx, ly, Math.max(1, R * 0.07), 0, 7); ctx.fill(); }
+  // disc
+  const g = ctx.createLinearGradient(0, -H, 0, H); g.addColorStop(0, '#eef1f4'); g.addColorStop(0.45, '#a9b0b8'); g.addColorStop(0.55, '#6c737c'); g.addColorStop(1, '#3d4248');
+  ctx.fillStyle = g; ctx.strokeStyle = '#2a2e33'; ctx.lineWidth = Math.max(0.8, R * 0.04); ctx.beginPath(); ctx.ellipse(0, 0, R, H, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(0, -H * 0.1, R * 0.82, H * 0.5, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  // rim panel ticks spin
+  ctx.strokeStyle = 'rgba(40,44,50,0.6)'; for (let i = 0; i < 12; i++) { const a = t * 0.8 + i / 12 * Math.PI * 2; if (Math.sin(a) < 0) continue; ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * 0.9, Math.sin(a) * H * 0.9); ctx.lineTo(Math.cos(a) * R * 0.6, Math.sin(a) * H * 0.6); ctx.stroke(); }
+  // dome
+  const d = ctx.createRadialGradient(-R * 0.12, -H * 1.5, 1, 0, -H * 0.8, R * 0.45); d.addColorStop(0, 'rgba(240,255,250,0.95)'); d.addColorStop(0.5, 'rgba(150,210,200,0.8)'); d.addColorStop(1, 'rgba(60,90,95,0.85)');
+  ctx.fillStyle = d; ctx.beginPath(); ctx.ellipse(0, -H * 0.55, R * 0.38, H * 1.3, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#2a2e33'; ctx.stroke();
+  ctx.restore(); ctx.lineWidth = 1; return H;
+}
+function drawSaucer(ctx, u, t, R) {
+  const id = u.id || 0, alt = 26 + R * 0.5 + Math.sin(t * 1.8 + id) * 2.5, tilt = Math.sin(t * 1.3 + id * 2) * 0.07 + Math.cos(u.angle || 0) * 0.04, y = u.y - alt;
+  shadow(ctx, u.x, u.y + 2, R * 0.9, R * 0.28, 0.22);
+  if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, y, b.x, b.y); gr.addColorStop(0, 'rgba(120,255,110,0.75)'); gr.addColorStop(1, 'rgba(120,255,110,0.18)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(u.x - R * 0.35, y + 4); ctx.lineTo(u.x + R * 0.35, y + 4); ctx.lineTo(b.x + 15, b.y + 4); ctx.lineTo(b.x - 15, b.y + 4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,255,190,0.5)'; for (let i = 0; i < 3; i++) { const k = (t * 1.5 + i / 3) % 1; ctx.beginPath(); ctx.ellipse(u.x + (b.x - u.x) * k, y + (b.y - y) * k, R * 0.35 + k * 10, 3 + k * 2, 0, 0, 7); ctx.stroke(); } }
+  const H = saucerShape(ctx, u.x, y, R, t, id, tilt, u.type === 'mothership' ? 18 : 10);
+  if (u.type === 'mothership') { // six docked mini-saucers around the top; empty slots show as dark pads
+    const n = u.stats.interceptors || 6, have = u.docked || 0;
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + t * 0.25, sx = u.x + Math.cos(a) * R * 0.66, sy = y - H * 0.35 + Math.sin(a) * H * 0.62;
+      if (i < have) saucerShape(ctx, sx, sy - 3, 7, t * 1.3, i, 0, 6); else { ctx.fillStyle = 'rgba(25,30,35,0.75)'; ctx.beginPath(); ctx.ellipse(sx, sy, 6, 2.2, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(150,255,140,0.4)'; ctx.stroke(); } } }
+  if (u.wing && u.docked) { ctx.fillStyle = '#eaf6ff'; for (let i = 0; i < u.docked; i++) { ctx.beginPath(); ctx.arc(u.x - 4 + i * 4, y + H + 3, 1.3, 0, 7); ctx.fill(); } }
+  return y - H * 2;
+}
+function drawOrb(ctx, u, t) {
+  const id = u.id || 0, big = u.type === 'probe', r = big ? 5 : 3.2, jx = Math.sin(t * 7.3 + id) * 3 + Math.sin(t * 13.1 + id * 3) * 1.5, jy = Math.cos(t * 6.1 + id * 2) * 3;
+  const x = u.x + jx, y = u.y - (big ? 26 : 22) + jy;
+  shadow(ctx, u.x, u.y + 1, r * 1.4, r * 0.5, 0.18);
+  glow(ctx, x, y, r * 4, 'rgba(225,240,255,0.55)', 0.8 + 0.2 * Math.sin(t * 20 + id));
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0.5, x, y, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.7, '#e6f2ff'); g.addColorStop(1, '#9fc6ff');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(200,230,255,0.85)'; ctx.lineWidth = 0.8; for (let i = 0; i < 2; i++) { let a = Math.random() * 7, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; ctx.beginPath(); ctx.moveTo(px, py);
+    for (let k = 0; k < 3; k++) { px += Math.cos(a) * r * 0.7 + (Math.random() - 0.5) * 3; py += Math.sin(a) * r * 0.7 + (Math.random() - 0.5) * 3; ctx.lineTo(px, py); } ctx.stroke(); }
+  ctx.lineWidth = 1; ctx.strokeStyle = TEAMC[u.team]; ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, r * 1.6, r * 0.5, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  return y - r - 3;
+}
+function drawBike(ctx, u, t, face, moving) {
+  const b = moving ? Math.abs(Math.sin(t * 20 + (u.id || 0))) * 0.8 : 0, spin = moving ? t * 18 : 0;
+  shadow(ctx, u.x, u.y + 2, 11, 3.5);
+  ctx.save(); ctx.translate(u.x, u.y); ctx.scale(face, 1);
+  if (moving) { ctx.fillStyle = 'rgba(200,175,130,0.3)'; ctx.beginPath(); ctx.arc(-14, -3, 3 + Math.random() * 2, 0, 7); ctx.fill(); }
+  wheel(ctx, -8, -4, 4.5, spin); wheel(ctx, 8, -4, 4.5, spin);
+  ctx.strokeStyle = '#2b2a24'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-8, -4); ctx.lineTo(-2, -10 - b); ctx.lineTo(6, -10 - b); ctx.lineTo(8, -4); ctx.stroke();
+  const g = ctx.createLinearGradient(0, -14, 0, -7); g.addColorStop(0, '#a4925a'); g.addColorStop(1, '#5a4f2c'); ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(-7, -9 - b); ctx.lineTo(7, -10 - b); ctx.lineTo(9, -13 - b); ctx.lineTo(-4, -13 - b); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#4e5a3a'; ctx.beginPath(); ctx.ellipse(-1, -18 - b, 3, 5, 0.35, 0, 7); ctx.fill(); // rider
+  ctx.fillStyle = '#3a3f33'; ctx.beginPath(); ctx.arc(1, -24 - b, 2.6, 0, 7); ctx.fill(); ctx.fillStyle = u.team === ME ? '#4fa7d8' : '#c8402c'; ctx.fillRect(-1, -25 - b, 4, 1.4);
+  ctx.strokeStyle = '#2b2a24'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(1, -16 - b); ctx.lineTo(7, -15 - b); ctx.stroke();
+  ctx.fillStyle = '#303128'; ctx.fillRect(6, -15 - b, 7, 1.6);
+  if (u.fired > 0) { ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(14, -14 - b, 1.8, 0, 7); ctx.fill(); }
+  ctx.restore(); ctx.lineWidth = 1; return u.y - 28;
+}

@@ -13,7 +13,7 @@ export class PlayerUI {
   select(e, add) { if (!add) this.selection.clear(); this.selection.add(e); this.g.sfx?.('select'); if (e.team === ME) this.g.sfx?.('voice:select', e); }
   boxSelect(x0, y0, x1, y1, add) {
     if (!add) this.selection.clear();
-    for (const u of this.g.units) if (u.team === ME && u.type !== 'interceptor' && u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1) this.selection.add(u);
+    for (const u of this.g.units) if (u.team === ME && !u.carrier && u.x >= x0 && u.x <= x1 && u.y >= y0 && u.y <= y1) this.selection.add(u);
     if (this.selection.size) this.g.sfx?.('select');
   }
   prune() { for (const e of this.selection) if (e.dead) { this.selection.delete(e); const n = e.becameUnit || e.becameBuilding; if (n && !n.dead) this.selection.add(n); }
@@ -43,7 +43,7 @@ export class PlayerUI {
   find(camera) {
     let list = [...this.selection].filter(e => !e.dead);
     if (!list.length) {
-      const army = this.g.units.filter(u => u.team === ME && u.type !== 'interceptor' && u.type !== 'harvester');
+      const army = this.g.units.filter(u => u.team === ME && !u.carrier && u.type !== 'harvester');
       if (!army.length) return false;
       this.findIdx = ((this.findIdx ?? -1) + 1) % (army.length + 1);
       list = this.findIdx === 0 ? army : [army[this.findIdx - 1]];

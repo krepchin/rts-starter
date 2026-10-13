@@ -30,7 +30,7 @@ export class Minimap {
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.tib[m.idx(x, y)] > 5 && fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx, sy);
       for (const b of g.buildings) if (b.team === ME || b.seen) { ctx.fillStyle = TEAM_COLORS[b.team]; ctx.fillRect(b.tx * sx, b.ty * sy, b.w * sx, b.h * sy); }
       for (const u of g.units) if (u.team !== ME && fog.visibleAt(u.x, u.y) && !(u.stealthed && !g.units.some(o => o.team === ME && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 80))) { ctx.fillStyle = TEAM_COLORS[u.team]; ctx.fillRect(u.x / 32 * sx - 1, u.y / 32 * sy - 1, 2.5, 2.5); }
-      for (const u of g.units) if (u.team === ME && u.type !== 'interceptor') { // own units: bright, outlined, on top
+      for (const u of g.units) if (u.team === ME && !u.carrier) { // own units: bright, outlined, on top
         ctx.fillStyle = '#000'; ctx.fillRect(u.x / 32 * sx - 2, u.y / 32 * sy - 2, 4, 4); ctx.fillStyle = '#8fd0ff'; ctx.fillRect(u.x / 32 * sx - 1.5, u.y / 32 * sy - 1.5, 3, 3); }
       ctx.fillStyle = '#0007';
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (!fog.v[m.idx(x, y)]) ctx.fillRect(x * sx, y * sy, sx + .5, sy + .5);

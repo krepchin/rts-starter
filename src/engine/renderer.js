@@ -138,14 +138,14 @@ export class Renderer {
     if (u.type === 'harvester') { ctx.fillStyle = '#4f8'; ctx.fillRect(-r + 3, -4, (r * 2 - 6) * (u.load / u.stats.capacity), 8); }
     if (u.type === 'carrier') { ctx.fillStyle = '#cff'; ctx.beginPath(); ctx.arc(-r * 0.2, 0, 4 + Math.sin(t * 4), 0, 7); ctx.fill(); }
     ctx.restore();
-    if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
+    if (!u.carrier) this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
   }
   // v9.2 carrier: top-down art cut from Kent's approved concept (steel-blue deck, sand camo), rotated to heading, with
   // the aft island tower, glowing blue thruster pods, a soft ground shadow and a launch strobe on the deck.
   drawCarrierTD(u, sel, col, t) {
     const spr = getSprite('carrier_td', u.team); if (!spr) return false;
-    const ctx = this.ctx, L = 144, W = L * spr.aspect, lift = 18, bob = Math.sin(t * 1.6 + u.id) * 1.5, a = u.angle;
+    const ctx = this.ctx, L = 96, W = L * spr.aspect, lift = 18, bob = Math.sin(t * 1.6 + u.id) * 1.5, a = u.angle;
     ctx.save(); ctx.translate(u.x + lift * 0.7, u.y + lift + 8); ctx.rotate(a); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-L / 2, -W * 0.32, L, W * 0.64, 8) : ctx.rect(-L / 2, -W * 0.32, L, W * 0.64); ctx.fill(); ctx.filter = 'none'; ctx.restore();
     ctx.save(); ctx.translate(u.x, u.y + bob); ctx.rotate(a);

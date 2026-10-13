@@ -70,7 +70,7 @@ export class Truck extends Unit {
       g.effects.push({ t: 0.3, dustRing: true, x: e.x, y: e.y, r: 10 }); g.sfx?.('ramhit', this); if (this.team === this.game.me) g.shake = Math.max(g.shake, 1.5);
     }
     // rear rocket launcher: separate weapon, fires at the current target or anything in range
-    const w = this.stats.rear; if (this.cool2 <= 0 && g.combat) {
+    const w = this.stats.rear; if (w && this.cool2 <= 0 && g.combat) {
       const t = this.target && !this.target.dead && this.canHit(this.target) && this.dist(this.target) < w.range * TILE ? this.target : g.findEnemyNear(this, w.range * TILE, e => this.canHit(e) || (e.isAir && !e.dead && (!e.cloaked || e.detected)));
       if (t) { this.cool2 = w.cooldown; const ts = t.stats, m = (ts.wall || ts.gate) ? w.vsWall : t.kind === 'unit' && !ts.inf ? w.vsVeh : 1; t.damage(w.damage * m, this); g.fxRocket?.(this, t); g.sfx?.('rocket', this); }
     }

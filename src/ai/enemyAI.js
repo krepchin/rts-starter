@@ -5,10 +5,10 @@ import { FACTIONS } from '../data/factions.js?v=10.1';
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];
 // v10: the same plan for either faction, translated through faction roles (reptiles have no superweapon)
 const ROLE_OF = { power: 'power', refinery: 'refinery', barracks: 'infantry', factory: 'vehicle', radar: 'radar', turret: 'def', airfield: 'air' };
-const MIX = { human: { inf: ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], veh: ['tank', 'buggy', 'tank', 'truck'], air: ['carrier', 'jet', 'jet', 'bomber'] },
+const MIX = { human: { inf: ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], veh: ['tank', 'buggy', 'bike', 'tank', 'truck'], air: ['carrier', 'jet', 'jet', 'bomber'] },
   reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'spark', 'lance', 'spark', 'lance'], air: ['hiveorb', 'broodship'] },
   nordic: { inf: ['sentinel', 'sentinel', 'guardian', 'seer', 'sentinel', 'tallwhite'], veh: ['skiff'], air: ['lightcraft', 'lightcraft', 'lightship'] },
-  grey: { inf: ['greydrone', 'greydrone', 'greydrone', 'hybrid', 'psionic', 'greydrone', 'abductor', 'hybrid'], veh: ['crawler', 'crawler', 'probe'], air: ['saucer', 'saucer', 'mothership'] } };
+  grey: { inf: ['greydrone', 'greydrone', 'greydrone', 'hybrid', 'psionic', 'greydrone', 'abductor', 'hybrid'], veh: ['crawler', 'crawler', 'crawler'], air: ['probe', 'scoutsaucer', 'saucer', 'warsaucer', 'probe', 'mothership'] } };
 
 export class EnemyAI {
   constructor(game, team = 1) { this.g = game; this.team = team; this.think = 0; this.waveTimer = 120; this.waveSize = 5; }
@@ -18,7 +18,7 @@ export class EnemyAI {
     if (g.over) return;
     const fac = t.faction || 'human', R = FACTIONS[fac].roles, mapB = k => fac === 'human' ? k : (ROLE_OF[k] ? R[ROLE_OF[k]] : null);
     const count = type => g.buildings.filter(b => b.team === me && b.type === type).length;
-    const army = g.units.filter(u => u.team === me && u.type !== 'interceptor' && (u.stats.weapon || u.type === 'carrier' || u.type === 'bomber' || u.type === 'medic'));
+    const army = g.units.filter(u => u.team === me && !u.carrier && (u.stats.weapon || u.type === 'carrier' || u.type === 'mothership' || u.type === 'bomber' || u.type === 'medic'));
     // 1) Place a finished structure near base.
     if (t.readyBuilding) this.placeNearBase(t.readyBuilding);
     // 2) Next structure: fix power first, then build order, then extra defenses.

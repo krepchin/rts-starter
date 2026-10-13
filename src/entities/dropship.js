@@ -6,7 +6,7 @@ import { TILE } from '../data/stats.js?v=10.1';
 // Unload: fly to the point, then drop one unit every 0.45 s. Cloak drains energy; it breaks on unload and when the energy
 // runs out. Cloaked units can be revealed by enemy turrets / Comm Centers within detectRange (see Game.updateDetection).
 export const SLOT = u => u.stats.inf ? 1 : 4;
-export const CAN_BOARD = u => !u.isAir && !u.carried && u.type !== 'harvester' && u.type !== 'interceptor' && !u.stats.hatchling;
+export const CAN_BOARD = u => !u.isAir && !u.carried && u.type !== 'harvester' && !u.carrier && !u.stats.hatchling;
 export class Dropship extends Unit {
   constructor(game, team, x, y) { super(game, 'dropship', team, x, y); this.cargo = []; this.energy = this.stats.energy; this.unloadT = 0; this.cloakCd = 0; this.hum = 0; }
   get used() { return this.cargo.reduce((s, u) => s + SLOT(u), 0); }
