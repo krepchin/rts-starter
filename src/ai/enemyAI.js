@@ -1,4 +1,4 @@
-import { TILE, BUILDINGS } from '../data/stats.js?v=9.2.2';
+import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
 
 // Scripted opponent using the same rules as the player: Construction Yard + queues, power, repair, superweapon, waves.
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];
@@ -44,6 +44,8 @@ export class EnemyAI {
       else if (u.type === 'engineer' && g.combat && !u.order && (this.engT = (this.engT || 0) + 1) % 20 === 0) {
         const foes = g.buildings.filter(b => b.team !== me && !b.packing && !b.stats.wall).sort((a, b) => a.dist(u) - b.dist(u)); const b = foes[0];
         if (b && b.dist(u) < 30 * TILE) u.command({ type: b.stats.cost >= 1000 && (u.abCd || 0) <= 0 ? 'demo' : 'capture', target: b }); } }
+    // 3d) v9.1 Dropship raids: build one late, fill it with a squad, cloak, drop next to an enemy refinery.
+    this.dropship(g, me, t);
     // 4) Repair damaged structures when we can afford it.
     for (const b of g.buildings) if (b.team === me && !b.repairing && b.hp < b.stats.hp * 0.6 && t.credits > 500) g.toggleRepair(me, b);
     // 5) Superweapon: hit the densest cluster of known enemy structures.
@@ -102,6 +104,16 @@ export class EnemyAI {
       const type = i === 0 ? 'gate' : 'wall'; if (g.wallAt(me, tx, ty) || g.buildings.some(b => b.team === me && b.tx === tx && b.ty === ty)) continue;
       if (type === 'gate' && !g.canPlaceInstant(me, 'gate', tx, ty)) continue;
       if (g.placeInstant(me, type, tx, ty)) return; }
+  }
+  dropship(g, me, t) {
+    const ds = g.units.find(u => u.team === me && u.type === 'dropship');
+    if (!ds) { if (g.time > 420 && t.credits > 1800 && !t.queues.aircraft.length && g.canProduce(me, 'dropship', false) && Math.random() < 0.05) g.enqueue(me, 'dropship', false); return; }
+    if (ds.order?.type === 'unload') return;
+    if (this.dropped) { for (const u of g.units) if (u.team === me && this.dropped.includes(u) && !u.order) { const tg = this.pickTarget(); if (tg) u.command({ type: 'attackMove', x: tg.x, y: tg.y }); } this.dropped = null; }
+    if (ds.used < 4) { if ((this.dsT = (this.dsT || 0) + 1) % 5 === 0) ds.loadNearby(8); return; }
+    if (!g.combat) return;
+    const tgt = g.buildings.filter(b => b.team !== me && b.type === 'refinery')[0] || this.pickTarget(); if (!tgt) return;
+    ds.setCloak(true); this.dropped = [...ds.cargo]; ds.unloadAt(tgt.x - 70, tgt.y + 60);
   }
   pickTarget() {
     const enemies = this.g.buildings.filter(b => b.team !== this.team);

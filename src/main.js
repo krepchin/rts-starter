@@ -1,23 +1,24 @@
-import { Game, GRACE_SECONDS } from './engine/game.js?v=9.2.2';
-import { BUILDINGS } from './data/stats.js?v=9.2.2';
-import { Camera } from './engine/camera.js?v=9.2.2';
-import { Renderer } from './engine/renderer.js?v=9.2.2';
-import { Input } from './engine/input.js?v=9.2.2';
-import { startLoop } from './engine/loop.js?v=9.2.2';
-import { PlayerUI } from './ui/selection.js?v=9.2.2';
-import { Sidebar } from './ui/sidebar.js?v=9.2.2';
-import { Minimap } from './ui/minimap.js?v=9.2.2';
-import { EnemyAI } from './ai/enemyAI.js?v=9.2.2';
-import { loadSprites } from './engine/sprites.js?v=9.2.2';
-import { Sound } from './engine/audio.js?v=9.2.2';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=10.0';
+import { BUILDINGS } from './data/stats.js?v=10.0';
+import { Camera } from './engine/camera.js?v=10.0';
+import { Renderer } from './engine/renderer.js?v=10.0';
+import { Input } from './engine/input.js?v=10.0';
+import { startLoop } from './engine/loop.js?v=10.0';
+import { PlayerUI } from './ui/selection.js?v=10.0';
+import { Sidebar } from './ui/sidebar.js?v=10.0';
+import { Minimap } from './ui/minimap.js?v=10.0';
+import { EnemyAI } from './ai/enemyAI.js?v=10.0';
+import { loadSprites } from './engine/sprites.js?v=10.0';
+import { Sound } from './engine/audio.js?v=10.0';
 
 loadSprites();
 
 const game = new Game();
-const sound = new Sound(); game.sfx = n => sound.play(n);
+const sound = new Sound(); game.sfx = (n, src) => sound.play(n, src, camera);
 const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇', '🔈', '🔉', '🔊'];
 volBtn.textContent = VOL_ICON[sound.level]; volBtn.addEventListener('click', () => { sound.start(); volBtn.textContent = VOL_ICON[sound.cycle()]; sound.play('select'); });
 const camera = new Camera(game.map);
+game.lowFx = matchMedia('(max-width: 700px), (pointer: coarse)').matches; // lighter particles on phones
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas, game, camera);
 const ui = new PlayerUI(game);

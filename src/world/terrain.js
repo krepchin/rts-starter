@@ -1,5 +1,5 @@
-import { TILE } from '../data/stats.js?v=9.2.2';
-import { mulberry } from './map.js?v=9.2.2';
+import { TILE } from '../data/stats.js?v=10.0';
+import { mulberry } from './map.js?v=10.0';
 
 // Procedural ground, pre-rendered lazily into 512px offscreen chunks (cheap to blit; phone-friendly).
 // Low-res colour field (biome noise: dirt / grass / rock, elevation shading, Tiberium staining around fields)

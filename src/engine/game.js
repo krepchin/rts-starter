@@ -1,16 +1,17 @@
-import { Jet, Bomber } from '../entities/air.js?v=9.2.2';
-import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=9.2.2';
-import { GameMap } from '../world/map.js?v=9.2.2';
-import { Fog } from '../world/fog.js?v=9.2.2';
-import { Building } from '../entities/building.js?v=9.2.2';
-import { Unit, Harvester } from '../entities/unit.js?v=9.2.2';
-import { Carrier, Interceptor } from '../entities/carrier.js?v=9.2.2';
-import { MobileBase, FORMATION } from '../entities/mcv.js?v=9.2.2';
+import { Jet, Bomber } from '../entities/air.js?v=10.0';
+import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=10.0';
+import { GameMap } from '../world/map.js?v=10.0';
+import { Fog } from '../world/fog.js?v=10.0';
+import { Building } from '../entities/building.js?v=10.0';
+import { Unit, Harvester } from '../entities/unit.js?v=10.0';
+import { Carrier, Interceptor } from '../entities/carrier.js?v=10.0';
+import { Dropship } from '../entities/dropship.js?v=10.0';
+import { MobileBase, FORMATION } from '../entities/mcv.js?v=10.0';
 export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
 
-const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber };
+const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber, dropship: Dropship };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
 export const GRACE_SECONDS = 600; // optional ceasefire at game start (applies to both sides)
 export const PRODUCER = { building: 'cy', infantry: 'barracks', vehicle: 'factory', aircraft: 'airfield' };
@@ -20,7 +21,7 @@ export class Game {
   constructor(opts = {}) {
     this.map = new GameMap(88, 88);
     this.graceUntil = opts.grace ? GRACE_SECONDS : 0;
-    this.units = []; this.buildings = []; this.effects = []; this.morphs = []; this.charges = []; this.bombs = []; this.shake = 0;
+    this.units = []; this.buildings = []; this.effects = []; this.morphs = []; this.charges = []; this.bombs = []; this.shake = 0; this.rockets = []; this.decals = []; this.lowFx = false;
     this.teams = [0, 1].map(id => ({ id, credits: ECONOMY.startCredits, powerMade: 0, powerUsed: 0, lowPower: false, radar: false,
       queues: { building: [], infantry: [], vehicle: [], aircraft: [] }, paused: {}, stalled: {}, rr: {}, readyBuilding: null }));
     this.fog = new Fog(this.map, 0);
@@ -50,7 +51,7 @@ export class Game {
   }
   spawnInterceptor(carrier) { const i = new Interceptor(this, carrier); this.units.push(i); return i; }
   removeQuiet(e) { e.dead = true; e.quiet = true; }
-  onDeath(e) { if (!e.quiet) this.effects.push({ t: 0.6, boom: true, x: e.x, y: e.y, r: e.radius * 1.6 }); }
+  onDeath(e) { if (!e.quiet) { this.effects.push({ t: 0.6, boom: true, x: e.x, y: e.y, r: e.radius * 1.6 }); this.sfx?.(e.kind === 'building' || e.radius > 20 ? 'boom_l' : e.stats.inf ? 'die_inf' : 'boom_m', e); } }
   // ---- queries
   get entities() { return [...this.buildings, ...this.units]; }
   findEnemyNear(src, range, filter) {
@@ -132,7 +133,7 @@ export class Game {
   sell(team, b) {
     if (!b || b.dead || b.team !== team || b.kind !== 'building') return 0;
     const refund = Math.floor((b.stats.cost || 0) * ECONOMY.sellRefund * b.hp / b.stats.hp);
-    this.teams[team].credits += refund;
+    this.teams[team].credits += refund; if (team === 0) this.sfx?.('sell', b);
     const survivors = Math.min(3, Math.floor(b.w * b.h / 3));
     for (let i = 0; i < survivors; i++) this.spawnUnit('infantry', team, b.x + (i - 1) * 12, (b.ty + b.h) * TILE + 8);
     this.removeQuiet(b); this.effects.push({ t: 0.8, sell: true, x: b.x, y: b.y, r: b.radius });
@@ -193,6 +194,27 @@ export class Game {
   }
   puff(x, y, color, spd, size, life, up = 0) { if (this.effects.length > 700) return; const a = Math.random() * 7, v = spd * (0.4 + Math.random() * 0.6);
     this.effects.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.5 - up, g: 0, size, color, t: life, life }); }
+  // v9.1/v10 painted rockets: projectile with body + fins, backblast and smoke puff at launch, curling smoke trail, flame glow,
+  // impact flash + debris + scorch decal. Purely visual (damage is applied by the weapon); particle counts are halved on phones (lowFx).
+  fxRocket(src, tgt) { if (this.rockets.length > 40) return; const a = Math.atan2(tgt.y - src.y, tgt.x - src.x), x = src.x + Math.cos(a) * 8, y = src.y - 12;
+    const n = this.lowFx ? 3 : 6; for (let i = 0; i < n; i++) this.puff(x - Math.cos(a) * 12, y - Math.sin(a) * 6, i < 2 ? '#ffcf7a' : '#bdb6a6', 50, 3 + Math.random() * 2, 0.5 + Math.random() * 0.4, 10);
+    this.rockets.push({ x0: x, y0: y, x1: tgt.x, y1: tgt.y - (tgt.isAir ? 20 : 4), x, y, k: 0, dur: Math.max(0.25, Math.hypot(tgt.x - x, tgt.y - y) / 420), seed: Math.random() * 6, trailT: 0, a, air: !!tgt.isAir }); }
+  updateRockets(dt) {
+    for (const r of this.rockets) { r.k += dt / r.dur; const k = Math.min(1, r.k), arc = Math.sin(k * Math.PI) * 16 * (r.air ? 0.3 : 1);
+      const nx = r.x0 + (r.x1 - r.x0) * k + Math.sin(k * 9 + r.seed) * 2.5, ny = r.y0 + (r.y1 - r.y0) * k - arc; r.a = Math.atan2(ny - r.y, nx - r.x); r.x = nx; r.y = ny;
+      r.trailT -= dt; if (r.trailT <= 0 && this.effects.length < 700) { r.trailT = this.lowFx ? 0.045 : 0.022;
+        this.effects.push({ part: true, smoke: true, x: r.x - Math.cos(r.a) * 6, y: r.y - Math.sin(r.a) * 6, vx: (Math.random() - .5) * 14, vy: -8 - Math.random() * 8, g: -6, size: 2.2, grow: 9, color: '#cfc8b8', t: 0.9, life: 0.9, curl: r.seed }); }
+      if (r.k >= 1) { r.done = true; this.rocketHit(r.x1, r.y1, !r.air); } }
+    this.rockets = this.rockets.filter(r => !r.done);
+    if (this.decals.length) { for (const d of this.decals) d.t -= dt; this.decals = this.decals.filter(d => d.t > 0); }
+  }
+  rocketHit(x, y, ground) {
+    this.effects.push({ t: 0.18, flash: true, x, y, r: 26 }); this.effects.push({ t: 0.45, boom: true, x, y, r: 14 });
+    const n = this.lowFx ? 5 : 10; for (let i = 0; i < n && this.effects.length < 700; i++) { const a = Math.random() * 7, v = 50 + Math.random() * 110;
+      this.effects.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 - 70, g: 300, size: 1.4, color: i % 3 ? '#5a4a36' : '#ffb347', glow: i % 3 === 0, t: 0.6, life: 0.6 }); }
+    for (let i = 0; i < (this.lowFx ? 2 : 4); i++) this.puff(x, y, '#8d8273', 30, 4, 0.9, 12);
+    if (ground) { this.decals.push({ x, y, r: 9 + Math.random() * 4, t: 25, life: 25, rot: Math.random() * 3 }); if (this.decals.length > 40) this.decals.shift(); }
+  }
   sparks(x, y) { for (let i = 0; i < 14 && this.effects.length < 700; i++) { const a = Math.random() * 7, v = 60 + Math.random() * 120;
     this.effects.push({ part: true, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 - 60, g: 320, size: 1.6, color: Math.random() < .5 ? '#ffd27a' : '#fff3c0', glow: true, t: 0.5, life: 0.5 }); } }
   fits(team, type, tx, ty, ignore) {
@@ -217,13 +239,22 @@ export class Game {
     return true;
   }
   // ---- tick
+  // v9.1 detection: cloaked units near an enemy Tiberium Cannon, Comm Center or detector unit are revealed (targetable).
+  updateDetection() {
+    const R = 6.5 * TILE;
+    for (const u of this.units) { if (!u.cloaked) { u.detected = false; continue; }
+      u.detected = this.buildings.some(b => !b.dead && b.team !== u.team && (b.type === 'turret' || b.stats.radar || b.stats.detector) && b.powered !== false && Math.hypot(b.x - u.x, b.y - u.y) < R)
+        || this.units.some(e => !e.dead && e.team !== u.team && e.stats.detector && Math.hypot(e.x - u.x, e.y - u.y) < R); }
+  }
   update(dt) {
+    this.detT = (this.detT || 0) - dt; if (this.detT <= 0) { this.detT = 0.25; this.updateDetection(); }
     if (this.over) return;
     this.time += dt; this.map.update(dt); this.updateMorphs(dt);
     for (const t of this.teams) {
       t.powerMade = 0; t.powerUsed = 0;
       for (const b of this.buildings) if (b.team === t.id && !b.dead && !b.packing) { if (b.stats.power > 0) t.powerMade += b.stats.power; else t.powerUsed -= b.stats.power; }
-      t.lowPower = t.powerUsed > t.powerMade;
+      const wasLow = t.lowPower; t.lowPower = t.powerUsed > t.powerMade;
+      if (t.id === 0 && this.time > 1 && wasLow !== t.lowPower) this.sfx?.(t.lowPower ? 'lowpower' : 'powerup');
       const pf = t.lowPower ? Math.max(ECONOMY.minPowerSpeed, t.powerMade / t.powerUsed) : 1;
       t.radar = !t.lowPower && this.has(t.id, 'radar');
       for (const cat of CATS) {
@@ -239,10 +270,11 @@ export class Game {
         if (it.progress >= it.time - 1e-6) {
           const rest = it.cost - it.paid; if (rest > 1e-6) { if (t.credits < rest) continue; t.credits -= rest; it.paid = it.cost; }
           q.shift();
-          if (it.isB) t.readyBuilding = it.key;
+          if (it.isB) { t.readyBuilding = it.key; if (t.id === 0) this.sfx?.('constructed'); }
           else {
             const p = prods[(t.rr[cat] = ((t.rr[cat] || 0) + 1) % prods.length)];
             const sp = p.spawnPoint(); const u = this.spawnUnit(it.key, t.id, sp.x + (Math.random() - .5) * 20, sp.y);
+            if (t.id === 0) { this.sfx?.('ready'); this.sfx?.('voice:ready', u); }
             if (p.rally) u.command(u.type === 'harvester' ? { type: 'harvest' } : { type: 'move', x: p.rally.x, y: p.rally.y });
           }
         }
@@ -270,7 +302,8 @@ export class Game {
       u.x = Math.max(4, Math.min(this.map.pxW - 4, u.x)); u.y = Math.max(4, Math.min(this.map.pxH - 4, u.y)); u.lastX = u.x; u.lastY = u.y;
     }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
-    for (const e of this.effects) { e.t -= dt; if (e.part) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += (e.g || 0) * dt; e.vx *= 0.97; } }
+    this.updateRockets(dt);
+    for (const e of this.effects) { e.t -= dt; if (e.part) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += (e.g || 0) * dt; e.vx *= 0.97; if (e.curl !== undefined) e.vx += Math.sin(this.time * 5 + e.curl + e.t * 6) * 18 * dt; } }
     for (const b of this.buildings) if (b.unfold) { const u = b.unfold; u.t += dt; u.P = 0.78 * Math.max(0, 1 - u.t / u.dur);
       if (!u.dust && u.P < 0.05) { u.dust = true; for (let k = 0; k < 10; k++) this.puff(b.x + (Math.random() - .5) * b.w * TILE, b.y + b.h * TILE / 2, '#c9a77a', 40, 6, 0.9); if (b.team === 0) this.sfx?.('clank'); }
       if (u.t >= u.dur) b.unfold = null; } this.effects = this.effects.filter(e => e.t > 0);

@@ -1,4 +1,4 @@
-import { TILE, BUILDINGS } from '../data/stats.js?v=9.2.2';
+import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
 
 // Unified mouse/pen/touch input via Pointer Events.
 // Mouse: left click select, left drag box-select, right click move/attack, edge-scroll, WASD/arrows pan.
@@ -47,7 +47,7 @@ export class Input {
     const d = this.down; if (!d) return;
     if (Math.hypot(p.x - d.x, p.y - d.y) > (d.type === 'mouse' ? 5 : 12)) d.moved = true;
     if (this.ui.wallDrag) { const h = this.ui.hoverTile; this.ui.wallDrag.x1 = h.x; this.ui.wallDrag.y1 = h.y; return; }
-    if (d.moved && d.button === 0 && !this.ui.placing && !this.ui.abilityTarget && !this.ui.targeting && !this.ui.deploying && !this.ui.burrowing) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
+    if (d.moved && d.button === 0 && !this.ui.placing && !this.ui.abilityTarget && !this.ui.unloading && !this.ui.targeting && !this.ui.deploying && !this.ui.burrowing) this.ui.box = { x0: Math.min(d.x, p.x), y0: Math.min(d.y, p.y), x1: Math.max(d.x, p.x), y1: Math.max(d.y, p.y) };
   }
   onUp(e) {
     clearTimeout(this.longTimer);
@@ -60,12 +60,14 @@ export class Input {
     if (this.ui.deploying) { this.ui.deployAt(w); return; }
     if (this.ui.burrowing) { this.ui.burrowAt(w); return; }
     if (this.ui.abilityTarget) { this.ui.abilityAt(w.x, w.y); return; }
+    if (this.ui.unloading) { this.ui.unloadAt(w); return; }
     if (this.ui.wallDrag) { const wd = this.ui.wallDrag; this.ui.wallDrag = null; if (wd.x0 !== wd.x1 || wd.y0 !== wd.y1) { this.ui.placeWallLine(wd); return; } }
     if (this.ui.placing) { this.updateHover(p); this.ui.place(); return; }
     if (this.ui.box) { const b = this.ui.box; this.ui.box = null;
       const a = this.cam.toWorld(b.x0, b.y0), c = this.cam.toWorld(b.x1, b.y1); this.ui.boxSelect(a.x, a.y, c.x, c.y, e.shiftKey); return; }
     // Click/tap: select own thing, otherwise (touch, or mouse with selection) command.
     const hit = this.g.entityAt(w.x, w.y);
+    if (hit && hit.team === 0 && hit.type === 'dropship' && [...this.ui.selection].some(u => u !== hit && hit.canTake?.(u))) { this.ui.commandAt(w.x, w.y); return; } // board
     if (hit && hit.team === 0) {
       // double-click / double-tap an own unit: centre the camera on the selection
       const now = performance.now(), dbl = this.lastTap && this.lastTap.e === hit && now - this.lastTap.t < 350;

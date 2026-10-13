@@ -1,5 +1,5 @@
-import { Unit } from './unit.js?v=9.2.2';
-import { UNITS, BUILDINGS, TILE } from '../data/stats.js?v=9.2.2';
+import { Unit } from './unit.js?v=10.0';
+import { UNITS, BUILDINGS, TILE } from '../data/stats.js?v=10.0';
 
 // v8 mobile command centre.
 //  'mcv'   = Construction Yard packed alone into a slow armored crawler.
@@ -96,9 +96,9 @@ export class MobileBase extends Unit {
     this.vel = Math.min(top, (this.vel || 0) + this.stats.speed * 1.4 * dt);
     const step = Math.min(d, this.vel * dt); this.x += Math.cos(this.heading) * step; this.y += Math.sin(this.heading) * step; return false;
   }
-  canHit(t) { return this.game.combat && t && !t.dead && t.team !== this.team && !t.isAir && !t.under && !t.cloaked; }
+  canHit(t) { return this.game.combat && t && !t.dead && t.team !== this.team && !t.isAir && !t.under && (!t.cloaked || t.detected); }
   fire(w, tgt, dt) {
-    const g = this.game, a = Math.atan2(tgt.y - this.y, tgt.x - this.x); this.aimA = a; this.faceRight = Math.cos(a) >= 0; this.spraying = 0.15;
+    const g = this.game, a = Math.atan2(tgt.y - this.y, tgt.x - this.x); this.aimA = a; this.faceRight = Math.cos(a) >= 0; this.spraying = 0.15; if (this.team === 0 || tgt.team === 0) g.sfx?.(this.mode === 'spray' ? 'spray' : 'drill', this);
     for (const e of [...g.buildings, ...g.units]) {
       if (!this.canHit(e)) continue; const d = this.dist(e); if (d > w.range * TILE + e.radius) continue;
       let da = Math.abs(Math.atan2(e.y - this.y, e.x - this.x) - a); if (da > Math.PI) da = 2 * Math.PI - da;

@@ -1,7 +1,7 @@
-import { BUILDINGS, UNITS } from '../data/stats.js?v=9.2.2';
-import { CATS, PRODUCER } from '../engine/game.js?v=9.2.2';
-import { getSprite } from '../engine/sprites.js?v=9.2.2';
-import { drawWall, drawGate, drawTurret, drawTrooper } from '../engine/art9.js?v=9.2.2';
+import { BUILDINGS, UNITS } from '../data/stats.js?v=10.0';
+import { CATS, PRODUCER } from '../engine/game.js?v=10.0';
+import { getSprite } from '../engine/sprites.js?v=10.0';
+import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.0';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],
@@ -17,7 +17,8 @@ function drawIcon(c, it) {
   if (name) { const sp = getSprite(name, 0); if (!sp) return false; const r = Math.min(W / sp.img.width, H / (sp.img.width * sp.aspect)) * 0.95;
     const w = sp.img.width * r, h = sp.img.width * sp.aspect * r; ctx.drawImage(sp.img, (W - w) / 2, (H - h) / 2, w, h); return true; }
   ctx.save();
-  if (it.s.inf) { ctx.translate(W / 2, H * 0.92); ctx.scale(1.25, 1.25); drawTrooper(ctx, { type: k, team: 0, aim: 0 }, 0, 24, false, 0); }
+  if (k === 'dropship') { ctx.translate(W / 2, H * 0.62); ctx.scale(1.35, 1.35); drawDropship(ctx, { x: 0, y: 12, id: 0, team: 0, angle: 0 }, 0.3, 0); }
+  else if (it.s.inf) { ctx.translate(W / 2, H * 0.92); ctx.scale(1.25, 1.25); drawTrooper(ctx, { type: k, team: 0, aim: 0 }, 0, 24, false, 0); }
   else { const s = it.s, tl = 32, sc = Math.min(W / (s.w * tl + 8), H / (s.h * tl + 18)); ctx.translate(W / 2, H / 2 + 4); ctx.scale(sc, sc); ctx.translate(-s.w * tl / 2, -s.h * tl / 2);
     const fake = { type: k, team: 0, tx: 0, ty: 0, w: s.w, h: s.h, stats: s, hp: s.hp, age: 9, aim: -0.6, openK: 0, powered: true, x: s.w * 16, y: s.h * 16 };
     const g = { wallAt: (tm, x, y) => (k === 'wall' && y === 0 && Math.abs(x) === 1), buildings: [], units: [] };
@@ -119,8 +120,9 @@ export class Sidebar {
     const g = this.g, sel = [...this.ui.selection], one = sel.length === 1 ? sel[0] : null;
     const isB = !!(one && one.kind === 'building' && one.team === 0 && !one.packing);
     const isM = !!(one && one.carried && one.team === 0);
-    const abil = !isB && !isM ? [...new Set(sel.filter(u => u.kind === 'unit' && u.team === 0 && u.stats.ability).map(u => u.type))].sort() : [];
-    const key = isB ? `b${one.id}` : isM ? `m${one.id}` : abil.length ? 'a' + abil.join() : '';
+    const isD = !!(one && one.type === 'dropship' && one.team === 0);
+    const abil = !isB && !isM && !isD ? [...new Set(sel.filter(u => u.kind === 'unit' && u.team === 0 && u.stats.ability).map(u => u.type))].sort() : [];
+    const key = isB ? `b${one.id}` : isM ? `m${one.id}` : isD ? `d${one.id}` : abil.length ? 'a' + abil.join() : '';
     if (key !== this.selKey) { // rebuild action buttons only when the selection changes
       this.selKey = key; this.el.actions.replaceChildren(); this.act = {}; this.armed = null;
       const mk = (id, label, fn, title) => { const b = document.createElement('button'); b.textContent = label; b._t = label; b.dataset.act = id; if (title) b.title = title; b.addEventListener('click', fn); this.el.actions.append(b); this.act[id] = b; };
@@ -129,6 +131,11 @@ export class Sidebar {
       for (const ty of abil) { if (AB[ty]) mk(AB[ty][0], AB[ty][1], () => { for (const u of this.ui.selection) if (u.type === ty && u.team === 0) u.useAbility(); }, AB[ty][2]);
         if (ty === 'engineer') { mk('capture', '⚑Capture', () => this.ui.beginAbilityTarget('capture'), 'Capture: tap an enemy building (engineer is used up)');
           mk('demo', '✸Demo', () => this.ui.beginAbilityTarget('demo'), 'Demo charge: tap an enemy building (5 s fuse)'); } }
+      if (isD) {
+        mk('dcloak', '◌Cloak', () => one.useAbility(), 'Cloak: invisible to enemies (drains energy). Turrets / Comm Centers nearby can detect it');
+        mk('load', '⇩Load', () => { one.loadNearby(5); g.sfx?.('move'); }, 'Nearby infantry and vehicles board (8 slots, tank = 4)');
+        mk('unload', '⇧Unload', () => this.ui.unloading === one ? this.ui.cancel() : this.ui.beginUnload(one), 'Unload all: tap a spot');
+      }
       if (isB) {
         if (one.stats.gate) mk('lock', 'Lock', () => { one.locked = !one.locked; g.sfx?.('servo'); }, 'Lock: keep closed even for your own units');
         mk('repair', 'Repair', () => g.toggleRepair(0, one));
@@ -160,6 +167,11 @@ export class Sidebar {
       setT(this.el.info, `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp} · Carries: ${names}\n${this.ui.deploying === one ? 'Tap map to deploy (right-click/Esc cancels)' : this.ui.burrowing === one ? 'Tap a spot to burrow to' : st} · no production`);
       return;
     }
+    if (isD) { const A = this.act;
+      setT(A.dcloak, one.cloaked ? '◌Uncloak' : one.cloakCd > 0 ? `⏳${Math.ceil(one.cloakCd)}s` : '◌Cloak'); setD(A.dcloak, !one.canUse()); setC(A.dcloak, 'on', one.cloaked);
+      setD(A.load, one.used >= one.stats.capacity); setD(A.unload, !one.cargo.length); setC(A.unload, 'on', this.ui.unloading === one); setT(A.unload, this.ui.unloading === one ? 'Target…' : one.unloading ? 'Dropping' : '⇧Unload');
+      setT(this.el.info, `${one.stats.name}  HP ${Math.ceil(one.hp)}/${one.stats.hp}\nCargo ${one.used}/${one.stats.capacity} · Energy ${Math.floor(one.energy)}${one.cloaked ? (one.detected ? ' · DETECTED' : ' · cloaked') : ''}\n${this.ui.unloading === one ? 'Tap the drop point' : 'Tap it with units selected to board'}`);
+      return; }
     if (abil.length) { const A = this.act, us = sel.filter(u => u.kind === 'unit' && u.team === 0);
       const st = (ty, on) => { const l = us.filter(u => u.type === ty); return { on: l.some(on), ready: l.some(u => u.canUse()), cd: Math.min(...l.map(u => u.abCd || 0)) }; };
       if (A.stim) { const r = st('infantry', u => u.stimT > 0); setC(A.stim, 'on', r.on); setD(A.stim, !r.ready); setT(A.stim, r.on ? '⚡Stimmed' : r.ready ? '⚡Stim' : `⏳${Math.ceil(r.cd)}s`); }

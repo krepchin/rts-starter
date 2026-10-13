@@ -1,9 +1,28 @@
-# Tiberium Skirmish — RTS Starter (v9)
+# Tiberium Skirmish — RTS Starter (v9.1)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies. Art is a mix of image sprites in `assets/` (buildings, tanks, harvester, air units, soldiers) with procedural canvas drawing as the fallback, plus code-drawn art (terrain, effects, and the v8 Mobile Yard / Base Walker).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+## What's new in v9.1
+- **Tougher walls and gates:** Wall HP 450 → 1800, Gate 800 → 3200 (4x). New per-weapon modifier vs walls/gates: rockets x1.0, tank x0.8,
+  rifles x0.1, sniper x0.05. Measured: 3 Rocket Troopers break a wall in ~27 s and a gate in ~50 s; one tank ~77 s; one rifleman ~24 min;
+  the walker's sprayer ~6 s. Damage states (cracks, broken corner) scale with the HP fraction.
+- **Sound overhaul:** layered SFX = CC0 samples from Kenney.nl (Sci-Fi Sounds, Impact Sounds, Interface Sounds; `assets/sfx`, ~390 KB mp3,
+  loaded after the first tap) + synthesized transients, pitch envelopes, sub thumps and a generated convolution reverb, varied per play.
+  Distinct rifle, sniper crack, rocket whoosh + impact, tank cannon, turret bolt, sprayer hiss, drill, explosions by size; vocoded radio
+  acknowledgements per unit type on select/move/attack/ready; building place/construct/sell/power up/down; UI clicks; a desert wind bed;
+  alerts (base under attack, unit ready, low power). Voice limiter, per-sound rate limits, distance falloff, compressor/limiter, and ducking.
+- **Music:** cinematic hybrid loop: low string ensemble, brass swells, taiko-style drums, string ostinato and a tension build (snare roll and
+  rising ostinato), in sections (intro / A / B / C). All synthesized; mixed under the SFX.
+- **Dropship** (Vehicles tab, needs an Airfield, $1200): cloaking tilt-rotor transport, unarmed. 8 slots (infantry 1, vehicles 4); walker,
+  harvesters and aircraft can't board. Select units and tap the Dropship (or use Load) to board; Unload + tap a spot drops everyone in ~2-3 s.
+  Cloak drains energy (100, 7/s, regen 3/s, 8 s cooldown); unloading breaks it; enemy turrets / Comm Centers within 6.5 tiles detect cloaked
+  units (also affects Sniper cloak). The AI occasionally raids with one.
+- Painted rockets: rocket body with fins, backblast and smoke puff, curling smoke trail, flame glow, impact flash + debris + scorch decals (lighter on phones).
+- Test: `tests/v91_features.py`.
+- Sound credits: Kenney.nl (www.kenney.nl), CC0 1.0 (assets/sfx/LICENSE-kenney.txt).
 
 ## What's new in v9 (painted style, infantry, defenses)
 - **Painted look** matching Kent's painted preview: sandy desert terrain with dirt texture and ridges, glowing green tiberium clusters, gritty gray/olive

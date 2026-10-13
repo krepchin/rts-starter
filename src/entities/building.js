@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=9.2.2';
-import { BUILDINGS, TILE } from '../data/stats.js?v=9.2.2';
+import { Entity } from './entity.js?v=10.0';
+import { BUILDINGS, TILE } from '../data/stats.js?v=10.0';
 
 export class Building extends Entity {
   constructor(game, type, team, tx, ty) {

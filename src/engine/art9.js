@@ -1,7 +1,7 @@
 // v9 painted-style art drawn in code: staged transform sequence, walls/gates/turret, four infantry types, tiberium clusters.
-import { TILE, TEAM_COLORS } from '../data/stats.js?v=9.2.2';
-import { drawBuildingArt } from './buildingArt.js?v=9.2.2';
-import { getSprite } from './sprites.js?v=9.2.2';
+import { TILE, TEAM_COLORS } from '../data/stats.js?v=10.0';
+import { drawBuildingArt } from './buildingArt.js?v=10.0';
+import { getSprite } from './sprites.js?v=10.0';
 
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const easeOut = k => 1 - (1 - k) * (1 - k);
@@ -145,4 +145,36 @@ export function drawCrystalCluster(ctx, tx, ty, f, t) {
     ctx.fillStyle = 'rgba(220,255,200,0.55)'; ctx.beginPath(); ctx.moveTo(ox + lean, oy - h); ctx.lineTo(ox - w * 0.2, oy - h * 0.4); ctx.lineTo(ox - w * 0.6, oy - h * 0.3); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
+}
+
+// ---- v9.1 Dropship: painted tilt-rotor transport (gunmetal/olive hull, glass canopy, twin rotor nacelles, hazard-striped ramp)
+export function drawDropship(ctx, u, t, viewerTeam = 0) {
+  const lift = 20 + Math.sin(t * 2.2 + u.id) * 2, face = Math.cos(u.angle || 0) >= 0 ? 1 : -1, tilt = Math.max(-0.25, Math.min(0.25, (u.vx || 0) * 0.002));
+  const hidden = u.cloaked && u.team !== viewerTeam && !u.detected;
+  ctx.save();
+  ctx.globalAlpha = hidden ? 0.07 : u.cloaked ? 0.4 : 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, 30, 9, 0, 0, 7); ctx.fill();
+  ctx.translate(u.x, u.y - lift); ctx.scale(face, 1); ctx.rotate(tilt);
+  // wings + nacelles (back)
+  ctx.fillStyle = '#3c3e38'; ctx.fillRect(-6, -6, 12, 4);
+  for (const nx of [-27, 27]) { ctx.fillStyle = '#2e302c'; ctx.fillRect(nx > 0 ? 4 : -27, -7, 23, 5);
+    ctx.fillStyle = '#4c4f47'; ctx.beginPath(); ctx.ellipse(nx, -8, 5, 9, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#25261f'; ctx.fillRect(nx - 5, -10, 10, 3);
+    ctx.fillStyle = u.cloaked ? 'rgba(160,255,200,0.5)' : 'rgba(255,170,60,0.85)'; ctx.beginPath(); ctx.arc(nx, 1, 2.6, 0, 7); ctx.fill();
+    // rotor disc blur
+    const sp = t * 40 + nx; ctx.strokeStyle = 'rgba(210,210,190,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(nx, -17, 16, 4.5, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = 'rgba(40,40,36,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(nx + Math.cos(sp) * 16, -17 + Math.sin(sp) * 4.5); ctx.lineTo(nx - Math.cos(sp) * 16, -17 - Math.sin(sp) * 4.5); ctx.stroke(); }
+  // fuselage
+  const g = ctx.createLinearGradient(0, -14, 0, 10); g.addColorStop(0, '#6f7266'); g.addColorStop(0.5, '#4d5047'); g.addColorStop(1, '#2c2d28');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(24, -2); ctx.quadraticCurveTo(22, -12, 8, -13); ctx.lineTo(-18, -11); ctx.lineTo(-26, -5); ctx.lineTo(-24, 6); ctx.lineTo(16, 8); ctx.quadraticCurveTo(25, 5, 24, -2); ctx.fill();
+  ctx.strokeStyle = '#1b1c18'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.moveTo(-8, -12); ctx.lineTo(-8, 7); ctx.moveTo(4, -13); ctx.lineTo(4, 8); ctx.stroke();
+  ctx.fillStyle = '#9fd3a0'; ctx.globalAlpha *= 0.9; ctx.beginPath(); ctx.moveTo(22, -3); ctx.quadraticCurveTo(20, -10, 11, -10); ctx.lineTo(10, -3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(13, -9, 5, 1.5);
+  ctx.fillStyle = '#c9a227'; ctx.fillRect(-25, -4, 4, 9); ctx.fillStyle = '#1e1d1a'; for (let y = -4; y < 5; y += 3) ctx.fillRect(-25, y, 4, 1.5);
+  ctx.fillStyle = u.team === 0 ? '#4fa7d8' : '#c8402c'; ctx.fillRect(-4, -2, 6, 3);
+  ctx.restore();
+  if (u.cloaked && !hidden) { ctx.save(); ctx.strokeStyle = `rgba(150,255,220,${0.35 + 0.25 * Math.sin(t * 9)})`; ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.ellipse(u.x, u.y - lift - 3, 30, 15, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+  else if (hidden) { ctx.save(); ctx.strokeStyle = `rgba(200,255,230,${0.08 + 0.05 * Math.sin(t * 7)})`; ctx.beginPath(); ctx.ellipse(u.x, u.y - lift - 3, 26, 12, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+  return { lift, hidden };
 }

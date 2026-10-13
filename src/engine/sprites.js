@@ -1,7 +1,7 @@
 // Preloaded raster sprites (assets/*.png, @2x for high-DPI screens). Each sprite gets a per-team canvas:
 // team 0 = original steel-blue art, team 1 = red/rust tinted copy so factions stay distinct.
 // get() returns null until loaded or if loading failed, so callers fall back to procedural drawing.
-import { paintGrade } from './paint.js?v=9.2.2';
+import { paintGrade } from './paint.js?v=10.0';
 const PW_TINT = { 1: 'rgba(160,40,20,0.28)' };
 const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_drone', 'icp_jet', 'icp_vtol', 'harvester', 'soldier',
   'b_power', 'b_refinery', 'b_barracks', 'b_factory', 'b_airfield', 'b_radar', 'b_turret', 'b_ion',

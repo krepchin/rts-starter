@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=9.2.2';
-import { UNITS, TILE } from '../data/stats.js?v=9.2.2';
+import { Entity } from './entity.js?v=10.0';
+import { UNITS, TILE } from '../data/stats.js?v=10.0';
 
 // Orders: {type:'move',x,y} | {type:'attack',target} | {type:'attackMove',x,y} | {type:'harvest'} | idle (null)
 export class Unit extends Entity {
@@ -81,6 +81,9 @@ export class Unit extends Entity {
     if (this.type === 'medic' && this.medicUpdate(dt)) { this.separate(dt); return; }
     if (this.type === 'engineer' && this.engineerUpdate(dt)) { this.separate(dt); return; }
     const o = this.order;
+    if (o?.type === 'board') { const d = o.target; // walk to a friendly Dropship and climb in
+      if (!d || d.dead || !d.canTake(this)) this.order = null;
+      else { if (this.dist(d) <= d.radius + this.radius + 10) d.take(this); else this.moveToward(d.x, d.y, dt, 2); return; } }
     if (o?.type === 'move') { if (this.moveToward(o.x, o.y, dt)) { this.order = null; this.anchor = { x: this.x, y: this.y }; } }
     else if (o?.type === 'attack') { // explicit attack order: pursue (player intent), then idle where it ended
       if (!this.canHit(o.target)) { this.order = null; this.anchor = { x: this.x, y: this.y }; }

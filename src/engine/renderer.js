@@ -1,11 +1,11 @@
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=9.2.2';
-import { drawBuildingArt } from './buildingArt.js?v=9.2.2';
-import { Terrain } from '../world/terrain.js?v=9.2.2';
-import { drawMobileBase } from './mcvArt.js?v=9.2.2';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, SEL, MUZZLE } from './art9.js?v=9.2.2';
-import { FORMATION } from '../entities/mcv.js?v=9.2.2';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=9.2.2';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=9.2.2';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.0';
+import { drawBuildingArt } from './buildingArt.js?v=10.0';
+import { Terrain } from '../world/terrain.js?v=10.0';
+import { drawMobileBase } from './mcvArt.js?v=10.0';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.0';
+import { FORMATION } from '../entities/mcv.js?v=10.0';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.0';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.0';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -31,23 +31,36 @@ export class Renderer {
       const amt = g.map.tib[i];
       if (amt > 5) drawCrystalCluster(ctx, x, y, amt / 500, t);
     }
+    for (const d of g.decals) { // scorch decals under everything
+      const a = Math.min(1, d.t / 4) * 0.55; ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot); ctx.fillStyle = `rgba(30,22,14,${a})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * 0.55, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(20,14,8,${a})`; ctx.beginPath(); ctx.ellipse(1, 0, d.r * 0.5, d.r * 0.3, 0.4, 0, 7); ctx.fill(); ctx.restore(); }
     const vis = g.buildings.filter(b => b.team === 0 || fog.visibleAt(b.x, b.y) || b.seen).sort((a, b) => (a.ty + a.h) - (b.ty + b.h));
     for (const b of vis) { if (b.team !== 0) b.seen = true; this.drawBuilding(b, ui.selection.has(b), t); }
     const ground = g.units.filter(u => !u.isAir), air = g.units.filter(u => u.isAir);
     for (const u of [...ground, ...air]) if (u.team === 0 || fog.visibleAt(u.x, u.y)) this.drawUnit(u, ui.selection.has(u), t);
+    for (const r of g.rockets) { // painted rocket: flame glow, body, fins, nose
+      ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.a);
+      const fl = 6 + Math.random() * 4, gr = ctx.createRadialGradient(-6, 0, 0, -6, 0, fl + 4); gr.addColorStop(0, 'rgba(255,240,170,0.95)'); gr.addColorStop(0.4, 'rgba(255,150,40,0.7)'); gr.addColorStop(1, 'rgba(255,80,0,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(-7, 0, fl + 3, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5b5e55'; ctx.fillRect(-6, -1.6, 10, 3.2); ctx.fillStyle = '#8b8e83'; ctx.fillRect(-6, -1.6, 10, 1);
+      ctx.fillStyle = '#c9a227'; ctx.fillRect(1, -1.6, 1.5, 3.2); ctx.fillStyle = '#2c2d28'; ctx.beginPath(); ctx.moveTo(4, -1.6); ctx.lineTo(7.5, 0); ctx.lineTo(4, 1.6); ctx.fill();
+      ctx.fillStyle = '#3a3c36'; ctx.beginPath(); ctx.moveTo(-6, -1.5); ctx.lineTo(-8.5, -4); ctx.lineTo(-4, -1.5); ctx.moveTo(-6, 1.5); ctx.lineTo(-8.5, 4); ctx.lineTo(-4, 1.5); ctx.fill();
+      ctx.restore(); }
     for (const e of g.effects) {
       if (e.ping) { ctx.strokeStyle = '#6f6'; ctx.beginPath(); ctx.arc(e.x, e.y, Math.max(1, 4 + (0.3 - e.t) * 40), 0, 7); ctx.stroke(); }
       else if (e.ion) { const k = e.t / 1.4; ctx.save(); ctx.globalAlpha = Math.min(1, k * 2); ctx.shadowColor = '#9cf'; ctx.shadowBlur = 30;
         ctx.fillStyle = '#dff'; ctx.fillRect(e.x - 10 * k, e.y - 900, 20 * k, 900); ctx.strokeStyle = '#9cf'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.3 - k), 0, 7); ctx.stroke(); ctx.fillStyle = '#9cf6'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * k, 0, 7); ctx.fill(); ctx.restore(); }
       else if (e.sell) { ctx.strokeStyle = `rgba(200,200,180,${e.t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.6 - e.t), 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+      else if (e.rocket && this.g.rockets) { /* drawn as a real projectile (drawRockets) */ }
       else if (e.bolt || e.rocket) { const k = 1 - e.t / 0.25, px = e.x1 + (e.x2 - e.x1) * Math.min(1, k * 1.6), py = e.y1 + (e.y2 - e.y1) * Math.min(1, k * 1.6) - Math.sin(Math.min(1, k * 1.6) * Math.PI) * (e.rocket ? 14 : 4);
         ctx.save(); ctx.shadowColor = e.bolt ? '#7f3' : '#fa6'; ctx.shadowBlur = 10; ctx.fillStyle = e.bolt ? '#c8ff7a' : '#ffd08a'; ctx.beginPath(); ctx.arc(px, py, e.bolt ? 3.5 : 2.5, 0, 7); ctx.fill();
         if (e.rocket) { ctx.fillStyle = 'rgba(200,200,190,0.5)'; ctx.beginPath(); ctx.arc(px - (e.x2 - e.x1) * 0.06, py - (e.y2 - e.y1) * 0.06, 3, 0, 7); ctx.fill(); }
         if (k > 0.6) { ctx.globalAlpha = (1 - k) * 2.5; ctx.beginPath(); ctx.arc(e.x2, e.y2, 8 * k, 0, 7); ctx.fill(); } ctx.restore(); }
       else if (e.dustRing) { const k = 1 - e.t / 0.7; ctx.strokeStyle = `rgba(200,165,115,${(1 - k) * 0.8})`; ctx.lineWidth = 6 * (1 - k) + 1; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * (0.4 + k), e.r * 0.4 * (0.4 + k), 0, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
       else if (e.part) { ctx.globalAlpha = Math.max(0, e.t / e.life); ctx.fillStyle = e.color; if (e.glow) { ctx.shadowColor = e.color; ctx.shadowBlur = 6; }
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (e.glow ? 1 : 1.6 - e.t / e.life), 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.grow ? e.size + e.grow * (1 - e.t / e.life) : e.size * (e.glow ? 1 : 1.6 - e.t / e.life), 0, 7); if (e.smoke) ctx.globalAlpha *= 0.55; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1; }
+      else if (e.flash) { const k = e.t / 0.18; ctx.fillStyle = `rgba(255,240,190,${k * 0.85})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.3 - k * 0.5), 0, 7); ctx.fill(); }
       else if (e.erupt) { const k = e.t / 0.9; ctx.strokeStyle = `rgba(160,120,70,${k})`; ctx.lineWidth = 6 * k; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * (1.2 - k * 0.6), e.r * 0.45 * (1.2 - k * 0.6), 0, 0, 7); ctx.stroke();
         ctx.fillStyle = `rgba(255,200,90,${k * 0.6})`; ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r * 0.5 * k, e.r * 0.2 * k, 0, 0, 7); ctx.fill(); ctx.lineWidth = 1; }
       else if (e.boom) { ctx.fillStyle = `rgba(255,${150 + e.t * 150 | 0},60,${e.t / 0.6})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.2 - e.t), 0, 7); ctx.fill(); }
@@ -91,6 +104,12 @@ export class Renderer {
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if (u.type === 'jet' || u.type === 'bomber') { this.drawStrikeCraft(u, sel, col, t); return; }
     if (u.type === 'carrier' && this.drawCarrierTD(u, sel, col, t)) return;
+    if (u.type === 'dropship') { const ctx = this.ctx, { lift, hidden } = drawDropship(ctx, u, t, 0); if (hidden) return;
+      if (sel) { ctx.strokeStyle = SEL; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, 32, 10, 0, 0, 7); ctx.stroke(); }
+      if (u.team === 0 || sel || u.hp < u.stats.hp) this.hpBar(u, u.x - 18, u.y - lift - 24, 36, sel);
+      if (u.team === 0) { const cap = u.stats.capacity, used = u.used; for (let i = 0; i < cap; i++) { ctx.fillStyle = i < used ? '#c8ff7a' : '#0008'; ctx.fillRect(u.x - 18 + i * 4.6, u.y - lift - 19, 3.6, 3); }
+        ctx.fillStyle = '#4fd8ff'; ctx.fillRect(u.x - 18, u.y - lift - 15, 36 * u.energy / u.stats.energy, 2); }
+      return; }
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
