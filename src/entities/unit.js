@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=9.2.2';
-import { UNITS, TILE } from '../data/stats.js?v=9.2.2';
+import { Entity } from './entity.js?v=9.2.2b';
+import { UNITS, TILE } from '../data/stats.js?v=9.2.2b';
 
 // Orders: {type:'move',x,y} | {type:'attack',target} | {type:'attackMove',x,y} | {type:'harvest'} | idle (null)
 export class Unit extends Entity {
@@ -14,7 +14,22 @@ export class Unit extends Entity {
     if (d <= stopDist) return true;
     if (this.dug) return false; // dug-in rockets can't move
     const step = Math.min(d, this.spd() * dt);
-    this.x += dx / d * step; this.y += dy / d * step; this.angle = Math.atan2(dy, dx);
+    this.angle = Math.atan2(dy, dx);
+    const g = this.game, ux = dx / d, uy = dy / d;
+    if (this.isAir || !g.solidAt) { this.x += ux * step; this.y += uy * step; return false; }
+    // v9.2.3: walls / closed gates are impassable. Go straight if clear, else slide along the wall, else detour around it.
+    const R = Math.min(this.radius || 6, 10) * 0.7, me = this.team;
+    const free = (x, y) => !g.solidAt(x, y, me) && !g.solidAt(x + R, y, me) && !g.solidAt(x - R, y, me) && !g.solidAt(x, y + R, me) && !g.solidAt(x, y - R, me);
+    const nx = this.x + ux * step, ny = this.y + uy * step;
+    if (free(nx, ny) && !this.detour) { this.x = nx; this.y = ny; this.blockT = 0; return false; }
+    if (this.detour && free(nx, ny) && free(this.x + ux * 24, this.y + uy * 24)) { this.detour = 0; this.x = nx; this.y = ny; return false; }
+    this.blockT = (this.blockT || 0) + dt; this.blocked = this.blockT;
+    if (!this.detour) { if (free(nx, this.y) && Math.abs(ux) > 0.2) { this.x = nx; return false; } if (free(this.x, ny) && Math.abs(uy) > 0.2) { this.y = ny; return false; } }
+    if (!this.detour) { const l = free(this.x - uy * 24, this.y + ux * 24), r = free(this.x + uy * 24, this.y - ux * 24); this.detour = l && !r ? 1 : r && !l ? -1 : ((this.id || 0) % 2 ? 1 : -1); }
+    const px = -uy * this.detour, py = ux * this.detour; // walk along the wall face
+    if (free(this.x + px * step, this.y + py * step)) { this.x += px * step; this.y += py * step; this.angle = Math.atan2(py, px); }
+    else this.detour = -this.detour;
+    if (this.blockT > 12) { this.detour = 0; this.blockT = 0; return true; } // no way round: give up and stop at the wall
     return false;
   }
   spd() { return this.stats.speed * (this.stimT > 0 ? 1.6 : 1); }

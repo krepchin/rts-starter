@@ -1,7 +1,7 @@
-import { BUILDINGS, UNITS } from '../data/stats.js?v=9.2.2';
-import { CATS, PRODUCER } from '../engine/game.js?v=9.2.2';
-import { getSprite } from '../engine/sprites.js?v=9.2.2';
-import { drawWall, drawGate, drawTurret, drawTrooper } from '../engine/art9.js?v=9.2.2';
+import { BUILDINGS, UNITS } from '../data/stats.js?v=9.2.2b';
+import { CATS, PRODUCER } from '../engine/game.js?v=9.2.2b';
+import { getSprite } from '../engine/sprites.js?v=9.2.2b';
+import { drawWall, drawGate, drawTurret, drawTrooper } from '../engine/art9.js?v=9.2.2b';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],

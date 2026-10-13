@@ -1,11 +1,11 @@
-import { Jet, Bomber } from '../entities/air.js?v=9.2.2';
-import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=9.2.2';
-import { GameMap } from '../world/map.js?v=9.2.2';
-import { Fog } from '../world/fog.js?v=9.2.2';
-import { Building } from '../entities/building.js?v=9.2.2';
-import { Unit, Harvester } from '../entities/unit.js?v=9.2.2';
-import { Carrier, Interceptor } from '../entities/carrier.js?v=9.2.2';
-import { MobileBase, FORMATION } from '../entities/mcv.js?v=9.2.2';
+import { Jet, Bomber } from '../entities/air.js?v=9.2.2b';
+import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=9.2.2b';
+import { GameMap } from '../world/map.js?v=9.2.2b';
+import { Fog } from '../world/fog.js?v=9.2.2b';
+import { Building } from '../entities/building.js?v=9.2.2b';
+import { Unit, Harvester } from '../entities/unit.js?v=9.2.2b';
+import { Carrier, Interceptor } from '../entities/carrier.js?v=9.2.2b';
+import { MobileBase, FORMATION } from '../entities/mcv.js?v=9.2.2b';
 export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
@@ -216,6 +216,10 @@ export class Game {
     this.removeQuiet(mb); mb.becameBuilding = cy; if (mb.team === 0) this.sfx?.('build'); this.effects.push({ t: 0.8, sell: true, x: mb.x, y: mb.y, r: 70 });
     return true;
   }
+  // v9.2.3: wall / gate occupancy grid (rebuilt each tick). Friendly gates count as open only while their openK > 0.5.
+  rebuildSolid() { const m = new Map(); for (const b of this.buildings) if (!b.dead && (b.stats.wall || b.stats.gate)) m.set(b.ty * this.map.w + b.tx, b); this._solid = m; }
+  solidAt(px, py, team) { if (!this._solid) return false; const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE); const b = this._solid.get(ty * this.map.w + tx);
+    return !!b && !b.dead && !(b.stats.gate && b.team === team && (b.openK || 0) > 0.5); }
   // ---- tick
   update(dt) {
     if (this.over) return;
@@ -263,12 +267,17 @@ export class Game {
     this.charges = this.charges.filter(c => c.t > 0 && !c.b.dead);
     this.shake = Math.max(0, this.shake - dt * 12);
     for (const b of this.buildings) if (!b.dead) b.update(dt);
+    this.rebuildSolid();
     for (const u of this.units) if (!u.dead) {
       u.update(dt);
       // Safety net for every unit class (Carrier/Harvester have their own update): never leave the map, never NaN.
       if (!Number.isFinite(u.x) || !Number.isFinite(u.y)) { u.x = u.lastX ?? this.map.pxW / 2; u.y = u.lastY ?? this.map.pxH / 2; }
       u.x = Math.max(4, Math.min(this.map.pxW - 4, u.x)); u.y = Math.max(4, Math.min(this.map.pxH - 4, u.y)); u.lastX = u.x; u.lastY = u.y;
     }
+    // never leave a ground unit inside a wall/closed gate (covers separation, knockback, ramming): restore its last safe spot
+    for (const u of this.units) if (!u.dead && !u.isAir && !u.carried) {
+      if (this.solidAt(u.x, u.y, u.team)) { if (u.safeX !== undefined) { u.x = u.safeX; u.y = u.safeY; } else { const b = this._solid.get(Math.floor(u.y / TILE) * this.map.w + Math.floor(u.x / TILE)); u.y = (b.ty + b.h) * TILE + 6; } }
+      else { u.safeX = u.x; u.safeY = u.y; } }
     this.units = this.units.filter(u => !u.dead); this.buildings = this.buildings.filter(b => !b.dead);
     for (const e of this.effects) { e.t -= dt; if (e.part) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += (e.g || 0) * dt; e.vx *= 0.97; } }
     for (const b of this.buildings) if (b.unfold) { const u = b.unfold; u.t += dt; u.P = 0.78 * Math.max(0, 1 - u.t / u.dur);

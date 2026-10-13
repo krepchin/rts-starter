@@ -1,15 +1,15 @@
-import { Game, GRACE_SECONDS } from './engine/game.js?v=9.2.2';
-import { BUILDINGS } from './data/stats.js?v=9.2.2';
-import { Camera } from './engine/camera.js?v=9.2.2';
-import { Renderer } from './engine/renderer.js?v=9.2.2';
-import { Input } from './engine/input.js?v=9.2.2';
-import { startLoop } from './engine/loop.js?v=9.2.2';
-import { PlayerUI } from './ui/selection.js?v=9.2.2';
-import { Sidebar } from './ui/sidebar.js?v=9.2.2';
-import { Minimap } from './ui/minimap.js?v=9.2.2';
-import { EnemyAI } from './ai/enemyAI.js?v=9.2.2';
-import { loadSprites } from './engine/sprites.js?v=9.2.2';
-import { Sound } from './engine/audio.js?v=9.2.2';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=9.2.2b';
+import { BUILDINGS } from './data/stats.js?v=9.2.2b';
+import { Camera } from './engine/camera.js?v=9.2.2b';
+import { Renderer } from './engine/renderer.js?v=9.2.2b';
+import { Input } from './engine/input.js?v=9.2.2b';
+import { startLoop } from './engine/loop.js?v=9.2.2b';
+import { PlayerUI } from './ui/selection.js?v=9.2.2b';
+import { Sidebar } from './ui/sidebar.js?v=9.2.2b';
+import { Minimap } from './ui/minimap.js?v=9.2.2b';
+import { EnemyAI } from './ai/enemyAI.js?v=9.2.2b';
+import { loadSprites } from './engine/sprites.js?v=9.2.2b';
+import { Sound } from './engine/audio.js?v=9.2.2b';
 
 loadSprites();
 

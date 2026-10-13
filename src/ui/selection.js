@@ -1,4 +1,4 @@
-import { BUILDINGS } from '../data/stats.js?v=9.2.2';
+import { BUILDINGS } from '../data/stats.js?v=9.2.2b';
 // Player-side command layer: selection, orders, building placement + superweapon targeting state.
 export class PlayerUI {
   constructor(game) { this.g = game; this.selection = new Set(); this.box = null; this.placing = null; this.targeting = false; this.hoverTile = { x: 0, y: 0 }; this.hoverWorld = null; }
