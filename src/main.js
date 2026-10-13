@@ -1,15 +1,15 @@
-import { Game, GRACE_SECONDS } from './engine/game.js';
-import { BUILDINGS } from './data/stats.js';
-import { Camera } from './engine/camera.js';
-import { Renderer } from './engine/renderer.js';
-import { Input } from './engine/input.js';
-import { startLoop } from './engine/loop.js';
-import { PlayerUI } from './ui/selection.js';
-import { Sidebar } from './ui/sidebar.js';
-import { Minimap } from './ui/minimap.js';
-import { EnemyAI } from './ai/enemyAI.js';
-import { loadSprites } from './engine/sprites.js';
-import { Sound } from './engine/audio.js';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=9.2.2';
+import { BUILDINGS } from './data/stats.js?v=9.2.2';
+import { Camera } from './engine/camera.js?v=9.2.2';
+import { Renderer } from './engine/renderer.js?v=9.2.2';
+import { Input } from './engine/input.js?v=9.2.2';
+import { startLoop } from './engine/loop.js?v=9.2.2';
+import { PlayerUI } from './ui/selection.js?v=9.2.2';
+import { Sidebar } from './ui/sidebar.js?v=9.2.2';
+import { Minimap } from './ui/minimap.js?v=9.2.2';
+import { EnemyAI } from './ai/enemyAI.js?v=9.2.2';
+import { loadSprites } from './engine/sprites.js?v=9.2.2';
+import { Sound } from './engine/audio.js?v=9.2.2';
 
 loadSprites();
 
@@ -35,6 +35,7 @@ function start() { game.graceUntil = graceOpt.checked ? GRACE_SECONDS : 0; start
 document.getElementById('startBtn').addEventListener('click', start);
 if (params.get('autostart') === '1') start();
 window.startGame = start;
+if (window.__wantStart) { document.getElementById('startBtn').textContent = 'Start Skirmish'; start(); } // tapped while modules were still loading
 
 // iOS Safari: 100vh includes the URL bar, so size from innerHeight.
 function onResize() { document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`); renderer.resize(); }

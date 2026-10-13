@@ -1,4 +1,4 @@
-import { TEAM_COLORS } from '../data/stats.js';
+import { TEAM_COLORS } from '../data/stats.js?v=9.2.2';
 
 // Minimap needs a powered Comm Center (radar). Without it: static + "RADAR OFFLINE" (still tap/drag to move camera).
 export class Minimap {

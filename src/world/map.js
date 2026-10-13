@@ -1,4 +1,4 @@
-import { TILE, ECONOMY } from '../data/stats.js';
+import { TILE, ECONOMY } from '../data/stats.js?v=9.2.2';
 
 // Simple tile map: terrain + tiberium amount per tile. Tiberium slowly regrows and spreads.
 export class GameMap {

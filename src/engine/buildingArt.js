@@ -1,5 +1,5 @@
-import { TILE } from '../data/stats.js';
-import { getSprite } from './sprites.js';
+import { TILE } from '../data/stats.js?v=9.2.2';
+import { getSprite } from './sprites.js?v=9.2.2';
 
 // Procedural C&C-style 2.5D structures. Each building sits on its tile footprint; height is drawn "up" the screen
 // (oblique projection), so gameplay stays on the flat tile grid. Player = clean blue/steel tech, enemy = red/rust angular.

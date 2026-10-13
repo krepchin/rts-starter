@@ -1,4 +1,4 @@
-import { TILE, BUILDINGS } from '../data/stats.js';
+import { TILE, BUILDINGS } from '../data/stats.js?v=9.2.2';
 
 // Unified mouse/pen/touch input via Pointer Events.
 // Mouse: left click select, left drag box-select, right click move/attack, edge-scroll, WASD/arrows pan.

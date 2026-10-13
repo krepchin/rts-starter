@@ -1,11 +1,11 @@
-import { Jet, Bomber } from '../entities/air.js';
-import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js';
-import { GameMap } from '../world/map.js';
-import { Fog } from '../world/fog.js';
-import { Building } from '../entities/building.js';
-import { Unit, Harvester } from '../entities/unit.js';
-import { Carrier, Interceptor } from '../entities/carrier.js';
-import { MobileBase, FORMATION } from '../entities/mcv.js';
+import { Jet, Bomber } from '../entities/air.js?v=9.2.2';
+import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=9.2.2';
+import { GameMap } from '../world/map.js?v=9.2.2';
+import { Fog } from '../world/fog.js?v=9.2.2';
+import { Building } from '../entities/building.js?v=9.2.2';
+import { Unit, Harvester } from '../entities/unit.js?v=9.2.2';
+import { Carrier, Interceptor } from '../entities/carrier.js?v=9.2.2';
+import { MobileBase, FORMATION } from '../entities/mcv.js?v=9.2.2';
 export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };

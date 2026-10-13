@@ -1,5 +1,5 @@
-import { TEAM_COLORS } from '../data/stats.js';
-import { getSprite } from './sprites.js';
+import { TEAM_COLORS } from '../data/stats.js?v=9.2.2';
+import { getSprite } from './sprites.js?v=9.2.2';
 // v8 code-drawn art for the Mobile Yard crawler and the Base Walker (no image assets needed, so nothing to fall back from).
 // Same 3/4 view as the building art; flipped horizontally by heading. Ground point = (u.x, u.y).
 const PAL = { 0: { hull: '#7d8a92', dark: '#4b555c', light: '#b4c0c6', trim: '#3fa9ff', glass: '#9fe2ff' },

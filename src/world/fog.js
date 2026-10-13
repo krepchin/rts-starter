@@ -1,4 +1,4 @@
-import { TILE } from '../data/stats.js';
+import { TILE } from '../data/stats.js?v=9.2.2';
 // Simple fog of war for one team: 0 = unexplored, 1 = explored, 2 = visible this frame.
 export class Fog {
   constructor(map, team) { this.map = map; this.team = team; this.v = new Uint8Array(map.w * map.h); this.enabled = true; }

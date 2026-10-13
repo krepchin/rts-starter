@@ -1,11 +1,11 @@
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js';
-import { drawBuildingArt } from './buildingArt.js';
-import { Terrain } from '../world/terrain.js';
-import { drawMobileBase } from './mcvArt.js';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, SEL, MUZZLE } from './art9.js';
-import { FORMATION } from '../entities/mcv.js';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=9.2.2';
+import { drawBuildingArt } from './buildingArt.js?v=9.2.2';
+import { Terrain } from '../world/terrain.js?v=9.2.2';
+import { drawMobileBase } from './mcvArt.js?v=9.2.2';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, SEL, MUZZLE } from './art9.js?v=9.2.2';
+import { FORMATION } from '../entities/mcv.js?v=9.2.2';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=9.2.2';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=9.2.2';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
