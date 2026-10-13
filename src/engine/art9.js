@@ -119,6 +119,12 @@ export function drawTrooper(ctx, u, t, H, moving, ph) {
     ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, -21, 3, 0, 7); ctx.fill(); ctx.fillStyle = '#f2c230'; ctx.beginPath(); ctx.arc(0, -22, 3.8, Math.PI, 0); ctx.fill(); ctx.fillRect(-4.6, -22.3, 9.2, 1.4);
     ctx.fillStyle = '#b8352a'; ctx.fillRect(4, -10, 5, 4); ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-3, -14); ctx.lineTo(-8, -8); ctx.stroke();
     ctx.fillStyle = tm; ctx.fillRect(-3.5, -18, 7, 1.5);
+  } else if (type === 'medic') { // white field kit with red cross armband, satchel, no rifle
+    legs('#3a3f45'); torso('#e4e2d8', 7, 10); ctx.fillStyle = '#c42a22'; ctx.fillRect(-1, -17, 2, 6); ctx.fillRect(-3, -15, 6, 2); // red cross
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, -21, 3, 0, 7); ctx.fill(); ctx.fillStyle = '#6b7058'; ctx.beginPath(); ctx.arc(0, -22, 3.6, Math.PI, 0); ctx.fill(); // helmet
+    ctx.fillStyle = '#fff'; ctx.fillRect(-1.5, -25, 3, 1); ctx.fillStyle = '#7a5a34'; ctx.fillRect(-7, -13, 4, 5); // satchel
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(3, -14); ctx.lineTo(8, -12); ctx.stroke(); ctx.fillStyle = '#9fe'; ctx.fillRect(7.5, -13, 2, 2); // injector
+    ctx.fillStyle = tm; ctx.fillRect(-3.5, -9.5, 7, 1.5);
   } else { // rifleman fallback (normally the sprite)
     legs('#2a333c'); torso(tm, 7, 10); ctx.fillStyle = '#556'; ctx.beginPath(); ctx.arc(0, -21, 3.2, 0, 7); ctx.fill();
     ctx.fillStyle = '#9ff'; ctx.fillRect(0.5, -22, 2.5, 1.2); ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, -14); ctx.lineTo(9, -11); ctx.stroke();
@@ -126,7 +132,7 @@ export function drawTrooper(ctx, u, t, H, moving, ph) {
   ctx.lineCap = 'butt'; ctx.lineWidth = 1;
 }
 function shade(hex) { const n = parseInt(hex.slice(1, 7), 16), r = (n >> 16) * 0.65 | 0, g = (n >> 8 & 255) * 0.65 | 0, b = (n & 255) * 0.65 | 0; return `rgb(${r},${g},${b})`; }
-export const MUZZLE = { infantry: [10, -11], sniper: [15, -14], rocket: [12, -24], engineer: [0, -12] };
+export const MUZZLE = { infantry: [10, -11], sniper: [15, -14], rocket: [12, -24], engineer: [0, -12], medic: [8, -12] };
 
 // ---- tiberium: glowing green crystal clusters with a darker base, highlight facets and a soft glow
 export function drawCrystalCluster(ctx, tx, ty, f, t) {

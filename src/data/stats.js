@@ -10,7 +10,9 @@ export const BUILDINGS = {
   barracks: { name: 'Barracks',          w: 2, h: 2, hp: 700,  cost: 300,  time: 6,  power: -20, sight: 5, builds: 'infantry', req: ['power'] },
   factory:  { name: 'War Factory',       w: 3, h: 3, hp: 1100, cost: 1500, time: 12, power: -30, sight: 5, builds: 'vehicle', req: ['refinery'] },
   radar:    { name: 'Comm Center',       w: 2, h: 2, hp: 800,  cost: 1000, time: 10, power: -40, sight: 10, req: ['refinery'], radar: true },
-  airfield: { name: 'Airfield',          w: 3, h: 2, hp: 900,  cost: 1600, time: 12, power: -40, sight: 6, builds: 'aircraft', req: ['factory'] },
+  airfield: { name: 'Airfield',          w: 3, h: 2, hp: 900,  cost: 1600, time: 12, power: -40, sight: 6, builds: 'aircraft', req: ['factory'], repairs: { rate: 60, reach: 2.5, air: true } },
+  // v9.2 Repair Center: vehicles parked on/next to it are repaired (costs credits like building repair)
+  repairbay: { name: 'Repair Center',    w: 2, h: 2, hp: 900,  cost: 800,  time: 10, power: -20, sight: 5, req: ['factory'], repairs: { rate: 45, reach: 1.2 } },
   // v9 defenses (Defense tab): Tiberium cannon turret, auto-connecting walls, gates that open for friendlies
   turret:   { name: 'Tiberium Cannon',   w: 1, h: 1, hp: 650,  cost: 600,  time: 6,  power: -15, sight: 7, req: ['barracks'], def: true,
               weapon: { range: 6, damage: 34, cooldown: 1.0, air: false, color: '#9f4', bolt: true } },
@@ -30,10 +32,16 @@ export const UNITS = {
   rocket:    { name: 'Rocket Trooper', from: 'infantry', inf: true, hp: 110, cost: 300, time: 6, speed: 32, radius: 6, sight: 6, ability: 'digin',
                weapon: { range: 5.5, damage: 38, cooldown: 1.8, air: true, color: '#fa6', vsVeh: 1.8, vsInf: 0.4, rocket: true } },
   engineer:  { name: 'Engineer', from: 'infantry', inf: true, hp: 70, cost: 400, time: 6, speed: 45, radius: 5, sight: 5, ability: 'engineer', repair: 30, req: ['refinery'] },
+  medic:     { name: 'Medic', from: 'infantry', inf: true, hp: 75, cost: 250, time: 5, speed: 50, radius: 5, sight: 5, ability: 'medic', heal: 16, healRange: 2.5 },
   tank:      { name: 'Light Tank', from: 'vehicle', hp: 380, cost: 700, time: 8, speed: 70, radius: 11, sight: 6,
                weapon: { range: 5, damage: 35, cooldown: 1.2, air: false, color: '#fd6' } },
   carrier:   { name: 'Carrier', from: 'aircraft', hp: 1400, cost: 2500, time: 20, speed: 30, radius: 22, sight: 9, air: true,
                interceptors: 6, launchRange: 8, rebuildTime: 5, leashRange: 11 },
+  // v9.2 air: Fighter Jet (air superiority, hit-and-run strafing) and Stealth Bomber (cloaked flying wing, bomb-line runs)
+  jet:       { name: 'Fighter Jet', from: 'aircraft', hp: 260, cost: 1100, time: 10, speed: 200, radius: 10, sight: 8, air: true, req: ['radar'],
+               weapon: { range: 6, damage: 48, cooldown: 1.0, air: true, color: '#ffd27a', vsAir: 1.0, vsGround: 0.35, rocket: true }, strafe: { damage: 9, cooldown: 0.12 } },
+  bomber:    { name: 'Stealth Bomber', from: 'aircraft', hp: 380, cost: 2000, time: 18, speed: 58, radius: 16, sight: 7, air: true, req: ['radar'],
+               stealth: { reveal: 3.2 }, bombs: { count: 7, spacing: 18, damage: 85, radius: 30, reload: 14 } },
   // v8 mobile command centre (not buildable: made by packing / transforming a Construction Yard; hp = carried buildings)
   mcv:       { name: 'Mobile Yard', hp: 1500, speed: 32, radius: 18, sight: 6, buildable: false },
   robot:     { name: 'Base Walker', hp: 3900, speed: 24, radius: 30, sight: 8, buildable: false },

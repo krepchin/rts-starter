@@ -49,6 +49,11 @@ export class Unit extends Entity {
         this.command({ type: 'move', x: this.x + (this.x - b.x) * 0.8, y: this.y + (this.y - b.y) * 0.8 }); }
       return true;
     }
+    if (o?.type === 'repair') { // v9.2: field repair of a targeted own vehicle (or building)
+      const v = o.target; if (!v || v.dead || v.team !== this.team || v.hp >= v.stats.hp) { this.order = null; this.repairing = null; return true; }
+      if (this.dist(v) > v.radius + 14) { this.moveToward(v.x, v.y, dt, v.radius + 8); this.repairing = null; return true; }
+      v.hp = Math.min(v.stats.hp, v.hp + this.stats.repair * 1.5 * dt); this.repairing = v; v.beingRepaired = 0.3; return true;
+    }
     if (!o) { // auto-repair
       let best = null, bd = 2.5 * TILE;
       for (const e of [...g.buildings, ...g.units]) if (e.team === this.team && !e.dead && e !== this && e.hp < e.stats.hp && !e.stats.inf && !e.isAir) { const d = this.dist(e) - e.radius; if (d < bd) { bd = d; best = e; } }
@@ -56,8 +61,24 @@ export class Unit extends Entity {
     } else this.repairing = null;
     return false;
   }
+  // v9.2 Medic: heals a targeted (or the most hurt nearby) friendly infantryman; follows a heal order to its target.
+  medicUpdate(dt) {
+    const o = this.order, s = this.stats, R = s.healRange * TILE;
+    let p = o?.type === 'heal' ? o.target : null;
+    if (p && (p.dead || p.team !== this.team || p.hp >= p.stats.hp)) { this.order = null; p = null; }
+    if (p && this.dist(p) > R) { this.moveToward(p.x, p.y, dt, R * 0.6); this.healing = null; return true; }
+    if (!p && (!o || o.type === 'attackMove')) { let bd = R * (o ? 1 : 1.6), best = null;
+      for (const u of this.game.units) if (u.team === this.team && u.stats.inf && !u.dead && u !== this && u.hp < u.stats.hp) { const d = this.dist(u) - (u.stats.hp - u.hp) * 0.2; if (d < bd) { bd = d; best = u; } }
+      p = best; if (p && this.dist(p) > R) { this.moveToward(p.x, p.y, dt, R * 0.6); this.healing = null; return true; } }
+    if (!p && o?.type === 'attackMove' && this.moveToward(o.x, o.y, dt)) this.order = null;
+    if (!p && this.hp < s.hp) p = this; // self-heal slowly when nobody else needs it
+    this.healing = p && p !== this ? p : null;
+    if (p) p.hp = Math.min(p.stats.hp, p.hp + s.heal * (p === this ? 0.4 : 1) * dt);
+    return o?.type === 'heal';
+  }
   update(dt) {
-    this.cool -= dt; this.tickAbility(dt);
+    this.cool -= dt; this.tickAbility(dt); if (this.beingRepaired > 0) this.beingRepaired -= dt;
+    if (this.type === 'medic' && this.medicUpdate(dt)) { this.separate(dt); return; }
     if (this.type === 'engineer' && this.engineerUpdate(dt)) { this.separate(dt); return; }
     const o = this.order;
     if (o?.type === 'move') { if (this.moveToward(o.x, o.y, dt)) { this.order = null; this.anchor = { x: this.x, y: this.y }; } }

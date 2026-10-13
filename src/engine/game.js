@@ -1,3 +1,4 @@
+import { Jet, Bomber } from '../entities/air.js';
 import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js';
 import { GameMap } from '../world/map.js';
 import { Fog } from '../world/fog.js';
@@ -9,7 +10,7 @@ export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, the
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
 
-const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier };
+const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
 export const GRACE_SECONDS = 600; // optional ceasefire at game start (applies to both sides)
 export const PRODUCER = { building: 'cy', infantry: 'barracks', vehicle: 'factory', aircraft: 'airfield' };
@@ -19,7 +20,7 @@ export class Game {
   constructor(opts = {}) {
     this.map = new GameMap(88, 88);
     this.graceUntil = opts.grace ? GRACE_SECONDS : 0;
-    this.units = []; this.buildings = []; this.effects = []; this.morphs = []; this.charges = []; this.shake = 0;
+    this.units = []; this.buildings = []; this.effects = []; this.morphs = []; this.charges = []; this.bombs = []; this.shake = 0;
     this.teams = [0, 1].map(id => ({ id, credits: ECONOMY.startCredits, powerMade: 0, powerUsed: 0, lowPower: false, radar: false,
       queues: { building: [], infantry: [], vehicle: [], aircraft: [] }, paused: {}, stalled: {}, rr: {}, readyBuilding: null }));
     this.fog = new Fog(this.map, 0);
@@ -38,6 +39,7 @@ export class Game {
   }
   // ---- entity management
   addBuilding(type, team, tx, ty) {
+    if (type === 'cy' && this.teams[team].startLeft === undefined) this.teams[team].startLeft = tx + 1.5 < this.map.w / 2; // start side
     const b = new Building(this, type, team, tx, ty); this.buildings.push(b);
     if (b.stats.freeUnit) { const p = b.spawnPoint(); this.spawnUnit(b.stats.freeUnit, team, p.x, p.y); }
     return b;
@@ -254,6 +256,10 @@ export class Game {
       }
     }
     for (const c of this.charges) { c.t -= dt; if (c.t <= 0 && !c.b.dead) { c.b.damage(600, null, true); this.effects.push({ t: 0.7, boom: true, x: c.b.x, y: c.b.y, r: c.b.radius * 1.8 }); this.sfx?.('boom'); this.shake = Math.max(this.shake, 4); } }
+    for (const bm of this.bombs) { bm.t -= dt; if (bm.t <= 0) { // stealth bomber payload lands
+      for (const e of [...this.units, ...this.buildings]) if (e.team !== bm.team && !e.dead && !e.isAir && Math.hypot(e.x - bm.x, e.y - bm.y) < bm.r + e.radius * 0.6) e.damage(bm.dmg * (e.kind === 'building' ? 1.2 : 1), bm.src);
+      this.effects.push({ t: 0.6, boom: true, x: bm.x, y: bm.y, r: bm.r }); this.puff(bm.x, bm.y, '#3a3128', 30, 9, 1.2, 25); this.shake = Math.max(this.shake, 2.5); this.sfx?.('boom'); } }
+    this.bombs = this.bombs.filter(bm => bm.t > 0);
     this.charges = this.charges.filter(c => c.t > 0 && !c.b.dead);
     this.shake = Math.max(0, this.shake - dt * 12);
     for (const b of this.buildings) if (!b.dead) b.update(dt);

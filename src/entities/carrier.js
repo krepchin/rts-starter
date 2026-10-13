@@ -14,6 +14,10 @@ export class Carrier extends Unit {
     const total = this.docked + this.wing.filter(i => !i.dead).length;
     if (total < s.interceptors) { this.rebuild += dt; if (this.rebuild >= s.rebuildTime) { this.rebuild = 0; this.docked++; } }
     this.wing = this.wing.filter(i => !i.dead);
+    // v9.2: a badly damaged carrier recalls its wing and limps home to the Airfield, which repairs it.
+    if (this.hp < s.hp * 0.3 && !this.goingHome && this.order?.type !== 'move') { const f = this.game.nearestOwn(this, 'airfield'); if (f) this.goingHome = f; }
+    if (this.goingHome) { const f = this.goingHome; if (f.dead || this.hp >= s.hp || this.order?.type === 'move') this.goingHome = null;
+      else { for (const i of this.wing) i.target = null; this.moveToward(f.x, f.y, dt, 20); this.separate(dt); return; } }
     let target = this.order?.type === 'attack' && this.canHitT(this.order.target) ? this.order.target : null;
     if (!target) { if (!this.canHitT(this.target)) this.target = this.game.findEnemyNear(this, s.launchRange * TILE, e => this.canHitT(e)); target = this.target; }
     if (target && this.dist(target) <= s.launchRange * TILE + target.radius) {

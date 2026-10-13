@@ -26,5 +26,5 @@ export class Entity {
     }
     return true;
   }
-  canHit(t) { const w = this.stats.weapon; return w && this.game.combat && !t.dead && !t.under && !t.cloaked && t.team !== this.team && (!t.isAir || w.air); }
+  canHit(t) { const w = this.stats.weapon; return w && this.game.combat && !t.dead && !t.under && !t.cloaked && !(t.hiddenFrom && t.hiddenFrom(this)) && t.team !== this.team && (!t.isAir || w.air); }
 }

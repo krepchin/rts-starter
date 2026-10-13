@@ -103,6 +103,20 @@ function overlay(ctx, P, b, X, Y, W, H, t, s, top, sw, sh) {
 }
 
 const ART = {
+  // v9.2 Repair Center: open service pad with a gantry crane, arm with welding sparks when a vehicle is on the pad.
+  repairbay(ctx, P, b, X, Y, W, H, t, s) {
+    ctx.fillStyle = '#3a3f38'; poly(ctx, outline(X + 5, Y + 10, W - 10, H - 14, 4)); ctx.fill(); ctx.strokeStyle = P.dark; ctx.stroke();
+    ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.strokeRect(X + 12, Y + 18, W - 24, H - 28); ctx.setLineDash([]); ctx.lineWidth = 1;
+    ctx.fillStyle = '#c9a227'; for (let i = 0; i < 4; i++) { ctx.save(); ctx.translate(X + 14 + i * 9, Y + H - 9); ctx.transform(1, 0, -0.6, 1, 0, 0); ctx.fillRect(0, 0, 4, 4); ctx.restore(); }
+    block(ctx, P, X + 4, Y + 8, 8, 8, 34, { c: 1 }); block(ctx, P, X + W - 12, Y + 8, 8, 8, 34, { c: 1 }); // gantry legs
+    block(ctx, P, X + 2, Y + 4, W - 4, 7, 6, { c: 1, roof: P.metal }); // beam (raised 34)
+    const hx = X + W / 2 + Math.sin(t * 0.8) * (W * 0.25), busy = !!b.fixing;
+    ctx.strokeStyle = '#222'; ctx.beginPath(); ctx.moveTo(hx, Y - 30); ctx.lineTo(hx, Y + H / 2 - 12); ctx.stroke();
+    ctx.fillStyle = '#d0a020'; ctx.fillRect(hx - 4, Y + H / 2 - 14, 8, 5);
+    if (busy && s.powered) for (let i = 0; i < 3; i++) glowDot(ctx, hx + (Math.random() - .5) * 8, Y + H / 2 - 6 + Math.random() * 4, 1.5 + Math.random() * 2, i ? '#ffd27a' : '#fff', 0.9);
+    glowDot(ctx, X + 8, Y - 28, 2.5, busy ? '#6f6' : P.accent, blink(t, busy ? 0.3 : 1.2) ? 1 : 0.3);
+    ctx.fillStyle = '#e8e8e0'; ctx.fillRect(X + W - 22, Y + H - 18, 10, 3); ctx.fillRect(X + W - 18.5, Y + H - 21.5, 3, 10); // wrench-cross decal
+  },
   cy(ctx, P, b, X, Y, W, H, t, s) {
     const r = block(ctx, P, X + 8, Y + 34, W - 16, H - 42, 22);
     windows(ctx, P, X + 14, Y + H - 14, 6, 8, 5, s.powered);
@@ -246,6 +260,8 @@ export function drawBuildingArt(ctx, b, t, game) {
   const build = Math.min(1, (b.age ?? 9) / 1.2); // rise-up animation when placed
   const spr = getSprite(b.type === 'cy' ? 'cy' : 'b_' + b.type, b.team);
   ctx.save();
+  const fr = b.faceRight ?? game?.teams?.[b.team]?.startLeft; // v9.2: face the enemy (art is drawn facing left natively)
+  if (fr) { ctx.translate(2 * (X + W / 2), 0); ctx.scale(-1, 1); }
   if (!spr) pad(ctx, P, X, Y, W, H);
   if (build < 1) { ctx.beginPath(); ctx.rect(X - 20, Y + H - (H + 80) * build, W + 40, (H + 80) * build + 4); ctx.clip(); }
   if (spr) { // approved isometric artwork (enemy copy is red-tinted); footprint stays the 3x3 tile grid

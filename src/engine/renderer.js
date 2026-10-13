@@ -4,6 +4,7 @@ import { Terrain } from '../world/terrain.js';
 import { drawMobileBase } from './mcvArt.js';
 import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, SEL, MUZZLE } from './art9.js';
 import { FORMATION } from '../entities/mcv.js';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js';
 import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
@@ -84,9 +85,11 @@ export class Renderer {
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
+    if (u.beingRepaired > 0 && !u.stats.inf && u.type !== 'jet' && u.type !== 'bomber') drawRepairGlint(ctx, u.x, u.y - r - 4, t);
     if (u.carried) { drawMobileBase(ctx, u, sel, t); return; }
     if (u.stats.inf) { this.drawSoldier(u, sel, col, t); return; }
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
+    if (u.type === 'jet' || u.type === 'bomber') { this.drawStrikeCraft(u, sel, col, t); return; }
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
     ctx.save(); ctx.translate(u.x, u.y);
     if (u.isAir) { ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.ellipse(6, 10, r, r * 0.6, 0, 0, 7); ctx.fill(); }
@@ -108,6 +111,19 @@ export class Renderer {
     ctx.restore();
     if (u.type !== 'interceptor') this.hpBar(u, u.x - r, u.y - r - 7, r * 2, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.arc(u.x, u.y, r + 4, 0, 7); ctx.stroke(); }
+  }
+  // v9.2 Fighter Jet / Stealth Bomber: painted top-down craft, rotated to heading and banked through turns.
+  drawStrikeCraft(u, sel, col, t) {
+    const ctx = this.ctx, bomber = u.type === 'bomber', lift = bomber ? 22 : 16;
+    let alpha = 1;
+    if (bomber && u.stealthed) { const near = u.team !== 0 && this.g.units.some(o => o.team === 0 && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 80);
+      alpha = u.team === 0 ? 0.45 + 0.1 * Math.sin(t * 5) : near ? 0.5 : 0.1 + 0.06 * Math.sin(t * 7 + u.id); }
+    ctx.save(); ctx.globalAlpha = alpha * 0.55; ctx.fillStyle = '#000'; ctx.translate(u.x + lift * 0.6, u.y + lift); ctx.rotate(u.angle); ctx.scale(1, 1 - Math.abs(u.bank || 0) * 0.3);
+    ctx.beginPath(); if (bomber) { ctx.moveTo(14, 0); ctx.lineTo(-10, 30); ctx.lineTo(-6, 0); ctx.lineTo(-10, -30); } else { ctx.moveTo(14, 0); ctx.lineTo(-10, 10); ctx.lineTo(-10, -10); } ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.globalAlpha = alpha; (bomber ? drawBomber : drawJet)(ctx, u, t, col); ctx.restore();
+    if (u.team === 0 || alpha > 0.3) this.hpBar(u, u.x - 12, u.y - (bomber ? 26 : 18), 24, sel);
+    if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.arc(u.x, u.y, bomber ? 30 : 18, 0, 7); ctx.stroke(); }
+    if (u.beingRepaired > 0) drawRepairGlint(ctx, u.x, u.y - 8, t);
   }
   // Rifle Trooper: ~24px human figure, feet on the ground point, walking bob/sway, muzzle flash, team ring + tint.
   drawSoldier(u, sel, col, t) {
@@ -133,6 +149,8 @@ export class Renderer {
     const w = u.stats.weapon; if (w && u.cool > w.cooldown - 0.08) { // just fired: muzzle flash at rifle tip
       ctx.save(); ctx.shadowColor = '#ffd27a'; ctx.shadowBlur = 8; ctx.fillStyle = '#fff3c0'; const mz = spr ? [6.5, -7.5] : MUZZLE[u.type] || [10, -11]; ctx.beginPath(); ctx.arc(mz[0], mz[1], u.type === 'rocket' ? 3.5 : 2.4, 0, 7); ctx.fill(); ctx.restore(); }
     ctx.restore(); ctx.lineWidth = 1; ctx.globalAlpha = 1;
+    if (u.healing && !u.healing.dead) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + 0.4 * Math.sin(t * 16)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(u.healing.x, u.healing.y - 8); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = '#e33'; const hx = u.healing.x, hy = u.healing.y - 28 - (t * 20 % 8); ctx.fillRect(hx - 3, hy - 1, 6, 2); ctx.fillRect(hx - 1, hy - 3, 2, 6); }
     if (u.repairing && !u.repairing.dead) { ctx.strokeStyle = `rgba(120,255,140,${0.5 + 0.4 * Math.sin(t * 20)})`; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(u.repairing.x, u.repairing.y); ctx.stroke(); ctx.setLineDash([]); }
     if (u.team !== 0 || sel || u.hp < u.stats.hp) this.hpBar(u, fx - 7, fy - H - 6 - bob, 14, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.ellipse(fx, fy, 9.5, 4.2, 0, 0, 7); ctx.stroke(); }
@@ -184,7 +202,7 @@ export class Renderer {
   }
   drawPlacement(ui) {
     const s = BUILDINGS[ui.placing], ht = ui.hoverTile, ok = this.g.canPlace(0, ui.placing, ht.x, ht.y), ctx = this.ctx;
-    ctx.globalAlpha = 0.55; drawBuildingArt(ctx, { type: ui.placing, team: 0, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.55; drawBuildingArt(ctx, { type: ui.placing, team: 0, faceRight: !!this.g.teams[0].startLeft, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
     ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
     for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { ctx.fillRect((ht.x + x) * TILE + 1, (ht.y + y) * TILE + 1, TILE - 2, TILE - 2); }
     ctx.strokeRect(ht.x * TILE, ht.y * TILE, s.w * TILE, s.h * TILE);
@@ -194,7 +212,7 @@ export class Renderer {
     const mb = ui.deploying, p = ui.hoverWorld || { x: mb.x, y: mb.y }, ht = ui.deployTile(p), ctx = this.ctx, g = this.g;
     for (const f of mb.footprint()) {
       const s = BUILDINGS[f.type], tx = ht.x + f.dx, ty = ht.y + f.dy, ok = g.fits(0, f.type, tx, ty);
-      ctx.globalAlpha = 0.5; drawBuildingArt(ctx, { type: f.type, team: 0, tx, ty, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.5; drawBuildingArt(ctx, { type: f.type, team: 0, faceRight: !!this.g.teams[0].startLeft, tx, ty, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
       ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
       for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) ctx.fillRect((tx + x) * TILE + 1, (ty + y) * TILE + 1, TILE - 2, TILE - 2);
       ctx.strokeRect(tx * TILE, ty * TILE, s.w * TILE, s.h * TILE);

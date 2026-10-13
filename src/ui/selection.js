@@ -26,6 +26,8 @@ export class PlayerUI {
     this.g.sfx?.(target && target.team !== 0 && this.g.combat ? 'attack' : 'move');
     units.forEach((u, i) => {
       if (target && target.team !== u.team && this.g.combat) u.command({ type: 'attack', target });
+      else if (u.type === 'engineer' && target && target.team === u.team && target !== u && !target.stats.inf && !target.isAir && target.hp < target.stats.hp) u.command({ type: 'repair', target });
+      else if (u.type === 'medic' && target && target.team === u.team && target !== u && target.stats.inf) u.command({ type: 'heal', target });
       else if (u.type === 'harvester' && tib) u.command({ type: 'harvest' });
       else { const n = Math.ceil(Math.sqrt(units.length)), ox = (i % n - (n - 1) / 2) * 26, oy = (Math.floor(i / n) - (n - 1) / 2) * 26;
         u.command({ type: 'move', x: x + ox, y: y + oy }); }

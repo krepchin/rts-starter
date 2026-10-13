@@ -10,7 +10,7 @@ export class EnemyAI {
     const g = this.g, t = g.teams[this.team], me = this.team;
     if (g.over) return;
     const count = type => g.buildings.filter(b => b.team === me && b.type === type).length;
-    const army = g.units.filter(u => u.team === me && u.type !== 'interceptor' && (u.stats.weapon || u.type === 'carrier'));
+    const army = g.units.filter(u => u.team === me && u.type !== 'interceptor' && (u.stats.weapon || u.type === 'carrier' || u.type === 'bomber' || u.type === 'medic'));
     // 1) Place a finished structure near base.
     if (t.readyBuilding) this.placeNearBase(t.readyBuilding);
     // 2) Next structure: fix power first, then build order, then extra defenses.
@@ -30,7 +30,8 @@ export class EnemyAI {
         const mix = ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], k = mix[(this.inf = (this.inf || 0) + 1) % mix.length];
         g.enqueue(me, g.canProduce(me, k, false) ? k : 'infantry', false); }
       if (qlen('vehicle') < 2) g.enqueue(me, 'tank', false);
-      if (qlen('aircraft') < 1 && army.length > 6) g.enqueue(me, 'carrier', false);
+      if (qlen('aircraft') < 1 && army.length > 6) { const air = ['carrier', 'jet', 'jet', 'bomber'], k = air[(this.air = (this.air || 0) + 1) % air.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : 'carrier', false); }
+      if (count('repairbay') < 1 && count('turret') >= 2 && g.time > 300 && g.canProduce(me, 'repairbay', true) && t.credits > 1500 && !t.queues.building.length && !t.readyBuilding) g.enqueue(me, 'repairbay', true);
     }
     // 3b) v9 defenses: a short wall arc with a gate toward the enemy, plus turrets (stops once a handful exist).
     if (g.has(me, 'barracks') && t.credits > 600 && g.time > 150) this.buildWalls(g, me, count);

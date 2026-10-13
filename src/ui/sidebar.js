@@ -168,7 +168,7 @@ export class Sidebar {
       if (A.capture) { const T = this.ui.abilityTarget?.kind; setC(A.capture, 'on', T === 'capture'); setC(A.demo, 'on', T === 'demo');
         const cd = Math.min(...us.filter(u => u.type === 'engineer').map(u => u.abCd || 0)); setD(A.demo, cd > 0); setT(A.demo, cd > 0 ? `⏳${Math.ceil(cd)}s` : '✸Demo'); }
       setT(this.el.info, (one ? `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp}` : `${sel.length} selected`) +
-        (this.ui.abilityTarget ? '\nTap an enemy building' : one?.type === 'engineer' ? '\nRepairs nearby units/buildings' : ''));
+        (this.ui.abilityTarget ? '\nTap an enemy building' : one?.type === 'engineer' ? '\nRepairs nearby units/buildings (tap a damaged vehicle to fix it)' : one?.type === 'medic' ? '\nHeals nearby infantry (tap a soldier to treat it)' : one?.type === 'bomber' ? '\nStealthed. Attack a ground target for a bomb run' : ''));
       return;
     }
     if (isB) {
