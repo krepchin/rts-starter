@@ -36,7 +36,7 @@ export class MobileBase extends Unit {
   }
   startDeploy(tx, ty) {
     if (this.state !== 'ready' || !this.game.canDeploy(this, tx, ty)) return false;
-    this.deployAt = { tx, ty }; if (this.team === 0) this.game.sfx?.('deploy'); this.state = 'deploying'; this.stateT = 0; this.order = null; return true;
+    this.deployAt = { tx, ty }; if (this.team === this.game.me) this.game.sfx?.('deploy'); this.state = 'deploying'; this.stateT = 0; this.order = null; return true;
   }
   burst(x, y, n, color, spd, size, life, up = 0) {
     const fx = this.game.effects; if (fx.length > 700) return;
@@ -98,7 +98,7 @@ export class MobileBase extends Unit {
   }
   canHit(t) { return this.game.combat && t && !t.dead && t.team !== this.team && !t.isAir && !t.under && (!t.cloaked || t.detected); }
   fire(w, tgt, dt) {
-    const g = this.game, a = Math.atan2(tgt.y - this.y, tgt.x - this.x); this.aimA = a; this.faceRight = Math.cos(a) >= 0; this.spraying = 0.15; if (this.team === 0 || tgt.team === 0) g.sfx?.(this.mode === 'spray' ? 'spray' : 'drill', this);
+    const g = this.game, a = Math.atan2(tgt.y - this.y, tgt.x - this.x); this.aimA = a; this.faceRight = Math.cos(a) >= 0; this.spraying = 0.15; if (this.team === this.game.me || tgt.team === this.game.me) g.sfx?.(this.mode === 'spray' ? 'spray' : 'drill', this);
     for (const e of [...g.buildings, ...g.units]) {
       if (!this.canHit(e)) continue; const d = this.dist(e); if (d > w.range * TILE + e.radius) continue;
       let da = Math.abs(Math.atan2(e.y - this.y, e.x - this.x) - a); if (da > Math.PI) da = 2 * Math.PI - da;
@@ -122,13 +122,13 @@ export class MobileBase extends Unit {
   }
   landStomp(k) { // final stomp: dust ring + small screen shake
     const g = this.game; g.effects.push({ t: 0.7, dustRing: true, x: this.x, y: this.y, r: (this.type === 'robot' ? 60 : 36) * k });
-    this.burst(this.x, this.y, 16, '#c9a77a', 90, 6, 1.0); if (this.team === 0) { g.shake = Math.max(g.shake, this.type === 'robot' ? 5 : 2); g.sfx?.('stomp'); }
+    this.burst(this.x, this.y, 16, '#c9a77a', 90, 6, 1.0); if (this.team === this.game.me) { g.shake = Math.max(g.shake, this.type === 'robot' ? 5 : 2); g.sfx?.('stomp'); }
   }
   stride(d) {
     const before = this.walkPh; this.walkPh += d / (this.type === 'robot' ? 18 : 10);
     if (this.type === 'robot' && Math.floor(before / Math.PI) !== Math.floor(this.walkPh / Math.PI)) { // foot down: stomp dust
       const f = Math.floor(this.walkPh / Math.PI) % 2 ? 1 : -1; this.burst(this.x + f * 14, this.y + 4, 8, '#c9a77a', 50, 5, 0.9); this.stomp = 0.15;
-      if (this.team === 0 && this.vel > 8) { this.game.shake = Math.max(this.game.shake, 1.2); this.game.sfx?.('step'); }
+      if (this.team === this.game.me && this.vel > 8) { this.game.shake = Math.max(this.game.shake, 1.2); this.game.sfx?.('step'); }
     } else if (this.type === 'mcv' && Math.random() < 0.15) this.burst(this.x - (this.faceRight ? 22 : -22), this.y + 6, 1, '#bfae8c', 20, 4, 0.7);
   }
 }

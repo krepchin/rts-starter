@@ -1,9 +1,33 @@
-# Tiberium Skirmish — RTS Starter (v9.1)
+# Tiberium Skirmish — RTS Starter (v10)
 
 Top-down futuristic RTS skirmish (you vs. AI), inspired by Command & Conquer, with a StarCraft-style Carrier.
 Plain HTML5 Canvas + ES modules. No build step, no dependencies. Art is a mix of image sprites in `assets/` (buildings, tanks, harvester, air units, soldiers) with procedural canvas drawing as the fallback, plus code-drawn art (terrain, effects, and the v8 Mobile Yard / Base Walker).
 
 **Play:** https://krepchin.github.io/rts-starter/ · **Run locally:** `python3 -m http.server 8000` here, open http://localhost:8000
+
+
+## What's new in v10
+- **Faction pick** on the start menu: Humans or Reptilians. The AI plays the other side (and plays either faction).
+- **Reptilians**, with their own roster. The units are cut from the concept art.
+  - **Raider:** claws and spines; Leap pounce.
+  - **Spitter:** frill and acid sac; Acid pool, targeted on the ground.
+  - **Brute:** shoulder bio-cannon; Harden takes half damage for 6 s.
+  - **Shaman:** hood and crystal staff; heals the nearest hurt ally; Tiberium Storm, targeted.
+  - **Drones:** Spark (chain lightning), Lance (beam) and Hive Orb (launches temporary Sparks).
+  - **Organic buildings:** Hive, Pulse Heart, Digester with Grazers, Spawning Pool, Drone Nest, Seer Stalk (radar and cloak detector),
+    Brood Spire and Spine turret. They regenerate slowly when not under fire.
+- **Brood Ship** (Brood Spire; needs a Drone Nest and a Seer Stalk; $2600):
+  - A slow, tanky organic flyer with a scaled hull, glowing sacs and membrane wings. Unarmed.
+  - **Drop Eggs**: tap a spot; $100 each, 9 s cooldown, at most 4 eggs alive.
+  - Eggs pulse and crack, hatch after 5 s into 3 Hatchlings that live 50 s, with a fading life bar.
+  - Eggs can be shot before they hatch. The AI uses it.
+- **Humans: Dune Buggy and Monster Truck** (War Factory):
+  - All-terrain, ignoring the slowdown on Tiberium.
+  - Front machine guns, a rear rocket, ramming contact damage with knockback, and crushing infantry.
+  - **Ram** ability: a 2 s speed burst.
+- **Multiplayer 1v1 (beta):** WebRTC peer-to-peer deterministic lockstep with copy/paste host/join codes, and desync checksums.
+  See `docs/MULTIPLAYER.md` for what works and the limits.
+- Tests: `tests/v10_features.py`, `tests/v10_multiplayer.py`.
 
 ## What's new in v9.1
 - **Tougher walls and gates:** Wall HP 450 → 1800, Gate 800 → 3200 (4x). New per-weapon modifier vs walls/gates: rockets x1.0, tank x0.8,

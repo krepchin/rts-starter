@@ -1,7 +1,12 @@
 import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
+import { FACTIONS } from '../data/factions.js?v=10.0';
 
 // Scripted opponent using the same rules as the player: Construction Yard + queues, power, repair, superweapon, waves.
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];
+// v10: the same plan for either faction, translated through faction roles (reptiles have no superweapon)
+const ROLE_OF = { power: 'power', refinery: 'refinery', barracks: 'infantry', factory: 'vehicle', radar: 'radar', turret: 'def', airfield: 'air' };
+const MIX = { human: { inf: ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], veh: ['tank', 'buggy', 'tank', 'truck'], air: ['carrier', 'jet', 'jet', 'bomber'] },
+  reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'spark', 'lance', 'spark', 'lance'], air: ['hiveorb', 'broodship'] } };
 
 export class EnemyAI {
   constructor(game, team = 1) { this.g = game; this.team = team; this.think = 0; this.waveTimer = 120; this.waveSize = 5; }
@@ -9,6 +14,7 @@ export class EnemyAI {
     this.think -= dt; this.waveTimer -= dt; if (this.think > 0) return; this.think = 1;
     const g = this.g, t = g.teams[this.team], me = this.team;
     if (g.over) return;
+    const fac = t.faction || 'human', R = FACTIONS[fac].roles, mapB = k => fac === 'human' ? k : (ROLE_OF[k] ? R[ROLE_OF[k]] : null);
     const count = type => g.buildings.filter(b => b.team === me && b.type === type).length;
     const army = g.units.filter(u => u.team === me && u.type !== 'interceptor' && (u.stats.weapon || u.type === 'carrier' || u.type === 'bomber' || u.type === 'medic'));
     // 1) Place a finished structure near base.
@@ -16,25 +22,33 @@ export class EnemyAI {
     // 2) Next structure: fix power first, then build order, then extra defenses.
     if (!t.queues.building.length && !t.readyBuilding && g.has(me, 'cy')) {
       let next = null;
-      if (t.powerUsed + 20 > t.powerMade && count('power') < 10) next = 'power';
-      else { const need = {}; for (const k of BUILD_ORDER) { need[k] = (need[k] || 0) + 1; if (count(k) < need[k] && g.canProduce(me, k, true)) { next = k; break; } } }
-      if (!next && t.credits > 2500 && count('turret') < 6) next = 'turret';
+      if (t.powerUsed + 20 > t.powerMade && count(R.power) < 10) next = R.power;
+      else { const need = {}; for (const k0 of BUILD_ORDER) { const k = mapB(k0); if (!k) continue; need[k] = (need[k] || 0) + 1; if (count(k) < need[k] && g.canProduce(me, k, true)) { next = k; break; } } }
+      if (!next && t.credits > 2500 && count(R.def) < 6) next = R.def;
+      if (!next && fac === 'reptile' && t.credits > 2000 && !count('broodspire') && g.canProduce(me, 'broodspire', true)) next = 'broodspire';
       if (next) g.enqueue(me, next, true);
     }
     // 3) Units: harvesters per refinery, then a steady army mix (short queues so structures still get funded).
-    const harvs = g.units.filter(u => u.team === me && u.type === 'harvester').length;
+    const harvs = g.units.filter(u => u.team === me && u.type === R.harvester).length;
     const qlen = c => t.queues[c].length;
-    if (harvs < Math.min(4, count('refinery') * 2) && !g.queued(me, 'harvester', false)) g.enqueue(me, 'harvester', false);
+    if (harvs < Math.min(4, count(R.refinery) * 2) && !g.queued(me, R.harvester, false)) g.enqueue(me, R.harvester, false);
     if (t.credits > 300 || g.time > 240) {
       if (qlen('infantry') < 2) { // v9 infantry mix: riflemen, plus snipers / rocket troopers / the odd engineer once unlocked
-        const mix = ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], k = mix[(this.inf = (this.inf || 0) + 1) % mix.length];
-        g.enqueue(me, g.canProduce(me, k, false) ? k : 'infantry', false); }
-      if (qlen('vehicle') < 2) g.enqueue(me, 'tank', false);
-      if (qlen('aircraft') < 1 && army.length > 6) { const air = ['carrier', 'jet', 'jet', 'bomber'], k = air[(this.air = (this.air || 0) + 1) % air.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : 'carrier', false); }
+        const mix = MIX[fac].inf, k = mix[(this.inf = (this.inf || 0) + 1) % mix.length];
+        g.enqueue(me, g.canProduce(me, k, false) ? k : mix[0], false); }
+      if (qlen('vehicle') < 2) { const vm = MIX[fac].veh, k = vm[(this.veh = (this.veh || 0) + 1) % vm.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : vm[0], false); }
+      if (qlen('aircraft') < 1 && army.length > 6) { const air = MIX[fac].air, k = air[(this.air = (this.air || 0) + 1) % air.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : 'carrier', false); }
       if (count('repairbay') < 1 && count('turret') >= 2 && g.time > 300 && g.canProduce(me, 'repairbay', true) && t.credits > 1500 && !t.queues.building.length && !t.readyBuilding) g.enqueue(me, 'repairbay', true);
     }
     // 3b) v9 defenses: a short wall arc with a gate toward the enemy, plus turrets (stops once a handful exist).
-    if (g.has(me, 'barracks') && t.credits > 600 && g.time > 150) this.buildWalls(g, me, count);
+    if (fac === 'human' && g.has(me, 'barracks') && t.credits > 600 && g.time > 150) this.buildWalls(g, me, count);
+    // 3c') v10 abilities for the new units
+    for (const u of g.units) { if (u.team !== me || u.dead || !g.combat) continue; const tg = u.target && !u.target.dead ? u.target : null;
+      if (u.type === 'raider' && tg && u.dist(tg) < 4 * TILE && u.dist(tg) > 1.5 * TILE && u.canUse()) u.useAbility();
+      else if (u.type === 'brute' && u.hp < u.stats.hp * 0.6 && u.canUse()) u.useAbility();
+      else if ((u.type === 'spitter' || u.type === 'shaman') && tg && (u.abCd || 0) <= 0 && Math.random() < 0.3) u.castAt(tg.x, tg.y);
+      else if ((u.type === 'truck' || u.type === 'buggy') && tg && u.dist(tg) < 5 * TILE && u.canUse()) u.useAbility();
+      else if (u.type === 'broodship' && u.canUse()) { const e = g.findEnemyNear(u, 7 * TILE, x => !x.dead && !x.isAir); if (e) u.castAt(e.x + (Math.random() - .5) * 40, e.y + 30); } }
     // 3c) Infantry abilities: stim when fighting, cloak snipers when hurt, dig in rockets on defense; engineers sabotage.
     for (const u of g.units) { if (u.team !== me || !u.stats.inf || u.dead) continue;
       const fighting = u.target && !u.target.dead && u.dist(u.target) < u.stats.range * TILE * 1.2;
@@ -95,7 +109,7 @@ export class EnemyAI {
     if (count('wall') >= 3 && !count('gate')) { // gate: any free tile touching one of our walls, toward the enemy side
       for (const w of g.buildings) if (w.team === me && w.stats.wall) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (g.placeInstant(me, 'gate', w.tx + dx, w.ty + dy)) return; }
     if (count('wall') >= 8) return;
-    const cy = g.buildings.find(b => b.team === me && b.type === 'cy' && !b.packing), foe = g.buildings.find(b => b.team !== me && b.type === 'cy') || { x: g.map.pxW / 2, y: g.map.pxH / 2 };
+    const cy = g.buildings.find(b => b.team === me && b.type === 'cy' && !b.packing), foe = g.buildings.find(b => b.team !== me && b.stats.yard) || { x: g.map.pxW / 2, y: g.map.pxH / 2 };
     if (!cy) return;
     const dx = foe.x - cy.x, dy = foe.y - cy.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, R = 8;
     const cx = Math.round(cy.x / TILE + ux * R), cy2 = Math.round(cy.y / TILE + uy * R);
@@ -112,12 +126,12 @@ export class EnemyAI {
     if (this.dropped) { for (const u of g.units) if (u.team === me && this.dropped.includes(u) && !u.order) { const tg = this.pickTarget(); if (tg) u.command({ type: 'attackMove', x: tg.x, y: tg.y }); } this.dropped = null; }
     if (ds.used < 4) { if ((this.dsT = (this.dsT || 0) + 1) % 5 === 0) ds.loadNearby(8); return; }
     if (!g.combat) return;
-    const tgt = g.buildings.filter(b => b.team !== me && b.type === 'refinery')[0] || this.pickTarget(); if (!tgt) return;
+    const tgt = g.buildings.filter(b => b.team !== me && (b.type === 'refinery' || b.type === 'digester'))[0] || this.pickTarget(); if (!tgt) return;
     ds.setCloak(true); this.dropped = [...ds.cargo]; ds.unloadAt(tgt.x - 70, tgt.y + 60);
   }
   pickTarget() {
     const enemies = this.g.buildings.filter(b => b.team !== this.team);
-    return enemies.find(b => b.type === 'refinery') || enemies.find(b => b.type === 'cy') || enemies[0];
+    return enemies.find(b => b.type === 'refinery' || b.type === 'digester') || enemies.find(b => b.stats.yard) || enemies[0];
   }
   ionTarget() {
     const foes = this.g.buildings.filter(b => b.team !== this.team);
@@ -126,7 +140,7 @@ export class EnemyAI {
     return best;
   }
   placeNearBase(type) {
-    const cy = this.g.buildings.find(b => b.team === this.team && b.type === 'cy' && !b.packing);
+    const cy = this.g.buildings.find(b => b.team === this.team && b.stats.yard && !b.packing);
     if (!cy) return;
     for (let r = 2; r < 12; r++) for (let k = 0; k < 16; k++) {
       // search rings around the yard's centre (not its corner) so both map corners place equally well

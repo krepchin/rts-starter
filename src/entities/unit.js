@@ -13,7 +13,9 @@ export class Unit extends Entity {
     const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
     if (d <= stopDist) return true;
     if (this.dug) return false; // dug-in rockets can't move
-    const step = Math.min(d, this.spd() * dt);
+    // v10: crystal fields are rough ground (-30% speed) unless the unit is all-terrain, hovering or flying
+    const rough = !this.stats.allTerrain && !this.stats.hover && !this.isAir && this.game.map.tib[this.game.map.idx(Math.floor(this.x / TILE), Math.floor(this.y / TILE))] > 5;
+    const step = Math.min(d, this.spd() * dt * (rough ? 0.7 : 1));
     this.x += dx / d * step; this.y += dy / d * step; this.angle = Math.atan2(dy, dx);
     return false;
   }
@@ -28,9 +30,26 @@ export class Unit extends Entity {
     if (a === 'stim') { this.stimT = 6; this.hp -= 10; this.abCd = 12; }
     else if (a === 'cloak') { this.cloakT = 8; this.cloaked = true; this.abCd = 25; }
     else if (a === 'digin') { this.dug = !this.dug; this.abCd = 1.2; if (this.dug) this.order = null; }
-    if (this.team === 0) g.sfx?.(a); return true;
+    else if (a === 'leap') { // Raider: pounce up to 3.5 tiles onto the nearest enemy, 30 damage on landing
+      const t = this.target && !this.target.dead ? this.target : g.findEnemyNear(this, 4 * TILE, e => this.canHit(e)); if (!t) return false;
+      const d = this.dist(t), k = Math.min(1, Math.max(0, (d - t.radius - 6) / d)); this.leap = { x0: this.x, y0: this.y, x1: this.x + (t.x - this.x) * k, y1: this.y + (t.y - this.y) * k, t: 0, tgt: t }; this.abCd = 9; }
+    else if (a === 'harden') { this.hardT = 6; this.abCd = 18; }
+    else if (a === 'acid' || a === 'storm') { // point casts: default to the current target / nearest enemy
+      const t = this.target && !this.target.dead ? this.target : g.findEnemyNear(this, this.stats.weapon.range * TILE + 2 * TILE, e => this.canHit(e)); if (!t) return false; return this.castAt(t.x, t.y); }
+    if (this.team === this.game.me || g.teams[this.team]) g.sfx?.(a, this); return true;
   }
+  // point-target abilities (Spitter acid pool, Shaman tiberium storm): walk into range, then cast
+  castAt(x, y) { const a = this.stats.ability; if ((this.abCd || 0) > 0 || (a !== 'acid' && a !== 'storm')) return false; this.order = { type: 'cast', x, y, ab: a }; return true; }
+  doCast(o) { const g = this.game, st = o.ab === 'storm';
+    g.zones.push({ x: o.x, y: o.y, r: (st ? 1.7 : 1.2) * TILE, t: st ? 4 : 6, dur: st ? 4 : 6, dps: st ? 32 : 14, team: this.team, kind: st ? 'storm' : 'acid', bld: st ? 0.3 : 0.6 });
+    this.abCd = st ? 20 : 13; this.order = null; g.sfx?.(st ? 'storm' : 'acid', this); g.effects.push({ t: 0.3, ping: true, x: o.x, y: o.y }); }
   tickAbility(dt) {
+    if (this.hardT > 0) this.hardT -= dt;
+    if (this.leap) { const L = this.leap; L.t += dt / 0.45; const k = Math.min(1, L.t); this.x = L.x0 + (L.x1 - L.x0) * k; this.y = L.y0 + (L.y1 - L.y0) * k; this.hop = Math.sin(k * Math.PI) * 22;
+      if (k >= 1) { this.leap = null; this.hop = 0; if (L.tgt && !L.tgt.dead) L.tgt.damage(30, this); this.game.effects.push({ t: 0.4, dustRing: true, x: this.x, y: this.y, r: 12 }); } }
+    if (this.stats.heal && (this.healT = (this.healT || 0) - dt) <= 0) { this.healT = 0.5; // Shaman: mend the most hurt ally nearby
+      let best = null, bf = 0.98; for (const u of this.game.units) if (u.team === this.team && !u.dead && u !== this && !u.carried && u.dist(this) < 4 * TILE) { const f = u.hp / u.stats.hp; if (f < bf) { bf = f; best = u; } }
+      this.healing = best; if (best) best.hp = Math.min(best.stats.hp, best.hp + this.stats.heal * 0.5); }
     this.abCd = Math.max(0, (this.abCd || 0) - dt); this.fired = Math.max(0, (this.fired || 0) - dt);
     if (this.stimT > 0) this.stimT -= dt;
     if (this.cloakT > 0) { this.cloakT -= dt; if (this.cloakT <= 0) this.cloaked = false; }
@@ -44,8 +63,8 @@ export class Unit extends Entity {
       if (this.dist(b) > b.radius + 10) { this.moveToward(b.x, b.y, dt, 2); return true; }
       if (o.type === 'capture') {
         b.team = this.team; b.repairing = false; b.rally = null; b.seen = true; g.removeQuiet(this);
-        g.effects.push({ t: 0.8, sell: true, x: b.x, y: b.y, r: b.radius }); if (this.team === 0 || b.team === 0) g.sfx?.('capture');
-      } else { g.charges.push({ b, t: 5, team: this.team }); this.order = null; this.abCd = 15; if (this.team === 0) g.sfx?.('demo');
+        g.effects.push({ t: 0.8, sell: true, x: b.x, y: b.y, r: b.radius }); if (this.team === this.game.me || b.team === this.game.me) g.sfx?.('capture');
+      } else { g.charges.push({ b, t: 5, team: this.team }); this.order = null; this.abCd = 15; if (this.team === this.game.me) g.sfx?.('demo');
         this.command({ type: 'move', x: this.x + (this.x - b.x) * 0.8, y: this.y + (this.y - b.y) * 0.8 }); }
       return true;
     }
@@ -81,6 +100,8 @@ export class Unit extends Entity {
     if (this.type === 'medic' && this.medicUpdate(dt)) { this.separate(dt); return; }
     if (this.type === 'engineer' && this.engineerUpdate(dt)) { this.separate(dt); return; }
     const o = this.order;
+    if (this.leap) { this.separate(dt); return; }
+    if (o?.type === 'cast') { const rg = this.stats.weapon.range * TILE + 8; if (Math.hypot(o.x - this.x, o.y - this.y) <= rg) this.doCast(o); else this.moveToward(o.x, o.y, dt); this.separate(dt); return; }
     if (o?.type === 'board') { const d = o.target; // walk to a friendly Dropship and climb in
       if (!d || d.dead || !d.canTake(this)) this.order = null;
       else { if (this.dist(d) <= d.radius + this.radius + 10) d.take(this); else this.moveToward(d.x, d.y, dt, 2); return; } }
@@ -124,7 +145,7 @@ export class Unit extends Entity {
 }
 
 export class Harvester extends Unit {
-  constructor(game, team, x, y) { super(game, 'harvester', team, x, y); this.load = 0; this.order = { type: 'harvest' }; this.state = 'seek'; }
+  constructor(game, team, x, y, type = 'harvester') { super(game, type, team, x, y); this.load = 0; this.order = { type: 'harvest' }; this.state = 'seek'; }
   update(dt) {
     if (this.order?.type !== 'harvest') { super.update(dt); if (!this.order) this.order = { type: 'harvest' }; return; }
     const s = this.stats, map = this.game.map;
@@ -139,10 +160,10 @@ export class Harvester extends Unit {
       if (this.load >= s.capacity) this.state = 'return';
       else if (map.tib[map.idx(this.field.tx, this.field.ty)] < 1) { this.field = null; this.state = 'seek'; }
     } else if (this.state === 'return') {
-      const ref = this.game.nearestOwn(this, 'refinery');
+      const ref = this.game.nearestOwn(this, this.stats.dock || 'refinery');
       if (!ref) return;
       const dock = ref.spawnPoint();
-      if (this.moveToward(dock.x, dock.y, dt, 10) || this.dist(ref) < ref.radius + 22) { this.game.addCredits(this.team, Math.round(this.load)); this.load = 0; this.state = 'seek'; }
+      if (this.moveToward(dock.x, dock.y, dt, 10) || this.dist(ref) < ref.radius + 22) { this.game.addCredits(this.team, Math.round(this.load * (ref.stats.income || 1))); this.load = 0; this.state = 'seek'; }
     }
     this.separate(dt);
   }

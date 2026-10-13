@@ -17,14 +17,14 @@ export class Jet extends Unit {
   fireAt(t) {
     const w = this.stats.weapon, g = this.game; if (!g.combat || t.dead) return;
     if (t.isAir) { if (this.cool > 0 || this.dist(t) > w.range * TILE + t.radius) return; this.cool = w.cooldown; t.damage(w.damage * w.vsAir, this);
-      g.effects.push({ t: 0.3, x1: this.x, y1: this.y, x2: t.x, y2: t.y, color: w.color, rocket: true }); if (this.team === 0 || t.team === 0) g.sfx?.('rocket'); return; }
+      g.effects.push({ t: 0.3, x1: this.x, y1: this.y, x2: t.x, y2: t.y, color: w.color, rocket: true }); if (this.team === this.game.me || t.team === this.game.me) g.sfx?.('rocket'); return; }
     const ahead = Math.cos(Math.atan2(t.y - this.y, t.x - this.x) - this.angle) > 0.8, d = this.dist(t); // strafe only while nose-on
     if (this.scool > 0 || !ahead || d > 4.5 * TILE + t.radius) return; this.scool = this.stats.strafe.cooldown;
     const mult = t.stats.inf ? 1 : t.kind === 'building' ? 0.6 : 0.8; t.damage(this.stats.strafe.damage * mult, this);
     const jx = (Math.random() - .5) * 14, jy = (Math.random() - .5) * 10;
     g.effects.push({ t: 0.08, x1: this.x + Math.cos(this.angle) * 10, y1: this.y + Math.sin(this.angle) * 10, x2: t.x + jx, y2: t.y + jy, color: '#ffe9a0' });
     if (Math.random() < 0.3) g.puff(t.x + jx, t.y + jy, '#d8c9a0', 20, 3, 0.4, 10);
-    if ((this.team === 0 || t.team === 0) && Math.random() < 0.35) g.sfx?.('shot');
+    if (Math.random() < 0.35 && (this.team === g.me || t.team === g.me)) g.sfx?.('shot');
   }
   update(dt) {
     this.cool -= dt; this.scool -= dt; const g = this.game, o = this.order;
@@ -57,7 +57,7 @@ export class Bomber extends Unit {
     const sp = this.stats.speed * dt; this.x += Math.cos(this.angle) * sp; this.y += Math.sin(this.angle) * sp; return Math.hypot(x - this.x, y - this.y) < stop + sp * 2; }
   drop() { const B = this.stats.bombs, g = this.game; this.reload = B.reload; this.revealT = this.stats.stealth.reveal;
     for (let i = 0; i < B.count; i++) { const k = i - (B.count - 1) / 2; g.bombs.push({ team: this.team, src: this, t: 0.55 + i * 0.09, x: this.x + Math.cos(this.angle) * (k * B.spacing + 20), y: this.y + Math.sin(this.angle) * (k * B.spacing + 20), r: B.radius, dmg: B.damage }); }
-    this.dropFx = 0.5; if (this.team === 0) g.sfx?.('demo'); }
+    this.dropFx = 0.5; if (this.team === this.game.me) g.sfx?.('demo'); }
   update(dt) {
     this.reload -= dt; this.revealT -= dt; this.dropFx = (this.dropFx || 0) - dt; const o = this.order, g = this.game;
     let t = o?.type === 'attack' && o.target && !o.target.dead && !o.target.isAir && o.target.team !== this.team ? o.target : null;

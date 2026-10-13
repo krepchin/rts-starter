@@ -1,3 +1,4 @@
+import { ME } from './local.js?v=10.0';
 // v9 painted-style art drawn in code: staged transform sequence, walls/gates/turret, four infantry types, tiberium clusters.
 import { TILE, TEAM_COLORS } from '../data/stats.js?v=10.0';
 import { drawBuildingArt } from './buildingArt.js?v=10.0';
@@ -171,7 +172,7 @@ export function drawDropship(ctx, u, t, viewerTeam = 0) {
   ctx.fillStyle = '#9fd3a0'; ctx.globalAlpha *= 0.9; ctx.beginPath(); ctx.moveTo(22, -3); ctx.quadraticCurveTo(20, -10, 11, -10); ctx.lineTo(10, -3); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(13, -9, 5, 1.5);
   ctx.fillStyle = '#c9a227'; ctx.fillRect(-25, -4, 4, 9); ctx.fillStyle = '#1e1d1a'; for (let y = -4; y < 5; y += 3) ctx.fillRect(-25, y, 4, 1.5);
-  ctx.fillStyle = u.team === 0 ? '#4fa7d8' : '#c8402c'; ctx.fillRect(-4, -2, 6, 3);
+  ctx.fillStyle = u.team === ME ? '#4fa7d8' : '#c8402c'; ctx.fillRect(-4, -2, 6, 3);
   ctx.restore();
   if (u.cloaked && !hidden) { ctx.save(); ctx.strokeStyle = `rgba(150,255,220,${0.35 + 0.25 * Math.sin(t * 9)})`; ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t * 30;
     ctx.beginPath(); ctx.ellipse(u.x, u.y - lift - 3, 30, 15, 0, 0, 7); ctx.stroke(); ctx.restore(); }

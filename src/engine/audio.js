@@ -11,7 +11,10 @@ const SAMPLES = ['boom_s1', 'boom_s2', 'boom_m1', 'boom_l1', 'boom_l2', 'laser_s
   'step_c', 'metal_h', 'tick_l', 'ui_click', 'ui_select', 'ui_confirm', 'ui_error', 'ui_drop', 'ui_switch', 'ui_glitch', 'ui_up', 'ui_down', 'ui_toggle'];
 // per-type radio voice: base pitch, formant shift, grit
 const VOICES = { infantry: [150, 1, 0.3], sniper: [118, 0.92, 0.2], rocket: [96, 0.85, 0.45], engineer: [175, 1.1, 0.25], tank: [82, 0.8, 0.7], harvester: [90, 0.8, 0.5],
-  carrier: [105, 0.9, 0.3], dropship: [128, 0.95, 0.35], robot: [62, 0.7, 0.85], mcv: [70, 0.75, 0.7], default: [130, 1, 0.3] };
+  carrier: [105, 0.9, 0.3], dropship: [128, 0.95, 0.35], robot: [62, 0.7, 0.85], mcv: [70, 0.75, 0.7], buggy: [140, 1, 0.4], truck: [78, 0.8, 0.8], default: [130, 1, 0.3],
+  // reptilians: low growls / hisses (rough, formants shifted down, extra noise)
+  raider: [95, 0.7, 0.9, 1], spitter: [120, 0.75, 0.8, 1], brute: [55, 0.6, 1, 1], shaman: [140, 0.8, 0.6, 1], hatchling: [170, 0.8, 0.8, 1], grazer: [70, 0.6, 0.9, 1],
+  spark: [300, 1.4, 0.5, 2], lance: [220, 1.2, 0.6, 2], hiveorb: [150, 1, 0.6, 2], broodship: [45, 0.55, 1, 1] };
 const VOWELS = [[730, 1090], [270, 2290], [530, 1840], [570, 840], [300, 870], [660, 1720], [440, 1020]];
 const r = (a, b) => a + Math.random() * (b - a), pick = a => a[(Math.random() * a.length) | 0];
 export class Sound {
@@ -85,8 +88,11 @@ export class Sound {
   }
   // ---- radio acknowledgement: squelch + 2-4 vocoded syllables + squelch tail, per-type voice
   voice(type, kind) {
-    const c = this.ctx, t = c.currentTime + 0.02, [p0, fs, grit] = VOICES[type] || VOICES.default, B = this.voiceBus;
+    const c = this.ctx, t = c.currentTime + 0.02, [p0, fs, grit, alien] = VOICES[type] || VOICES.default, B = this.voiceBus;
     if (this.voiceBusy > c.currentTime) return; // one radio line at a time
+    if (alien === 1) { this.noise(t, 0.35, { gain: 0.16, cutoff: 900 * fs, to: 400, type: 'bandpass', q: 3, bus: B, attack: 0.04 }); this.tone(t, p0, 0.4, { type: 'sawtooth', gain: 0.07, to: p0 * 0.7, cutoff: 700, bus: B, attack: 0.03 });
+      this.noise(t + 0.25, 0.25, { gain: 0.08, cutoff: 5000, type: 'highpass', bus: B }); this.voiceBusy = t + 0.7; return; } // growl + hiss
+    if (alien === 2) { for (let i = 0; i < 3; i++) this.tone(t + i * 0.07, p0 * (1 + i * 0.25), 0.08, { type: 'sine', gain: 0.05, bus: B }); this.noise(t, 0.2, { gain: 0.04, cutoff: 6000, type: 'highpass', bus: B }); this.voiceBusy = t + 0.4; return; } // drone chirps
     const n = kind === 'select' ? 2 : kind === 'ready' ? 3 : 3 + (Math.random() < 0.4 ? 1 : 0), syl = kind === 'attack' ? 0.09 : 0.12;
     this.noise(t, 0.05, { gain: 0.12, cutoff: 2400, type: 'bandpass', q: 3, bus: B });
     const out = c.createGain(); out.gain.value = 1; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 320; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2900;
@@ -202,7 +208,24 @@ export class Sound {
       case 'step': this.sample(t, 'step_c', { gain: 0.35 * g, rate: 0.55 }); this.tone(t, 60, 0.25, { type: 'sine', gain: 0.2 * g, to: 32 }); break;
       case 'transform': this.sample(t, 'engine_circ', { gain: 0.35, rate: 0.7 }); this.tone(t, 80, 1.8, { type: 'sawtooth', gain: 0.08, to: 240, attack: 0.2, cutoff: 800 }); break;
       case 'deploy': this.sample(t, 'engine_circ', { gain: 0.3, rate: 0.6 }); this.tone(t, 240, 1.2, { type: 'sawtooth', gain: 0.07, to: 70, attack: 0.1, cutoff: 700 }); break;
-      default: this.tone(t, 600, 0.06, { gain: 0.05 });
+      // v10 sounds
+      case 'mg': this.noise(t, 0.04, { gain: 0.2 * g, cutoff: 3000, type: 'bandpass', q: 1.5 }); this.tone(t, 160, 0.05, { type: 'square', gain: 0.05 * g, to: 90, cutoff: 1200 }); break;
+      case 'fx_acid': this.sample(t, 'slime', { gain: 0.35 * g, rate: r(1.1, 1.4) }); this.noise(t, 0.18, { gain: 0.08 * g, cutoff: 2500, type: 'highpass' }); break;
+      case 'fx_bio': this.tone(t, 90, 0.4, { type: 'sine', gain: 0.3 * g, to: 45 }); this.sample(t, 'slime', { gain: 0.45 * g, rate: 0.7 }); this.noise(t, 0.3, { gain: 0.12 * g, cutoff: 800 }); break;
+      case 'fx_lightning': this.sample(t, 'zap1', { gain: 0.25 * g, rate: r(1.2, 1.6) }); this.noise(t, 0.06, { gain: 0.12 * g, cutoff: 6000, type: 'highpass' }); break;
+      case 'fx_beam': this.sample(t, ['laser_l1', 'laser_l2'], { gain: 0.45 * g, rate: 0.6 }); this.tone(t, 70, 0.5, { type: 'sawtooth', gain: 0.08 * g, to: 140, cutoff: 900 }); break;
+      case 'fx_magic': this.sample(t, ['field1', 'field2'], { gain: 0.25 * g, rate: 1.8, dur: 0.4 }); this.tone(t, 1200, 0.25, { type: 'sine', gain: 0.04 * g, to: 2400 }); break;
+      case 'fx_claw': this.noise(t, 0.08, { gain: 0.16 * g, cutoff: 4000, type: 'bandpass', q: 2, to: 1500 }); this.sample(t, 'punch_h', { gain: 0.15 * g, rate: 1.6 }); break;
+      case 'leap': this.noise(t, 0.3, { gain: 0.12, cutoff: 1200, to: 3000, type: 'bandpass', q: 1 }); this.voice('raider', 'attack'); break;
+      case 'harden': this.sample(t, ['metal1', 'metal2'], { gain: 0.3, rate: 0.6 }); this.tone(t, 120, 0.4, { type: 'sawtooth', gain: 0.06, to: 60, cutoff: 600 }); break;
+      case 'acid': this.sample(t, 'slime', { gain: 0.5, rate: 0.8 }); this.noise(t + 0.1, 0.8, { gain: 0.1, cutoff: 3000, type: 'highpass', attack: 0.1 }); break;
+      case 'storm': this.sample(t, ['field1', 'field2'], { gain: 0.45, rate: 0.6 }); this.noise(t, 1.6, { gain: 0.15, cutoff: 400, to: 1800, type: 'bandpass', q: 1, attack: 0.3 }); this.sample(t + 0.4, 'zap1', { gain: 0.3, rate: 0.8 }); break;
+      case 'ram': this.tone(t, 90, 0.6, { type: 'sawtooth', gain: 0.1, to: 220, cutoff: 900, attack: 0.05 }); this.sample(t, 'thrust1', { gain: 0.3, rate: 0.7, dur: 0.7 }); break;
+      case 'ramhit': this.sample(t, ['metal_h', 'plate_h'], { gain: 0.5 * g }); this.tone(t, 80, 0.3, { type: 'sine', gain: 0.3 * g, to: 35 }); break;
+      case 'egg': this.sample(t, 'slime', { gain: 0.45 * g, rate: 0.6 }); this.tone(t, 70, 0.3, { type: 'sine', gain: 0.2 * g, to: 40 }); break;
+      case 'hatch': this.sample(t, 'slime', { gain: 0.5 * g, rate: 1.2 }); this.noise(t, 0.2, { gain: 0.12 * g, cutoff: 2000, type: 'bandpass', q: 2 }); this.voice('hatchling', 'select'); break;
+      case 'spawn': this.sample(t, 'zap1', { gain: 0.25 * g, rate: 1.5 }); break;
+      default: this.tone(t, 600, 0.06, { gain: 0.04 });
     }
   }
 }

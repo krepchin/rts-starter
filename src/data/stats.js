@@ -4,7 +4,7 @@ export const TEAM_COLORS = { 0: '#3fa9ff', 1: '#ff4a3a' };
 
 // cost of the Construction Yard is only used for sell value (it can't be built from the sidebar).
 export const BUILDINGS = {
-  cy:       { name: 'Construction Yard', w: 3, h: 3, hp: 1500, cost: 3000, time: 0,  power: 10,  sight: 8, builds: 'building', buildable: false },
+  cy:       { name: 'Construction Yard', w: 3, h: 3, hp: 1500, cost: 3000, time: 0,  power: 10,  sight: 8, builds: 'building', buildable: false, yard: true },
   power:    { name: 'Power Plant',       w: 2, h: 2, hp: 600,  cost: 300,  time: 6,  power: 100, sight: 5 },
   refinery: { name: 'Refinery',          w: 3, h: 2, hp: 900,  cost: 1200, time: 10, power: -30, sight: 6, freeUnit: 'harvester', req: ['power'] },
   barracks: { name: 'Barracks',          w: 2, h: 2, hp: 700,  cost: 300,  time: 6,  power: -20, sight: 5, builds: 'infantry', req: ['power'] },
@@ -20,6 +20,16 @@ export const BUILDINGS = {
   gate:     { name: 'Gate',              w: 1, h: 1, hp: 3200, cost: 150,  time: 0,  power: 0,   sight: 2, def: true, gate: true, instant: true, req: ['barracks'] },
   ion:      { name: 'Ion Uplink',        w: 2, h: 2, hp: 1000, cost: 2800, time: 20, power: -100, sight: 6, req: ['radar', 'factory'],
               superweapon: { chargeTime: 180, radius: 3, damage: 700 } },
+  // ---- v10 REPTILIAN structures: organic, slowly regenerate when not under fire (organic), own economy (Digester +15% income)
+  hive:      { name: 'Hive Nest',      faction: 'reptile', w: 3, h: 3, hp: 1700, cost: 3000, time: 0,  power: 15,  sight: 8, builds: 'building', buildable: false, yard: true, organic: true },
+  heart:     { name: 'Pulse Heart',    faction: 'reptile', w: 2, h: 2, hp: 550,  cost: 300,  time: 6,  power: 100, sight: 5, organic: true },
+  digester:  { name: 'Digester',       faction: 'reptile', w: 3, h: 2, hp: 950,  cost: 1200, time: 10, power: -30, sight: 6, freeUnit: 'grazer', req: ['heart'], organic: true, income: 1.15 },
+  spawnpool: { name: 'Spawning Pool',  faction: 'reptile', w: 2, h: 2, hp: 750,  cost: 300,  time: 6,  power: -20, sight: 5, builds: 'infantry', req: ['heart'], organic: true },
+  dronenest: { name: 'Drone Nest',     faction: 'reptile', w: 3, h: 3, hp: 1050, cost: 1500, time: 12, power: -30, sight: 5, builds: 'vehicle', req: ['digester'], organic: true },
+  seer:      { name: 'Seer Stalk',     faction: 'reptile', w: 2, h: 2, hp: 700,  cost: 1000, time: 10, power: -40, sight: 11, req: ['digester'], radar: true, detector: true, organic: true },
+  broodspire:{ name: 'Brood Spire',    faction: 'reptile', w: 3, h: 2, hp: 1000, cost: 1800, time: 14, power: -40, sight: 6, builds: 'aircraft', req: ['dronenest', 'seer'], organic: true },
+  spine:     { name: 'Spine Crawler',  faction: 'reptile', w: 1, h: 1, hp: 700,  cost: 550,  time: 6,  power: -15, sight: 7, req: ['spawnpool'], def: true, organic: true,
+               weapon: { range: 6, damage: 30, cooldown: 1.0, air: true, color: '#8f4', fx: 'acid', vsInf: 1.2 } },
 };
 
 export const UNITS = {
@@ -44,6 +54,33 @@ export const UNITS = {
                weapon: { range: 6, damage: 48, cooldown: 1.0, air: true, color: '#ffd27a', vsAir: 1.0, vsGround: 0.35, rocket: true }, strafe: { damage: 9, cooldown: 0.12 } },
   bomber:    { name: 'Stealth Bomber', from: 'aircraft', hp: 380, cost: 2000, time: 18, speed: 58, radius: 16, sight: 7, air: true, req: ['radar'],
                stealth: { reveal: 3.2 }, bombs: { count: 7, spacing: 18, damage: 85, radius: 30, reload: 14 } },
+  // ---- v10 HUMAN light vehicles (War Factory)
+  buggy:     { name: 'Dune Buggy', from: 'vehicle', hp: 220, cost: 450, time: 6, speed: 125, radius: 9, sight: 7, light: true, allTerrain: true, ram: 35, ability: 'ram', req: ['refinery'],
+               weapon: { range: 4, damage: 7, cooldown: 0.22, air: false, color: '#ffd', vsInf: 1.4, vsWall: 0.1, sound: 'mg' },
+               rear: { range: 5.5, damage: 24, cooldown: 3.6, air: true, vsVeh: 1.4, vsWall: 0.8 } },
+  truck:     { name: 'Monster Truck', from: 'vehicle', hp: 560, cost: 900, time: 9, speed: 98, radius: 13, sight: 6, allTerrain: true, ram: 70, ability: 'ram', req: ['refinery'],
+               weapon: { range: 4, damage: 6, cooldown: 0.3, air: false, color: '#ffd', vsInf: 1.3, vsWall: 0.15, sound: 'mg' },
+               rear: { range: 6.5, damage: 40, cooldown: 3.2, air: true, vsVeh: 1.5, vsWall: 1.0 } },
+  // ---- v10 REPTILIAN units
+  grazer:    { name: 'Grazer', faction: 'reptile', from: 'vehicle', hp: 520, cost: 1300, time: 11, speed: 62, radius: 12, sight: 4, capacity: 560, harvestRate: 130, dock: 'digester' },
+  raider:    { name: 'Raider', faction: 'reptile', from: 'infantry', inf: true, hp: 95, cost: 120, time: 3, speed: 78, radius: 6, sight: 6, ability: 'leap', light: true,
+               weapon: { range: 0.9, damage: 14, cooldown: 0.5, air: false, color: '#cfa', fx: 'claw', vsInf: 1.2, vsWall: 0.15 } },
+  spitter:   { name: 'Spitter', faction: 'reptile', from: 'infantry', inf: true, hp: 80, cost: 220, time: 5, speed: 46, radius: 6, sight: 7, ability: 'acid', req: ['heart'],
+               weapon: { range: 5.5, damage: 16, cooldown: 1.1, air: true, color: '#9f3', fx: 'acid', vsVeh: 1.3, vsWall: 0.6 } },
+  brute:     { name: 'Brute', faction: 'reptile', from: 'infantry', inf: true, hp: 340, cost: 450, time: 8, speed: 30, radius: 9, sight: 6, ability: 'harden', req: ['digester'],
+               weapon: { range: 5, damage: 46, cooldown: 2.2, air: false, color: '#7f2', fx: 'bio', vsVeh: 1.6, vsInf: 0.6, vsWall: 1.2 } },
+  shaman:    { name: 'Shaman', faction: 'reptile', from: 'infantry', inf: true, hp: 75, cost: 400, time: 7, speed: 40, radius: 6, sight: 8, ability: 'storm', heal: 7, req: ['digester'],
+               weapon: { range: 6, damage: 10, cooldown: 1.2, air: true, color: '#6fffa0', fx: 'magic', vsWall: 0.2 } },
+  spark:     { name: 'Spark Drone', faction: 'reptile', from: 'vehicle', hp: 60, cost: 180, time: 3, speed: 125, radius: 6, sight: 6, hover: true, light: true,
+               weapon: { range: 2.5, damage: 9, cooldown: 0.4, air: true, color: '#d8ff9a', fx: 'lightning', chain: 2, vsWall: 0.2 } },
+  lance:     { name: 'Lance Drone', faction: 'reptile', from: 'vehicle', hp: 280, cost: 800, time: 9, speed: 55, radius: 11, sight: 8, hover: true, req: ['digester'],
+               weapon: { range: 7, damage: 60, cooldown: 2.6, air: true, color: '#b6ff5a', fx: 'beam', vsVeh: 1.4, vsWall: 1.1 } },
+  hiveorb:   { name: 'Hive Orb', faction: 'reptile', from: 'aircraft', hp: 1300, cost: 2200, time: 18, speed: 28, radius: 22, sight: 9, hover: true, spawns: 'spark', maxSpawn: 6, spawnEvery: 3.5, launchRange: 7 },
+  broodship: { name: 'Brood Ship', faction: 'reptile', from: 'aircraft', hp: 1900, cost: 2600, time: 22, speed: 24, radius: 26, sight: 9, air: true, ability: 'eggs',
+               eggCost: 100, eggCd: 9, maxEggs: 4, hatch: 'hatchling', hatchCount: 3 },
+  egg:       { name: 'Brood Egg', faction: 'reptile', hp: 140, speed: 0, radius: 8, sight: 3, buildable: false, egg: true, hatchTime: 5 },
+  hatchling: { name: 'Hatchling', faction: 'reptile', inf: true, hp: 45, speed: 82, radius: 5, sight: 5, buildable: false, hatchling: true, life: 50, light: true,
+               weapon: { range: 0.8, damage: 8, cooldown: 0.5, air: false, color: '#cfa', fx: 'claw', vsWall: 0.1 } },
   // v8 mobile command centre (not buildable: made by packing / transforming a Construction Yard; hp = carried buildings)
   mcv:       { name: 'Mobile Yard', hp: 1500, speed: 32, radius: 18, sight: 6, buildable: false },
   robot:     { name: 'Base Walker', hp: 3900, speed: 24, radius: 30, sight: 8, buildable: false },

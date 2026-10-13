@@ -1,7 +1,10 @@
+import { ME } from '../engine/local.js?v=10.0';
 import { BUILDINGS, UNITS } from '../data/stats.js?v=10.0';
 import { CATS, PRODUCER } from '../engine/game.js?v=10.0';
 import { getSprite } from '../engine/sprites.js?v=10.0';
 import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.0';
+import { drawFactionUnit, drawOrganic, isFactionArt } from '../engine/artReptile.js?v=10.0';
+import { factionOf } from '../data/factions.js?v=10.0';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],
@@ -13,6 +16,11 @@ const SPR = { cy: 'cy', tank: 'tank_hover', harvester: 'harvester', carrier: 'ca
 // Draw a build-slot icon: sprite thumbnail where we have art, otherwise the painted code art (troopers, walls, gates, turret).
 function drawIcon(c, it) {
   const ctx = c.getContext('2d'), W = c.width, H = c.height, k = it.key; ctx.clearRect(0, 0, W, H);
+  if (it.isB && it.s.faction === 'reptile') { const s = it.s, tl = 32, sc = Math.min(W / (s.w * tl + 6), H / (s.h * tl + 26)); ctx.save(); ctx.translate(W / 2, H / 2 + 6); ctx.scale(sc, sc); ctx.translate(-s.w * tl / 2, -s.h * tl / 2);
+    drawOrganic(ctx, { type: k, team: 0, tx: 0, ty: 0, w: s.w, h: s.h, stats: s, hp: s.hp, age: 9, id: 1, aim: -0.4 }, 0.5); ctx.restore(); return true; }
+  if (!it.isB && isFactionArt(k)) { const R = it.s.radius || 8, big = R > 15, sc = big ? 0.9 : R > 10 ? 1.25 : 1.6; ctx.save(); ctx.translate(W / 2, H * (big ? 0.95 : 0.9)); ctx.scale(sc, sc);
+    const ok = drawFactionUnit(ctx, { type: k, team: 0, x: 0, y: 0, stats: it.s, hp: 1, angle: 0, id: 1, inc: 2.5, load: 300 }, 0.4, 0); ctx.restore();
+    const sp = { raider: 1, spitter: 1, brute: 1, shaman: 1, spark: 1, lance: 1, hiveorb: 1 }[k]; return !sp || !!getSprite({ raider: 'r_raider', spitter: 'r_spitter', brute: 'r_brute', shaman: 'r_shaman', spark: 'r_spark', lance: 'r_lance', hiveorb: 'r_hive' }[k], 0); }
   const name = SPR[k] || (it.isB && !it.s.def ? 'b_' + k : null);
   if (name) { const sp = getSprite(name, 0); if (!sp) return false; const r = Math.min(W / sp.img.width, H / (sp.img.width * sp.aspect)) * 0.95;
     const w = sp.img.width * r, h = sp.img.width * sp.aspect * r; ctx.drawImage(sp.img, (W - w) / 2, (H - h) / 2, w, h); return true; }
@@ -45,17 +53,18 @@ export class Sidebar {
       const b = document.createElement('button'); b.dataset.tab = k; b.title = label; b.setAttribute('aria-label', label); b.innerHTML = `${svg}<b class="badge"></b>`;
       b.addEventListener('click', () => { if (this.tab !== k) { this.tab = k; this.build(); } }); this.el.tabs.append(b); this.tabBtns[k] = { b, badge: b.querySelector('.badge') };
     }
-    this.el.pause.addEventListener('click', () => this.g.togglePause(0, this.cat()));
-    this.el.cancel.addEventListener('click', () => { if (this.ui.placing) this.ui.cancel(); else this.g.cancel(0, this.cat()); });
+    this.el.pause.addEventListener('click', () => this.g.togglePause(ME, this.cat()));
+    this.el.cancel.addEventListener('click', () => { if (this.ui.placing) this.ui.cancel(); else this.g.cancel(ME, this.cat()); });
     // Sidebar never shows the browser context menu (long-press on iOS/Android would otherwise pop it / select text).
     q('#sidebar').addEventListener('contextmenu', e => e.preventDefault());
     this.build();
   }
-  cat() { const c = TAB_CAT[this.tab]; return c === 'vehicle' && !this.g.teams[0].queues.vehicle.length && this.g.teams[0].queues.aircraft.length ? 'aircraft' : c; }
+  cat() { const c = TAB_CAT[this.tab]; return c === 'vehicle' && !this.g.teams[ME].queues.vehicle.length && this.g.teams[ME].queues.aircraft.length ? 'aircraft' : c; }
   items() {
-    if (this.tab === 'building' || this.tab === 'defense') return Object.keys(BUILDINGS).filter(k => BUILDINGS[k].buildable !== false && !!BUILDINGS[k].def === (this.tab === 'defense')).map(k => ({ key: k, s: BUILDINGS[k], isB: true }));
+    const fac = this.g.teams[ME].faction;
+    if (this.tab === 'building' || this.tab === 'defense') return Object.keys(BUILDINGS).filter(k => BUILDINGS[k].buildable !== false && factionOf(BUILDINGS[k]) === fac && !!BUILDINGS[k].def === (this.tab === 'defense')).map(k => ({ key: k, s: BUILDINGS[k], isB: true }));
     const froms = this.tab === 'vehicle' ? ['vehicle', 'aircraft'] : [this.tab];
-    return Object.keys(UNITS).filter(k => froms.includes(UNITS[k].from) && UNITS[k].buildable !== false).map(k => ({ key: k, s: UNITS[k], isB: false }));
+    return Object.keys(UNITS).filter(k => froms.includes(UNITS[k].from) && UNITS[k].buildable !== false && factionOf(UNITS[k]) === fac).map(k => ({ key: k, s: UNITS[k], isB: false }));
   }
   build() { // only on tab switch
     for (const [k, { b }] of Object.entries(this.tabBtns)) setC(b, 'on', k === this.tab);
@@ -68,22 +77,22 @@ export class Sidebar {
       const cat = it.isB ? 'building' : it.s.from;
       let timer = 0, longFired = false, ptype = 'mouse';
       b.addEventListener('pointerdown', e => { ptype = e.pointerType; longFired = false; clearTimeout(timer);
-        if (e.pointerType !== 'mouse') timer = setTimeout(() => { longFired = true; this.g.cancel(0, cat, it.key); navigator.vibrate?.(15); }, 550); });
+        if (e.pointerType !== 'mouse') timer = setTimeout(() => { longFired = true; this.g.cancel(ME, cat, it.key); navigator.vibrate?.(15); }, 550); });
       for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => clearTimeout(timer));
       b.addEventListener('click', () => { if (longFired) { longFired = false; return; } this.click(it); });
       // Right-click cancels for mouse only; touch long-press is handled by the timer above (no double cancel).
-      b.addEventListener('contextmenu', e => { e.preventDefault(); if (ptype === 'mouse') this.g.cancel(0, cat, it.key); });
+      b.addEventListener('contextmenu', e => { e.preventDefault(); if (ptype === 'mouse') this.g.cancel(ME, cat, it.key); });
       this.el.menu.append(b); this.buttons.push({ b, it, ic, count: b.querySelector('.count'), state: b.querySelector('.state'), bar: b.querySelector('.bar') });
     }
   }
   click(it) {
-    const t = this.g.teams[0];
-    if (it.isB && it.s.instant) { if (this.g.canProduce(0, it.key, true)) this.ui.placing === it.key ? this.ui.cancel() : this.ui.beginPlacing(it.key); return; }
+    const t = this.g.teams[ME];
+    if (it.isB && it.s.instant) { if (this.g.canProduce(ME, it.key, true)) this.ui.placing === it.key ? this.ui.cancel() : this.ui.beginPlacing(it.key); return; }
     if (it.isB && t.readyBuilding === it.key) { this.ui.beginPlacing(it.key); return; }
-    this.g.enqueue(0, it.key, it.isB);
+    this.g.enqueue(ME, it.key, it.isB);
   }
   update() {
-    const g = this.g, t = g.teams[0], el = this.el;
+    const g = this.g, t = g.teams[ME], el = this.el;
     setT(el.credits, `$${Math.floor(t.credits)}`);
     setT(el.power, `⚡ ${t.powerUsed}/${t.powerMade}`); setC(el.power, 'low', t.lowPower);
     const max = Math.max(t.powerMade, t.powerUsed, 1);
@@ -97,10 +106,10 @@ export class Sidebar {
     const cat = this.cat(), qu = t.queues[cat];
     for (const B of this.buttons) {
       const { b, it, count, state, bar } = B; if (!B.ic._ok) B.ic._ok = drawIcon(B.ic, it);
-      if (it.isB && it.s.instant) { setD(b, !g.canProduce(0, it.key, true) || t.credits < it.s.cost); setC(b, 'ready', this.ui.placing === it.key); setT(state, this.ui.placing === it.key ? 'PLACE' : ''); setW(bar, '0%'); continue; }
+      if (it.isB && it.s.instant) { setD(b, !g.canProduce(ME, it.key, true) || t.credits < it.s.cost); setC(b, 'ready', this.ui.placing === it.key); setT(state, this.ui.placing === it.key ? 'PLACE' : ''); setW(bar, '0%'); continue; }
       const qu = t.queues[it.isB ? 'building' : it.s.from];
       const ready = it.isB && t.readyBuilding === it.key, n = qu.filter(x => x.key === it.key).length, head = qu[0]?.key === it.key ? qu[0] : null;
-      setD(b, !ready && !n && (!g.canProduce(0, it.key, it.isB) || (it.isB && (qu.length > 0 || !!t.readyBuilding)) || (!it.isB && qu.length >= 5)));
+      setD(b, !ready && !n && (!g.canProduce(ME, it.key, it.isB) || (it.isB && (qu.length > 0 || !!t.readyBuilding)) || (!it.isB && qu.length >= 5)));
       setC(b, 'ready', ready);
       setT(count, n > 1 || (!it.isB && n) ? String(n) : '');
       setT(state, ready ? 'READY' : head && t.paused[cat] ? 'PAUSED' : head && t.stalled[cat] ? 'HOLD' : '');
@@ -109,26 +118,31 @@ export class Sidebar {
     const hasQ = qu.length > 0;
     setD(el.pause, !hasQ); setT(el.pause, t.paused[cat] ? '▶' : '❚❚'); el.pause.title = t.paused[cat] ? 'Resume queue' : 'Pause queue';
     setD(el.cancel, !hasQ && !(cat === 'building' && t.readyBuilding) && !this.ui.placing);
-    setT(el.status, !g.has(0, PRODUCER[cat]) ? (cat === 'building' ? 'No Construction Yard' : `Needs ${BUILDINGS[PRODUCER[cat]].name}`)
+    setT(el.status, !g.has(ME, g.prodType(ME, cat)) ? (cat === 'building' ? `No ${BUILDINGS[g.role(ME, 'yard')].name}` : `Needs ${BUILDINGS[g.prodType(ME, cat)].name}`)
       : t.stalled[cat] ? `On hold: ${t.stalled[cat]}` : t.lowPower && hasQ ? 'Low power: slowed' : '');
-    setC(q('#radarSweep'), 'off', !(g.has(0, 'radar') && !t.lowPower));
+    setC(q('#radarSweep'), 'off', !(g.has(ME, 'radar') && !t.lowPower));
     const pr = t.powerMade ? Math.min(1.5, t.powerMade / Math.max(1, t.powerUsed)) : 0, ang = 180 + (-120 + Math.min(1, pr / 1.5) * 240);
     const dial = q('#scopeDial i'); if (dial._a !== ang) { dial._a = ang; dial.style.transform = `rotate(${ang}deg)`; }
     this.updateSelection(t);
   }
   updateSelection(t) {
     const g = this.g, sel = [...this.ui.selection], one = sel.length === 1 ? sel[0] : null;
-    const isB = !!(one && one.kind === 'building' && one.team === 0 && !one.packing);
-    const isM = !!(one && one.carried && one.team === 0);
-    const isD = !!(one && one.type === 'dropship' && one.team === 0);
-    const abil = !isB && !isM && !isD ? [...new Set(sel.filter(u => u.kind === 'unit' && u.team === 0 && u.stats.ability).map(u => u.type))].sort() : [];
+    const isB = !!(one && one.kind === 'building' && one.team === ME && !one.packing);
+    const isM = !!(one && one.carried && one.team === ME);
+    const isD = !!(one && one.type === 'dropship' && one.team === ME);
+    const abil = !isB && !isM && !isD ? [...new Set(sel.filter(u => u.kind === 'unit' && u.team === ME && u.stats.ability).map(u => u.type))].sort() : [];
     const key = isB ? `b${one.id}` : isM ? `m${one.id}` : isD ? `d${one.id}` : abil.length ? 'a' + abil.join() : '';
     if (key !== this.selKey) { // rebuild action buttons only when the selection changes
       this.selKey = key; this.el.actions.replaceChildren(); this.act = {}; this.armed = null;
       const mk = (id, label, fn, title) => { const b = document.createElement('button'); b.textContent = label; b._t = label; b.dataset.act = id; if (title) b.title = title; b.addEventListener('click', fn); this.el.actions.append(b); this.act[id] = b; };
       const AB = { infantry: ['stim', '⚡Stim', 'Stim: faster move + fire for 6 s (costs 10 HP)'], sniper: ['cloak', '◌Cloak', 'Cloak: invisible to enemies for 8 s'],
-        rocket: ['digin', '⛉Dig in', 'Dig in: sandbags, +range, half damage, can\'t move'] };
-      for (const ty of abil) { if (AB[ty]) mk(AB[ty][0], AB[ty][1], () => { for (const u of this.ui.selection) if (u.type === ty && u.team === 0) u.useAbility(); }, AB[ty][2]);
+        rocket: ['digin', '⛉Dig in', 'Dig in: sandbags, +range, half damage, can\'t move'],
+        raider: ['leap', '⤳Leap', 'Leap: pounce onto the nearest enemy (30 damage)'], brute: ['harden', '⛊Harden', 'Harden: half damage for 6 s'],
+        buggy: ['ram', '➤Ram', 'Ram: 2 s speed burst, double ramming damage'], truck: ['ram', '➤Ram', 'Ram: 2 s speed burst, double ramming damage'], dropship: null };
+      const PT = { spitter: ['acid', '☣Acid', 'Acid pool: tap a spot (damages ground units and structures)'], shaman: ['storm', '✺Storm', 'Tiberium storm: tap a spot'],
+        broodship: ['eggs', '◉Eggs', 'Drop Eggs: tap a spot ($100). Eggs hatch into hatchlings after 5 s'] };
+      for (const ty of abil) if (PT[ty]) mk(PT[ty][0], PT[ty][1], () => this.ui.abilityTarget?.kind === PT[ty][0] ? this.ui.cancel() : this.ui.beginAbilityTarget(PT[ty][0]), PT[ty][2]);
+      for (const ty of abil) { if (AB[ty]) mk(AB[ty][0], AB[ty][1], () => { for (const u of this.ui.selection) if (u.type === ty && u.team === ME) u.useAbility(); }, AB[ty][2]);
         if (ty === 'engineer') { mk('capture', '⚑Capture', () => this.ui.beginAbilityTarget('capture'), 'Capture: tap an enemy building (engineer is used up)');
           mk('demo', '✸Demo', () => this.ui.beginAbilityTarget('demo'), 'Demo charge: tap an enemy building (5 s fuse)'); } }
       if (isD) {
@@ -137,13 +151,13 @@ export class Sidebar {
         mk('unload', '⇧Unload', () => this.ui.unloading === one ? this.ui.cancel() : this.ui.beginUnload(one), 'Unload all: tap a spot');
       }
       if (isB) {
-        if (one.stats.gate) mk('lock', 'Lock', () => { one.locked = !one.locked; g.sfx?.('servo'); }, 'Lock: keep closed even for your own units');
-        mk('repair', 'Repair', () => g.toggleRepair(0, one));
-        mk('sell', 'Sell', () => { if (this.armed === one) { g.sell(0, one); this.ui.clearSelection(); this.armed = null; } else { this.armed = one; clearTimeout(this.armT); this.armT = setTimeout(() => this.armed = null, 2500); } });
+        if (one.stats.gate) mk('lock', 'Lock', () => { one.toggleLock(); g.sfx?.('servo'); }, 'Lock: keep closed even for your own units');
+        mk('repair', 'Repair', () => g.toggleRepair(ME, one));
+        mk('sell', 'Sell', () => { if (this.armed === one) { g.sell(ME, one); this.ui.clearSelection(); this.armed = null; } else { this.armed = one; clearTimeout(this.armT); this.armT = setTimeout(() => this.armed = null, 2500); } });
         if (one.stats.superweapon) mk('fire', 'Fire Ion', () => this.ui.beginTargeting());
         if (one.type === 'cy') {
-          mk('pack', 'Pack', () => g.packYard(0, one), 'Fold the yard alone into a slow armored crawler');
-          mk('transform', 'Transform', () => g.transformBase(0, one), 'Yard + barracks + power plant + war factory become the Base Walker');
+          mk('pack', 'Pack', () => g.packYard(ME, one), 'Fold the yard alone into a slow armored crawler');
+          mk('transform', 'Transform', () => g.transformBase(ME, one), 'Yard + barracks + power plant + war factory become the Base Walker');
         }
       }
       if (isM) {
@@ -172,11 +186,15 @@ export class Sidebar {
       setD(A.load, one.used >= one.stats.capacity); setD(A.unload, !one.cargo.length); setC(A.unload, 'on', this.ui.unloading === one); setT(A.unload, this.ui.unloading === one ? 'Target…' : one.unloading ? 'Dropping' : '⇧Unload');
       setT(this.el.info, `${one.stats.name}  HP ${Math.ceil(one.hp)}/${one.stats.hp}\nCargo ${one.used}/${one.stats.capacity} · Energy ${Math.floor(one.energy)}${one.cloaked ? (one.detected ? ' · DETECTED' : ' · cloaked') : ''}\n${this.ui.unloading === one ? 'Tap the drop point' : 'Tap it with units selected to board'}`);
       return; }
-    if (abil.length) { const A = this.act, us = sel.filter(u => u.kind === 'unit' && u.team === 0);
+    if (abil.length) { const A = this.act, us = sel.filter(u => u.kind === 'unit' && u.team === ME);
       const st = (ty, on) => { const l = us.filter(u => u.type === ty); return { on: l.some(on), ready: l.some(u => u.canUse()), cd: Math.min(...l.map(u => u.abCd || 0)) }; };
       if (A.stim) { const r = st('infantry', u => u.stimT > 0); setC(A.stim, 'on', r.on); setD(A.stim, !r.ready); setT(A.stim, r.on ? '⚡Stimmed' : r.ready ? '⚡Stim' : `⏳${Math.ceil(r.cd)}s`); }
       if (A.cloak) { const r = st('sniper', u => u.cloaked); setC(A.cloak, 'on', r.on); setD(A.cloak, !r.ready); setT(A.cloak, r.on ? '◌Hidden' : r.ready ? '◌Cloak' : `⏳${Math.ceil(r.cd)}s`); }
       if (A.digin) { const r = st('rocket', u => u.dug); setC(A.digin, 'on', r.on); setD(A.digin, !r.ready); setT(A.digin, r.on ? '⛉Dig out' : '⛉Dig in'); }
+      for (const [id, ty, lbl] of [['leap', 'raider', '⤳Leap'], ['harden', 'brute', '⛊Harden'], ['ram', 'truck', '➤Ram'], ['ram', 'buggy', '➤Ram']]) if (A[id]) { const r = st(ty, u => u.hardT > 0 || u.ramT > 0 || !!u.leap); setC(A[id], 'on', r.on); setD(A[id], !r.ready); setT(A[id], r.ready || r.on ? lbl : `⏳${Math.ceil(r.cd)}s`); }
+      for (const [id, ty, lbl] of [['acid', 'spitter', '☣Acid'], ['storm', 'shaman', '✺Storm'], ['eggs', 'broodship', '◉Eggs']]) if (A[id]) { const T = this.ui.abilityTarget?.kind === id, l = us.filter(u => u.type === ty);
+        const ready = ty === 'broodship' ? l.some(u => u.canUse()) : l.some(u => (u.abCd || 0) <= 0), cd = ty === 'broodship' ? Math.min(...l.map(u => u.eggCd)) : Math.min(...l.map(u => u.abCd || 0));
+        setC(A[id], 'on', T); setD(A[id], !ready && !T); setT(A[id], T ? 'Target…' : ready ? lbl : cd > 0 ? `⏳${Math.ceil(cd)}s` : lbl); }
       if (A.capture) { const T = this.ui.abilityTarget?.kind; setC(A.capture, 'on', T === 'capture'); setC(A.demo, 'on', T === 'demo');
         const cd = Math.min(...us.filter(u => u.type === 'engineer').map(u => u.abCd || 0)); setD(A.demo, cd > 0); setT(A.demo, cd > 0 ? `⏳${Math.ceil(cd)}s` : '✸Demo'); }
       setT(this.el.info, (one ? `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp}` : `${sel.length} selected`) +
@@ -189,7 +207,7 @@ export class Sidebar {
       setT(this.act.repair, one.repairing ? 'Repairing' : 'Repair'); setC(this.act.repair, 'on', one.repairing); setD(this.act.repair, one.hp >= s.hp && !one.repairing);
       setT(this.act.sell, this.armed === one ? `+$${Math.floor((s.cost || 0) * 0.5 * one.hp / s.hp)}?` : 'Sell'); setC(this.act.sell, 'armed', this.armed === one);
       if (this.act.fire) { const f = one.charge / s.superweapon.chargeTime; setD(this.act.fire, !g.superReady(0)); setT(this.act.fire, this.ui.targeting ? 'Target…' : f >= 1 ? 'FIRE' : `⚡${Math.floor(f * 100)}%`); }
-      if (this.act.pack) { const ok = g.canMorph(0, one); setD(this.act.pack, !ok); setD(this.act.transform, !ok); }
+      if (this.act.pack) { const ok = g.canMorph(ME, one); setD(this.act.pack, !ok); setD(this.act.transform, !ok); }
       const lines = [`${s.name}`, `HP ${Math.ceil(one.hp)}/${s.hp} · Power ${s.power > 0 ? '+' : ''}${s.power}`];
       if (!one.powered && (s.weapon || s.radar || s.superweapon)) lines.push('OFFLINE: low power');
       else if (s.builds && s.builds !== 'building') lines.push('Tap map: set rally point');
@@ -202,7 +220,7 @@ export class Sidebar {
       (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.type === 'harvester' ? `\nLoad ${one.load | 0}` : '')
       : sel.length ? `${sel.length} selected` : this.ui.targeting ? 'Ion Cannon: tap a target (right-click/Esc cancels)'
       : this.ui.placing && BUILDINGS[this.ui.placing].wall ? 'Tap a tile, or drag a line of wall ($50 each)' : this.ui.placing && BUILDINGS[this.ui.placing].gate ? 'Tap a tile next to a wall'
-      : t.readyBuilding ? 'Structure ready: tap it, then place on map' : !g.has(0, 'cy') ? 'Construction Yard lost!' : 'Tap/drag to select. Tap (or right-click) to command.');
+      : t.readyBuilding ? 'Structure ready: tap it, then place on map' : !g.has(ME, 'cy') ? `${BUILDINGS[g.role(ME, 'yard')].name} lost!` : 'Tap/drag to select. Tap (or right-click) to command.');
   }
 }
 const q = s => document.querySelector(s);

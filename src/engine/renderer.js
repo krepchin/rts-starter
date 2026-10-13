@@ -1,7 +1,9 @@
+import { ME } from './local.js?v=10.0';
 import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.0';
 import { drawBuildingArt } from './buildingArt.js?v=10.0';
 import { Terrain } from '../world/terrain.js?v=10.0';
 import { drawMobileBase } from './mcvArt.js?v=10.0';
+import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt } from './artReptile.js?v=10.0';
 import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.0';
 import { FORMATION } from '../entities/mcv.js?v=10.0';
 import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.0';
@@ -34,10 +36,11 @@ export class Renderer {
     for (const d of g.decals) { // scorch decals under everything
       const a = Math.min(1, d.t / 4) * 0.55; ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot); ctx.fillStyle = `rgba(30,22,14,${a})`;
       ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * 0.55, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(20,14,8,${a})`; ctx.beginPath(); ctx.ellipse(1, 0, d.r * 0.5, d.r * 0.3, 0.4, 0, 7); ctx.fill(); ctx.restore(); }
-    const vis = g.buildings.filter(b => b.team === 0 || fog.visibleAt(b.x, b.y) || b.seen).sort((a, b) => (a.ty + a.h) - (b.ty + b.h));
-    for (const b of vis) { if (b.team !== 0) b.seen = true; this.drawBuilding(b, ui.selection.has(b), t); }
+    for (const z of g.zones) drawZone(ctx, z, t);
+    const vis = g.buildings.filter(b => b.team === ME || fog.visibleAt(b.x, b.y) || b.seen).sort((a, b) => (a.ty + a.h) - (b.ty + b.h));
+    for (const b of vis) { if (b.team !== ME) b.seen = true; this.drawBuilding(b, ui.selection.has(b), t); }
     const ground = g.units.filter(u => !u.isAir), air = g.units.filter(u => u.isAir);
-    for (const u of [...ground, ...air]) if (u.team === 0 || fog.visibleAt(u.x, u.y)) this.drawUnit(u, ui.selection.has(u), t);
+    for (const u of [...ground, ...air]) if (u.team === ME || fog.visibleAt(u.x, u.y)) this.drawUnit(u, ui.selection.has(u), t);
     for (const r of g.rockets) { // painted rocket: flame glow, body, fins, nose
       ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.a);
       const fl = 6 + Math.random() * 4, gr = ctx.createRadialGradient(-6, 0, 0, -6, 0, fl + 4); gr.addColorStop(0, 'rgba(255,240,170,0.95)'); gr.addColorStop(0.4, 'rgba(255,150,40,0.7)'); gr.addColorStop(1, 'rgba(255,80,0,0)');
@@ -52,6 +55,7 @@ export class Renderer {
         ctx.fillStyle = '#dff'; ctx.fillRect(e.x - 10 * k, e.y - 900, 20 * k, 900); ctx.strokeStyle = '#9cf'; ctx.lineWidth = 4;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.3 - k), 0, 7); ctx.stroke(); ctx.fillStyle = '#9cf6'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * k, 0, 7); ctx.fill(); ctx.restore(); }
       else if (e.sell) { ctx.strokeStyle = `rgba(200,200,180,${e.t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.6 - e.t), 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+      else if (e.fx && !e.rocket) drawFx(ctx, e, t);
       else if (e.rocket && this.g.rockets) { /* drawn as a real projectile (drawRockets) */ }
       else if (e.bolt || e.rocket) { const k = 1 - e.t / 0.25, px = e.x1 + (e.x2 - e.x1) * Math.min(1, k * 1.6), py = e.y1 + (e.y2 - e.y1) * Math.min(1, k * 1.6) - Math.sin(Math.min(1, k * 1.6) * Math.PI) * (e.rocket ? 14 : 4);
         ctx.save(); ctx.shadowColor = e.bolt ? '#7f3' : '#fa6'; ctx.shadowBlur = 10; ctx.fillStyle = e.bolt ? '#c8ff7a' : '#ffd08a'; ctx.beginPath(); ctx.arc(px, py, e.bolt ? 3.5 : 2.5, 0, 7); ctx.fill();
@@ -88,26 +92,30 @@ export class Renderer {
     const ctx = this.ctx, x = b.tx * TILE, y = b.ty * TILE, w = b.w * TILE, h = b.h * TILE;
     if (b.morph || b.unfold) { drawMorphing(ctx, b, t, this.g); return; } // v9 staged transform / reverse unfold
     if (b.stats.wall) drawWall(ctx, b, t, this.g); else if (b.stats.gate) drawGate(ctx, b, t, this.g); else if (b.type === 'turret') drawTurret(ctx, b, t, this.g);
+    else if (b.stats.faction === 'reptile') drawOrganic(ctx, b, t);
     else drawBuildingArt(ctx, b, t, this.g);
     if (!b.stats.wall || sel || b.hp < b.stats.hp) this.hpBar(b, x, y - 6, w, sel);
     for (const c of this.g.charges) if (c.b === b) { const on = Math.sin(t * (20 - c.t * 3)) > 0; ctx.fillStyle = on ? '#f33' : '#600'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(c.t), b.x, b.y - 6); }
     if (sel) { ctx.strokeStyle = SEL; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(b.x, y + h * 0.62, w * 0.62, h * 0.42, 0, 0, 7); ctx.stroke();
       ctx.fillStyle = '#cfe'; ctx.font = '10px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(BUILDINGS[b.type].name, x + w / 2, y + h + 11);
       if (b.rally) { ctx.strokeStyle = '#6f6'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.rally.x, b.rally.y); ctx.stroke(); ctx.beginPath(); ctx.arc(b.rally.x, b.rally.y, 4, 0, 7); ctx.stroke(); } }
-    if (b.stats.superweapon && b.team === 0) { const f = b.charge / b.stats.superweapon.chargeTime; ctx.fillStyle = '#000a'; ctx.fillRect(x, y + h - 4, w, 4); ctx.fillStyle = f >= 1 ? '#fff' : '#9cf'; ctx.fillRect(x, y + h - 4, w * f, 4); }
+    if (b.stats.superweapon && b.team === ME) { const f = b.charge / b.stats.superweapon.chargeTime; ctx.fillStyle = '#000a'; ctx.fillRect(x, y + h - 4, w, 4); ctx.fillStyle = f >= 1 ? '#fff' : '#9cf'; ctx.fillRect(x, y + h - 4, w * f, 4); }
   }
   drawUnit(u, sel, t) {
     const ctx = this.ctx, col = TEAM_COLORS[u.team], r = u.radius;
     if (u.beingRepaired > 0 && !u.stats.inf && u.type !== 'jet' && u.type !== 'bomber') drawRepairGlint(ctx, u.x, u.y - r - 4, t);
     if (u.carried) { drawMobileBase(ctx, u, sel, t); return; }
+    if (isFactionArt(u.type)) { const ctx = this.ctx, top = drawFactionUnit(ctx, u, t, ME); if (top === null) return;
+      const rr = Math.max(8, u.radius * 1.2); if (sel) { ctx.strokeStyle = SEL; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 2, rr, rr * 0.36, 0, 0, 7); ctx.stroke(); }
+      if (u.team !== ME || sel || u.hp < u.stats.hp) this.hpBar(u, u.x - rr, top - 8, rr * 2, sel); return; }
     if (u.stats.inf) { this.drawSoldier(u, sel, col, t); return; }
     if ((u.type === 'tank' || u.type === 'harvester') && this.drawTankSprite(u, sel, col, r)) return;
     if (u.type === 'jet' || u.type === 'bomber') { this.drawStrikeCraft(u, sel, col, t); return; }
     if (u.type === 'carrier' && this.drawCarrierTD(u, sel, col, t)) return;
-    if (u.type === 'dropship') { const ctx = this.ctx, { lift, hidden } = drawDropship(ctx, u, t, 0); if (hidden) return;
+    if (u.type === 'dropship') { const ctx = this.ctx, { lift, hidden } = drawDropship(ctx, u, t, ME); if (hidden) return;
       if (sel) { ctx.strokeStyle = SEL; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(u.x, u.y + 4, 32, 10, 0, 0, 7); ctx.stroke(); }
-      if (u.team === 0 || sel || u.hp < u.stats.hp) this.hpBar(u, u.x - 18, u.y - lift - 24, 36, sel);
-      if (u.team === 0) { const cap = u.stats.capacity, used = u.used; for (let i = 0; i < cap; i++) { ctx.fillStyle = i < used ? '#c8ff7a' : '#0008'; ctx.fillRect(u.x - 18 + i * 4.6, u.y - lift - 19, 3.6, 3); }
+      if (u.team === ME || sel || u.hp < u.stats.hp) this.hpBar(u, u.x - 18, u.y - lift - 24, 36, sel);
+      if (u.team === ME) { const cap = u.stats.capacity, used = u.used; for (let i = 0; i < cap; i++) { ctx.fillStyle = i < used ? '#c8ff7a' : '#0008'; ctx.fillRect(u.x - 18 + i * 4.6, u.y - lift - 19, 3.6, 3); }
         ctx.fillStyle = '#4fd8ff'; ctx.fillRect(u.x - 18, u.y - lift - 15, 36 * u.energy / u.stats.energy, 2); }
       return; }
     if ((u.type === 'carrier' || u.type === 'interceptor') && this.drawAirSprite(u, sel, col, r, t)) return;
@@ -163,12 +171,12 @@ export class Renderer {
   drawStrikeCraft(u, sel, col, t) {
     const ctx = this.ctx, bomber = u.type === 'bomber', lift = bomber ? 22 : 16;
     let alpha = 1;
-    if (bomber && u.stealthed) { const near = u.team !== 0 && this.g.units.some(o => o.team === 0 && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 80);
-      alpha = u.team === 0 ? 0.45 + 0.1 * Math.sin(t * 5) : near ? 0.5 : 0.1 + 0.06 * Math.sin(t * 7 + u.id); }
+    if (bomber && u.stealthed) { const near = u.team !== ME && this.g.units.some(o => o.team === ME && !o.dead && Math.hypot(o.x - u.x, o.y - u.y) < 80);
+      alpha = u.team === ME ? 0.45 + 0.1 * Math.sin(t * 5) : near ? 0.5 : 0.1 + 0.06 * Math.sin(t * 7 + u.id); }
     ctx.save(); ctx.globalAlpha = alpha * 0.55; ctx.fillStyle = '#000'; ctx.translate(u.x + lift * 0.6, u.y + lift); ctx.rotate(u.angle); ctx.scale(1, 1 - Math.abs(u.bank || 0) * 0.3);
     ctx.beginPath(); if (bomber) { ctx.moveTo(14, 0); ctx.lineTo(-10, 30); ctx.lineTo(-6, 0); ctx.lineTo(-10, -30); } else { ctx.moveTo(14, 0); ctx.lineTo(-10, 10); ctx.lineTo(-10, -10); } ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.save(); ctx.globalAlpha = alpha; (bomber ? drawBomber : drawJet)(ctx, u, t, col); ctx.restore();
-    if (u.team === 0 || alpha > 0.3) this.hpBar(u, u.x - 12, u.y - (bomber ? 26 : 18), 24, sel);
+    if (u.team === ME || alpha > 0.3) this.hpBar(u, u.x - 12, u.y - (bomber ? 26 : 18), 24, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.arc(u.x, u.y, bomber ? 30 : 18, 0, 7); ctx.stroke(); }
     if (u.beingRepaired > 0) drawRepairGlint(ctx, u.x, u.y - 8, t);
   }
@@ -182,7 +190,7 @@ export class Renderer {
     ctx.strokeStyle = col; ctx.globalAlpha = 0.75; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(fx, fy, 7.5, 3.2, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1;
     ctx.fillStyle = '#000a'; ctx.beginPath(); ctx.ellipse(fx, fy, 5.5, 2.2, 0, 0, 7); ctx.fill();
     const spr = u.type === 'infantry' && getSprite('soldier', u.team);
-    if (u.cloaked) ctx.globalAlpha = u.team === 0 ? 0.35 + 0.1 * Math.sin(t * 8) : 0.08;
+    if (u.cloaked) ctx.globalAlpha = u.team === ME ? 0.35 + 0.1 * Math.sin(t * 8) : 0.08;
     if (u.stimT > 0) { ctx.save(); ctx.fillStyle = 'rgba(255,60,40,0.25)'; ctx.beginPath(); ctx.ellipse(fx, fy - 10, 7, 12, 0, 0, 7); ctx.fill(); ctx.restore(); }
     ctx.save(); ctx.translate(fx, fy); ctx.rotate(sway); ctx.translate(0, -bob); ctx.scale(dir, 1);
     if (spr) { const w = H / spr.aspect; ctx.drawImage(spr.img, -w / 2, -H, w, H); }
@@ -199,7 +207,7 @@ export class Renderer {
     if (u.healing && !u.healing.dead) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + 0.4 * Math.sin(t * 16)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(u.healing.x, u.healing.y - 8); ctx.stroke(); ctx.lineWidth = 1;
       ctx.fillStyle = '#e33'; const hx = u.healing.x, hy = u.healing.y - 28 - (t * 20 % 8); ctx.fillRect(hx - 3, hy - 1, 6, 2); ctx.fillRect(hx - 1, hy - 3, 2, 6); }
     if (u.repairing && !u.repairing.dead) { ctx.strokeStyle = `rgba(120,255,140,${0.5 + 0.4 * Math.sin(t * 20)})`; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(fx, fy - 12); ctx.lineTo(u.repairing.x, u.repairing.y); ctx.stroke(); ctx.setLineDash([]); }
-    if (u.team !== 0 || sel || u.hp < u.stats.hp) this.hpBar(u, fx - 7, fy - H - 6 - bob, 14, sel);
+    if (u.team !== ME || sel || u.hp < u.stats.hp) this.hpBar(u, fx - 7, fy - H - 6 - bob, 14, sel);
     if (sel) { ctx.strokeStyle = SEL; ctx.beginPath(); ctx.ellipse(fx, fy, 9.5, 4.2, 0, 0, 7); ctx.stroke(); }
   }
   // Cosmetic tank variants (cycled by unit id). Isometric art: flip horizontally by heading instead of rotating.
@@ -248,8 +256,8 @@ export class Renderer {
     }
   }
   drawPlacement(ui) {
-    const s = BUILDINGS[ui.placing], ht = ui.hoverTile, ok = this.g.canPlace(0, ui.placing, ht.x, ht.y), ctx = this.ctx;
-    ctx.globalAlpha = 0.55; drawBuildingArt(ctx, { type: ui.placing, team: 0, faceRight: !!this.g.teams[0].startLeft, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+    const s = BUILDINGS[ui.placing], ht = ui.hoverTile, ok = this.g.canPlace(ME, ui.placing, ht.x, ht.y), ctx = this.ctx;
+    ctx.globalAlpha = 0.55; (s.faction === 'reptile' ? drawOrganic : drawBuildingArt)(ctx, { type: ui.placing, team: 0, faceRight: !!this.g.teams[ME].startLeft, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
     ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
     for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { ctx.fillRect((ht.x + x) * TILE + 1, (ht.y + y) * TILE + 1, TILE - 2, TILE - 2); }
     ctx.strokeRect(ht.x * TILE, ht.y * TILE, s.w * TILE, s.h * TILE);
@@ -258,8 +266,8 @@ export class Renderer {
   drawDeploy(ui) {
     const mb = ui.deploying, p = ui.hoverWorld || { x: mb.x, y: mb.y }, ht = ui.deployTile(p), ctx = this.ctx, g = this.g;
     for (const f of mb.footprint()) {
-      const s = BUILDINGS[f.type], tx = ht.x + f.dx, ty = ht.y + f.dy, ok = g.fits(0, f.type, tx, ty);
-      ctx.globalAlpha = 0.5; drawBuildingArt(ctx, { type: f.type, team: 0, faceRight: !!this.g.teams[0].startLeft, tx, ty, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+      const s = BUILDINGS[f.type], tx = ht.x + f.dx, ty = ht.y + f.dy, ok = g.fits(ME, f.type, tx, ty);
+      ctx.globalAlpha = 0.5; drawBuildingArt(ctx, { type: f.type, team: 0, faceRight: !!this.g.teams[ME].startLeft, tx, ty, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
       ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
       for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) ctx.fillRect((tx + x) * TILE + 1, (ty + y) * TILE + 1, TILE - 2, TILE - 2);
       ctx.strokeRect(tx * TILE, ty * TILE, s.w * TILE, s.h * TILE);
@@ -267,7 +275,7 @@ export class Renderer {
     ctx.strokeStyle = '#6f6'; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(mb.x, mb.y); ctx.lineTo((ht.x + 1.5) * TILE, (ht.y + 1.5) * TILE); ctx.stroke(); ctx.setLineDash([]);
   }
   drawWallLine(ui) { const ctx = this.ctx, d = ui.wallDrag;
-    for (const [x, y] of this.g.wallLine(d.x0, d.y0, d.x1, d.y1)) { const ok = this.g.canPlaceInstant(0, ui.placing, x, y) || this.g.canPlace(0, ui.placing, x, y);
+    for (const [x, y] of this.g.wallLine(d.x0, d.y0, d.x1, d.y1)) { const ok = this.g.canPlaceInstant(ME, ui.placing, x, y) || this.g.canPlace(ME, ui.placing, x, y);
       ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55'; ctx.fillRect(x * TILE + 1, y * TILE + 1, TILE - 2, TILE - 2); ctx.strokeRect(x * TILE + 1, y * TILE + 1, TILE - 2, TILE - 2); } }
   drawBurrow(ui) {
     const mb = ui.burrowing, p = ui.hoverWorld; if (!p) return; const ctx = this.ctx, r = 2.6 * TILE, t = performance.now() / 1000;

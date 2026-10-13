@@ -1,3 +1,4 @@
+import { ME } from './local.js?v=10.0';
 import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
 
 // Unified mouse/pen/touch input via Pointer Events.
@@ -67,8 +68,8 @@ export class Input {
       const a = this.cam.toWorld(b.x0, b.y0), c = this.cam.toWorld(b.x1, b.y1); this.ui.boxSelect(a.x, a.y, c.x, c.y, e.shiftKey); return; }
     // Click/tap: select own thing, otherwise (touch, or mouse with selection) command.
     const hit = this.g.entityAt(w.x, w.y);
-    if (hit && hit.team === 0 && hit.type === 'dropship' && [...this.ui.selection].some(u => u !== hit && hit.canTake?.(u))) { this.ui.commandAt(w.x, w.y); return; } // board
-    if (hit && hit.team === 0) {
+    if (hit && hit.team === ME && hit.type === 'dropship' && [...this.ui.selection].some(u => u !== hit && hit.canTake?.(u))) { this.ui.commandAt(w.x, w.y); return; } // board
+    if (hit && hit.team === ME) {
       // double-click / double-tap an own unit: centre the camera on the selection
       const now = performance.now(), dbl = this.lastTap && this.lastTap.e === hit && now - this.lastTap.t < 350;
       this.lastTap = { e: hit, t: now };

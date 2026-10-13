@@ -2,6 +2,7 @@ import { Entity } from './entity.js?v=10.0';
 import { BUILDINGS, TILE } from '../data/stats.js?v=10.0';
 
 export class Building extends Entity {
+  toggleLock() { this.locked = !this.locked; return true; } // v10: a method so multiplayer can network it
   constructor(game, type, team, tx, ty) {
     const s = BUILDINGS[type];
     super(game, 'building', type, team, (tx + s.w / 2) * TILE, (ty + s.h / 2) * TILE, s);
@@ -15,7 +16,8 @@ export class Building extends Entity {
   spawnPoint() { return { x: this.x, y: (this.ty + this.h) * TILE + 14 }; }
   contains(px, py) { return px >= this.tx * TILE && py >= this.ty * TILE && px < (this.tx + this.w) * TILE && py < (this.ty + this.h) * TILE; }
   update(dt) {
-    this.cool -= dt; this.age += dt; this.flash -= dt;
+    this.cool -= dt; this.age += dt; this.flash -= dt; this.hitT = (this.hitT ?? 9) + dt;
+    if (this.stats.organic && this.hitT > 6 && this.hp < this.stats.hp && this.age > 1) this.hp = Math.min(this.stats.hp, this.hp + this.stats.hp * 0.006 * dt); // organic regen
     if (this.stats.gate) { // opens for nearby friendly ground units unless locked; always closed to enemies
       const want = !this.locked && this.game.units.some(u => u.team === this.team && !u.dead && !u.isAir && Math.hypot(u.x - this.x, u.y - this.y) < 1.8 * TILE);
       this.openK = Math.max(0, Math.min(1, (this.openK || 0) + (want ? 2.5 : -2.5) * dt)); }
