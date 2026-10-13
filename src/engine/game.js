@@ -1,20 +1,21 @@
-import { Jet, Bomber } from '../entities/air.js?v=10.0';
-import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=10.0';
-import { GameMap } from '../world/map.js?v=10.0';
-import { Fog } from '../world/fog.js?v=10.0';
-import { Building } from '../entities/building.js?v=10.0';
-import { Unit, Harvester } from '../entities/unit.js?v=10.0';
-import { Carrier, Interceptor } from '../entities/carrier.js?v=10.0';
-import { Dropship } from '../entities/dropship.js?v=10.0';
-import { resetIds } from '../entities/entity.js?v=10.0';
-import { MobileBase, FORMATION } from '../entities/mcv.js?v=10.0';
-import { FACTIONS, factionOf } from '../data/factions.js?v=10.0';
-import { Egg, HiveOrb, BroodShip, Truck, Grazer } from '../entities/reptile.js?v=10.0';
+import { Jet, Bomber } from '../entities/air.js?v=10.1';
+import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=10.1';
+import { GameMap } from '../world/map.js?v=10.1';
+import { Fog } from '../world/fog.js?v=10.1';
+import { Building } from '../entities/building.js?v=10.1';
+import { Unit, Harvester } from '../entities/unit.js?v=10.1';
+import { Carrier, Interceptor } from '../entities/carrier.js?v=10.1';
+import { Dropship } from '../entities/dropship.js?v=10.1';
+import { resetIds } from '../entities/entity.js?v=10.1';
+import { MobileBase, FORMATION } from '../entities/mcv.js?v=10.1';
+import { FactionHarvester, Lightcraft, Saucer } from '../entities/aliens.js?v=10.1';
+import { FACTIONS, factionOf } from '../data/factions.js?v=10.1';
+import { Egg, HiveOrb, BroodShip, Truck, Grazer } from '../entities/reptile.js?v=10.1';
 export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
 
-const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber, dropship: Dropship, egg: Egg, hiveorb: HiveOrb, broodship: BroodShip, truck: Truck, buggy: Truck, grazer: Grazer };
+const UNIT_CLASSES = { harvester: Harvester, carrier: Carrier, jet: Jet, bomber: Bomber, dropship: Dropship, egg: Egg, hiveorb: HiveOrb, broodship: BroodShip, truck: Truck, buggy: Truck, grazer: Grazer, harmonizer: FactionHarvester, reaper: FactionHarvester, lightcraft: Lightcraft, saucer: Saucer, mothership: Saucer };
 export const CATS = ['building', 'infantry', 'vehicle', 'aircraft'];
 export const GRACE_SECONDS = 600; // optional ceasefire at game start (applies to both sides)
 export const PRODUCER = { building: 'cy', infantry: 'barracks', vehicle: 'factory', aircraft: 'airfield' };
@@ -44,7 +45,7 @@ export class Game {
     m.addField(44, 44, 5);
     const F = t => FACTIONS[this.teams[t].faction];
     this.addBuilding(F(0).start.yard, 0, 6, 6).age = 9; this.spawnUnit(F(0).roles.harvester, 0, 10 * TILE, 12 * TILE);
-    const [a, b, c] = F(0).start.units; this.spawnUnit(a, 0, 11 * TILE, 10 * TILE); this.spawnUnit(b, 0, 9 * TILE, 10 * TILE); this.spawnUnit(c, 0, 9.5 * TILE, 10.5 * TILE);
+    F(0).start.units.forEach((k, i) => this.spawnUnit(k, 0, (9 + (i % 3) * 1.1) * TILE, (10 + Math.floor(i / 3) * 0.9 + (i % 2) * 0.4) * TILE));
     this.addBuilding(F(1).start.yard, 1, 79, 79).age = 9; this.spawnUnit(F(1).roles.harvester, 1, 79 * TILE, 77 * TILE);
     if (this.opts?.mp) { const [a1, b1, c1] = F(1).start.units; this.spawnUnit(a1, 1, 78 * TILE, 78 * TILE); this.spawnUnit(b1, 1, 80 * TILE, 78 * TILE); this.spawnUnit(c1, 1, 79.5 * TILE, 77.5 * TILE); } // fair 1v1 start
     else this.spawnUnit(F(1).start.units[0], 1, 78 * TILE, 78 * TILE);
@@ -313,6 +314,9 @@ export class Game {
     this.shake = Math.max(0, this.shake - dt * 12);
     for (const b of this.buildings) if (!b.dead) b.update(dt);
     for (const u of this.units) if (!u.dead) {
+      if (u.shieldT > 0) u.shieldT -= dt;
+      const ha = u.stats.healAura; if (ha) for (const o of this.units) if (o.team === u.team && !o.dead && o !== u && o.hp < o.stats.hp && Math.hypot(o.x - u.x, o.y - u.y) < ha.r * TILE) o.hp = Math.min(o.stats.hp, o.hp + ha.hp * dt);
+      if (u.stunT > 0) { u.stunT -= dt; if (u.stunT <= 0) u.lift = 0; } else
       u.update(dt);
       // Safety net for every unit class (Carrier/Harvester have their own update): never leave the map, never NaN.
       if (!Number.isFinite(u.x) || !Number.isFinite(u.y)) { u.x = u.lastX ?? this.map.pxW / 2; u.y = u.lastY ?? this.map.pxH / 2; }

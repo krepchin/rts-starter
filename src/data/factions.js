@@ -7,5 +7,12 @@ export const FACTIONS = {
   reptile: { name: 'Reptilians', producer: { building: 'hive', infantry: 'spawnpool', vehicle: 'dronenest', aircraft: 'broodspire' },
     roles: { yard: 'hive', power: 'heart', refinery: 'digester', infantry: 'spawnpool', vehicle: 'dronenest', radar: 'seer', air: 'broodspire', def: 'spine', harvester: 'grazer' },
     start: { yard: 'hive', units: ['spark', 'raider', 'raider'] } },
+  nordic: { name: 'Nordics', producer: { building: 'sanctum', infantry: 'temple', vehicle: 'forge', aircraft: 'skygate' },
+    roles: { yard: 'sanctum', power: 'lightwell', refinery: 'resonator', infantry: 'temple', vehicle: 'forge', radar: 'oracle', air: 'skygate', def: 'sunlance', harvester: 'harmonizer' },
+    start: { yard: 'sanctum', units: ['skiff', 'sentinel', 'sentinel'] } },
+  grey: { name: 'Greys', producer: { building: 'nexus', infantry: 'vat', vehicle: 'assembly', aircraft: 'hangar' },
+    roles: { yard: 'nexus', power: 'reactor', refinery: 'extractor', infantry: 'vat', vehicle: 'assembly', radar: 'beacon', air: 'hangar', def: 'psitower', harvester: 'reaper' },
+    start: { yard: 'nexus', units: ['crawler', 'greydrone', 'greydrone', 'greydrone', 'greydrone'] } },
 };
+export const FACTION_KEYS = ['human', 'reptile', 'nordic', 'grey'];
 export const factionOf = s => s?.faction || 'human';

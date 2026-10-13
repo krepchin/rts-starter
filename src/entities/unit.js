@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=10.0';
-import { UNITS, TILE } from '../data/stats.js?v=10.0';
+import { Entity } from './entity.js?v=10.1';
+import { UNITS, TILE } from '../data/stats.js?v=10.1';
 
 // Orders: {type:'move',x,y} | {type:'attack',target} | {type:'attackMove',x,y} | {type:'harvest'} | idle (null)
 export class Unit extends Entity {
@@ -34,6 +34,20 @@ export class Unit extends Entity {
       const t = this.target && !this.target.dead ? this.target : g.findEnemyNear(this, 4 * TILE, e => this.canHit(e)); if (!t) return false;
       const d = this.dist(t), k = Math.min(1, Math.max(0, (d - t.radius - 6) / d)); this.leap = { x0: this.x, y0: this.y, x1: this.x + (t.x - this.x) * k, y1: this.y + (t.y - this.y) * k, t: 0, tgt: t }; this.abCd = 9; }
     else if (a === 'harden') { this.hardT = 6; this.abCd = 18; }
+    else if (a === 'shield') { // Guardian: light barrier on itself + allies within 2.5 tiles, 60% damage reduction for 6 s
+      for (const o of g.units) if (o.team === this.team && !o.dead && Math.hypot(o.x - this.x, o.y - this.y) < 2.5 * TILE) o.shieldT = 6; this.abCd = 20; }
+    else if (a === 'blink') { // Tall White: phase-step up to 5 tiles onto the nearest enemy (or along the move order)
+      const t = this.target && !this.target.dead ? this.target : g.findEnemyNear(this, 6 * TILE, e => this.canHit(e)), o = this.order;
+      const tx = t ? t.x : o?.x, ty = t ? t.y : o?.y; if (tx === undefined) return false;
+      const d = Math.hypot(tx - this.x, ty - this.y) || 1, k = Math.min(5 * TILE, Math.max(0, d - 14)) / d;
+      g.effects.push({ t: 0.4, flash: true, x: this.x, y: this.y - 10, r: 14 }); this.x += (tx - this.x) * k; this.y += (ty - this.y) * k; g.effects.push({ t: 0.4, flash: true, x: this.x, y: this.y - 10, r: 14 }); this.shieldT = 1.5; this.abCd = 12; }
+    else if (a === 'stun') { // Psionic: psychic shock - enemies within 1.6 tiles of the nearest foe (6 tiles) are stunned 3 s
+      const t = g.findEnemyNear(this, 6 * TILE, e => this.canHit(e) && e.kind === 'unit'); if (!t) return false;
+      for (const e of g.units) if (e.team !== this.team && !e.dead && !e.isAir && Math.hypot(e.x - t.x, e.y - t.y) < 1.6 * TILE) { e.stunT = 3; e.damage(10, this); }
+      g.effects.push({ t: 0.6, flash: true, x: t.x, y: t.y - 8, r: 1.6 * TILE }); this.abCd = 16; }
+    else if (a === 'abduct') { // Abductor: capture beam - takes control of the nearest enemy infantryman (<= 140 HP) within 3.5 tiles
+      const t = g.findEnemyNear(this, 3.5 * TILE, e => this.canHit(e) && e.kind === 'unit' && e.stats.inf && e.hp <= 140 && !e.stats.hatchling); if (!t) return false;
+      t.team = this.team; t.order = null; t.target = null; t.anchor = null; t.stunT = 1; g.effects.push({ t: 0.6, flash: true, x: t.x, y: t.y - 10, r: 14 }); this.abCd = 25; }
     else if (a === 'acid' || a === 'storm') { // point casts: default to the current target / nearest enemy
       const t = this.target && !this.target.dead ? this.target : g.findEnemyNear(this, this.stats.weapon.range * TILE + 2 * TILE, e => this.canHit(e)); if (!t) return false; return this.castAt(t.x, t.y); }
     if (this.team === this.game.me || g.teams[this.team]) g.sfx?.(a, this); return true;
@@ -97,7 +111,7 @@ export class Unit extends Entity {
   }
   update(dt) {
     this.cool -= dt; this.tickAbility(dt); if (this.beingRepaired > 0) this.beingRepaired -= dt;
-    if (this.type === 'medic' && this.medicUpdate(dt)) { this.separate(dt); return; }
+    if ((this.type === 'medic' || this.stats.healer) && this.medicUpdate(dt)) { this.separate(dt); return; }
     if (this.type === 'engineer' && this.engineerUpdate(dt)) { this.separate(dt); return; }
     const o = this.order;
     if (this.leap) { this.separate(dt); return; }

@@ -3,14 +3,14 @@
 // - Both peers run the same simulation. Player actions are not applied locally: they are captured, serialized, scheduled DELAY turns ahead,
 //   exchanged, and executed by both peers at the same turn in the same order (host first). Math.random is replaced by a shared seeded PRNG
 //   while the simulation runs. Every HASH_EVERY turns both peers exchange a state checksum; a mismatch is reported as a desync.
-import { Unit, Harvester } from '../entities/unit.js?v=10.0';
-import { Building } from '../entities/building.js?v=10.0';
-import { Game } from '../engine/game.js?v=10.0';
-import * as Carr from '../entities/carrier.js?v=10.0';
-import * as Drop from '../entities/dropship.js?v=10.0';
-import * as Mcv from '../entities/mcv.js?v=10.0';
-import * as Rep from '../entities/reptile.js?v=10.0';
-import * as Air from '../entities/air.js?v=10.0';
+import { Unit, Harvester } from '../entities/unit.js?v=10.1';
+import { Building } from '../entities/building.js?v=10.1';
+import { Game } from '../engine/game.js?v=10.1';
+import * as Carr from '../entities/carrier.js?v=10.1';
+import * as Drop from '../entities/dropship.js?v=10.1';
+import * as Mcv from '../entities/mcv.js?v=10.1';
+import * as Rep from '../entities/reptile.js?v=10.1';
+import * as Air from '../entities/air.js?v=10.1';
 
 export const TICK = 1 / 30, TICKS_PER_TURN = 3, DELAY = 2, HASH_EVERY = 10;
 const ENTITY_METHODS = ['command', 'useAbility', 'castAt', 'unloadAt', 'loadNearby', 'toggleMode', 'setCloak', 'layEgg', 'toggleLock'];

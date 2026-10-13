@@ -1,11 +1,17 @@
-import { ME } from './local.js?v=10.0';
+import { ME } from './local.js?v=10.1';
 // v10 art: Reptilian units (sprites cut from Kent's concept art, assets/r_*.png, with code fallbacks), drones, Brood Ship, eggs,
 // organic structures (painted code art), the human Dune Buggy and Monster Truck, and new weapon effects.
-import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.0';
-import { getSprite } from './sprites.js?v=10.0';
+import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.1';
+import { getSprite } from './sprites.js?v=10.1';
 
 const SPR = { raider: ['r_raider', 30], spitter: ['r_spitter', 28], brute: ['r_brute', 44], shaman: ['r_shaman', 38], hatchling: ['r_raider', 19],
-  spark: ['r_spark', 20], lance: ['r_lance', 30], hiveorb: ['r_hive', 54] };
+  spark: ['r_spark', 20], lance: ['r_lance', 30], hiveorb: ['r_hive', 54],
+  // v10.1 Nordics + Greys (cut from Kent's faction concept sheets)
+  sentinel: ['n_sentinel', 30], seer: ['n_seer', 32], guardian: ['n_guardian', 32], tallwhite: ['n_tallwhite', 46], skiff: ['n_skiff', 26], harmonizer: ['n_skiff', 20],
+  lightcraft: ['n_lightcraft', 10], lightship: ['n_lightship', 30],
+  greydrone: ['g_drone', 20], psionic: ['g_psionic', 24], abductor: ['g_abductor', 26], hybrid: ['g_hybrid', 28], crawler: ['g_crawler', 15], probe: ['g_orb', 22],
+  reaper: ['g_saucer', 14], saucer: ['g_saucer', 22], mothership: ['g_mothership', 46] };
+const HOVER_GLOW = { nordic: 'rgba(255,245,200,0.5)', grey: 'rgba(190,120,255,0.45)' };
 export const isFactionArt = type => !!SPR[type] || ['egg', 'broodship', 'grazer', 'buggy', 'truck'].includes(type);
 const TEAMC = { 0: '#3fa9ff', 1: '#ff4a3a' };
 function shadow(ctx, x, y, rx, ry, a = 0.3) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); }
@@ -18,11 +24,17 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
   if (u.life !== undefined && u.lifeMax) ctx.globalAlpha = Math.min(1, 0.35 + u.life / 8);
   let top = u.y - 30;
   if (SPR[tp]) {
-    const [name, H] = SPR[tp], hover = UNITS[tp].hover, sp = getSprite(name, 0);
-    const alt = hover ? 12 + Math.sin(t * 3 + (u.id || 0)) * 2.5 : (u.hop || 0), bob = !hover && moving ? Math.abs(Math.sin(t * 9 + (u.id || 0))) * 1.6 : 0;
+    const [name, H] = SPR[tp], hover = UNITS[tp].hover || UNITS[tp].air, sp = getSprite(name, 0);
+    let alt = hover ? 12 + Math.sin(t * 3 + (u.id || 0)) * 2.5 : (u.hop || 0), bob = !hover && moving ? Math.abs(Math.sin(t * 9 + (u.id || 0))) * 1.6 : 0;
     shadow(ctx, u.x, u.y + 1, H * (hover ? 0.42 : 0.35), H * 0.12, hover ? 0.22 : 0.3);
     if (u.team !== viewer || true) { ctx.strokeStyle = TEAMC[u.team]; ctx.globalAlpha *= 0.45; ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, H * 0.33, H * 0.11, 0, 0, 7); ctx.stroke(); ctx.globalAlpha /= 0.45; }
-    if (hover) glow(ctx, u.x, u.y - alt - H * 0.4, H * 0.75, 'rgba(170,255,90,0.45)', 0.7 + 0.3 * Math.sin(t * 5 + (u.id || 0)));
+    if (UNITS[tp].air) { alt += 16; }
+    if (hover) glow(ctx, u.x, u.y - alt - H * 0.4, H * 0.75, HOVER_GLOW[UNITS[tp].faction] || 'rgba(170,255,90,0.45)', 0.7 + 0.3 * Math.sin(t * 5 + (u.id || 0)));
+    if (u.shieldT > 0) { ctx.strokeStyle = `rgba(255,230,140,${0.5 + 0.3 * Math.sin(t * 10)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(u.x, u.y - alt - H * 0.5, H * 0.45, H * 0.6, 0, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+    if (u.stunT > 0) { ctx.fillStyle = '#d9a6ff'; for (let i = 0; i < 3; i++) { const a = t * 6 + i * 2.1; ctx.beginPath(); ctx.arc(u.x + Math.cos(a) * 7, u.y - alt - H - 4 + Math.sin(a) * 2, 1.6, 0, 7); ctx.fill(); } }
+    if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, u.y - alt, b.x, b.y); gr.addColorStop(0, 'rgba(160,255,120,0.7)'); gr.addColorStop(1, 'rgba(160,255,120,0.15)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(u.x - 5, u.y - alt - H * 0.2); ctx.lineTo(u.x + 5, u.y - alt - H * 0.2); ctx.lineTo(b.x + 14, b.y + 4); ctx.lineTo(b.x - 14, b.y + 4); ctx.closePath(); ctx.fill(); }
+    if (u.lift > 0) { alt += u.lift * 26; }
     if (u.hardT > 0) glow(ctx, u.x, u.y - H * 0.5, H * 0.7, 'rgba(200,255,120,0.5)');
     const y0 = u.y - alt - bob; ctx.save(); ctx.translate(u.x, y0);
     if (u.fired > 0 && !hover) ctx.translate(face * 2, 0);
@@ -177,3 +189,24 @@ export function drawZone(ctx, z, t) {
       ctx.fillStyle = `rgba(150,255,120,${0.8 * a})`; ctx.beginPath(); ctx.moveTo(z.x + Math.cos(ang) * rr, z.y - 8 + Math.sin(ang) * rr * 0.5 - 5); ctx.lineTo(z.x + Math.cos(ang) * rr + 2, z.y - 8 + Math.sin(ang) * rr * 0.5); ctx.lineTo(z.x + Math.cos(ang) * rr - 2, z.y - 8 + Math.sin(ang) * rr * 0.5); ctx.fill(); }
     if (Math.random() < 0.3) { ctx.strokeStyle = '#eaffd0'; ctx.beginPath(); const lx = z.x + (Math.random() - .5) * z.r * 1.4; ctx.moveTo(lx, z.y - 50); ctx.lineTo(lx + (Math.random() - .5) * 10, z.y - 25); ctx.lineTo(lx + (Math.random() - .5) * 8, z.y); ctx.stroke(); } ctx.lineWidth = 1; }
 }
+
+// v10.1 Nordic / Grey structures: concept-art cutout on a faction pad (white marble + gold glyph ring / dark alloy + psi lights).
+const PADS = { nordic: { a: '#e8e2d0', b: '#b9ad8a', ring: '#e6c35a', glow: 'rgba(255,240,190,0.55)' }, grey: { a: '#3a3a40', b: '#1c1c22', ring: '#a46cff', glow: 'rgba(150,255,110,0.45)' } };
+const ART_SCALE = { n_spire: 0.75, n_crystal: 0.8, g_orb: 0.8, g_hive: 1.05, g_dome: 1.15, n_skiff: 1.15, n_lightcraft: 1.2, g_saucer: 1.15 };
+export function drawAlienBuilding(ctx, b, t) {
+  const s = b.stats, P = PADS[s.faction], X = b.tx * TILE, Y = b.ty * TILE, W = b.w * TILE, H = b.h * TILE, cx = X + W / 2, built = Math.min(1, (b.age ?? 9) / 0.8), p = 0.5 + 0.5 * Math.sin(t * 2 + (b.id || 0));
+  shadow(ctx, cx + 4, Y + H - 6, W * 0.52, H * 0.26, 0.35);
+  const g = ctx.createLinearGradient(X, Y, X + W, Y + H); g.addColorStop(0, P.a); g.addColorStop(1, P.b);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H * 0.62, W * 0.48, H * 0.34, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = P.ring; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5 + 0.4 * p; ctx.beginPath(); ctx.ellipse(cx, Y + H * 0.62, W * 0.4, H * 0.27, 0, 0, 7); ctx.stroke();
+  for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + t * 0.3; ctx.fillStyle = P.ring; ctx.fillRect(cx + Math.cos(a) * W * 0.4 - 1, Y + H * 0.62 + Math.sin(a) * H * 0.27 - 1, 2, 2); }
+  ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  const sp = getSprite(s.art, 0);
+  if (sp) { const k = ART_SCALE[s.art] || 1, sw0 = W * 0.95 * k, sh0 = sw0 * sp.aspect, sh = Math.min(sh0, H * 2.1 * k), sw = sh / sp.aspect;
+    glow(ctx, cx, Y + H * 0.5, W * 0.55, P.glow, 0.5 + 0.4 * p);
+    ctx.save(); ctx.translate(cx, Y + H * 0.8); if (b.faceRight === false) ctx.scale(-1, 1); ctx.scale(1, built);
+    if (b.powered === false) ctx.filter = 'brightness(0.55)'; ctx.drawImage(sp.img, -sw / 2, -sh, sw, sh); ctx.filter = 'none'; ctx.restore(); }
+  ctx.fillStyle = TEAMC[b.team] || '#fff'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(cx, Y + H - 4, 2.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  if (s.weapon && b.flash > 0 && b.target) { ctx.strokeStyle = s.weapon.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, Y - 6); ctx.lineTo(b.target.x, b.target.y); ctx.stroke(); ctx.lineWidth = 1; }
+}
+export const isAlienBuilding = s => s && (s.faction === 'nordic' || s.faction === 'grey');

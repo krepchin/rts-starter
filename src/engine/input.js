@@ -1,5 +1,5 @@
-import { ME } from './local.js?v=10.0';
-import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
+import { ME } from './local.js?v=10.1';
+import { TILE, BUILDINGS } from '../data/stats.js?v=10.1';
 
 // Unified mouse/pen/touch input via Pointer Events.
 // Mouse: left click select, left drag box-select, right click move/attack, edge-scroll, WASD/arrows pan.

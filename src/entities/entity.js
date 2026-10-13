@@ -1,4 +1,4 @@
-import { TILE } from '../data/stats.js?v=10.0';
+import { TILE } from '../data/stats.js?v=10.1';
 let nextId = 1;
 export function resetIds() { nextId = 1; } // multiplayer: both peers must number entities identically
 export class Entity {
@@ -10,7 +10,7 @@ export class Entity {
   get isAir() { return !!this.stats.air; }
   dist(o) { return Math.hypot(o.x - this.x, o.y - this.y); }
   damage(n, src, force) {
-    if (this.dead || (!force && !this.game.combat)) return; if (this.dug) n *= 0.5; if (this.hardT > 0) n *= 0.5; this.hp -= n; this.hitT = 0; this.lastAttacker = src;
+    if (this.dead || (!force && !this.game.combat)) return; if (this.dug) n *= 0.5; if (this.hardT > 0) n *= 0.5; if (this.shieldT > 0) n *= 0.4; this.hp -= n; this.hitT = 0; this.lastAttacker = src;
     if (this.team === this.game.me && src && src.team !== this.game.me && n > 0) this.game.sfx?.(this.kind === 'building' ? 'alert:base' : 'alert:unit', this);
     if (this.hp <= 0) { this.hp = 0; this.dead = true; this.game.onDeath(this); }
   }

@@ -1,10 +1,10 @@
-import { ME } from '../engine/local.js?v=10.0';
-import { BUILDINGS, UNITS } from '../data/stats.js?v=10.0';
-import { CATS, PRODUCER } from '../engine/game.js?v=10.0';
-import { getSprite } from '../engine/sprites.js?v=10.0';
-import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.0';
-import { drawFactionUnit, drawOrganic, isFactionArt } from '../engine/artReptile.js?v=10.0';
-import { factionOf } from '../data/factions.js?v=10.0';
+import { ME } from '../engine/local.js?v=10.1';
+import { BUILDINGS, UNITS } from '../data/stats.js?v=10.1';
+import { CATS, PRODUCER } from '../engine/game.js?v=10.1';
+import { getSprite } from '../engine/sprites.js?v=10.1';
+import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.1';
+import { drawFactionUnit, drawOrganic, isFactionArt, drawAlienBuilding, isAlienBuilding } from '../engine/artReptile.js?v=10.1';
+import { factionOf } from '../data/factions.js?v=10.1';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],
@@ -18,6 +18,8 @@ function drawIcon(c, it) {
   const ctx = c.getContext('2d'), W = c.width, H = c.height, k = it.key; ctx.clearRect(0, 0, W, H);
   if (it.isB && it.s.faction === 'reptile') { const s = it.s, tl = 32, sc = Math.min(W / (s.w * tl + 6), H / (s.h * tl + 26)); ctx.save(); ctx.translate(W / 2, H / 2 + 6); ctx.scale(sc, sc); ctx.translate(-s.w * tl / 2, -s.h * tl / 2);
     drawOrganic(ctx, { type: k, team: 0, tx: 0, ty: 0, w: s.w, h: s.h, stats: s, hp: s.hp, age: 9, id: 1, aim: -0.4 }, 0.5); ctx.restore(); return true; }
+  if (it.isB && isAlienBuilding(it.s)) { const s = it.s, tl = 32, sc = Math.min(W / (s.w * tl + 6), H / (s.h * tl + 40)); ctx.save(); ctx.translate(W / 2, H / 2 + 10); ctx.scale(sc, sc); ctx.translate(-s.w * tl / 2, -s.h * tl / 2);
+    drawAlienBuilding(ctx, { type: k, team: 0, tx: 0, ty: 0, w: s.w, h: s.h, stats: s, hp: s.hp, age: 9, id: 1 }, 0.5); ctx.restore(); return !!getSprite(s.art, 0); }
   if (!it.isB && isFactionArt(k)) { const R = it.s.radius || 8, big = R > 15, sc = big ? 0.9 : R > 10 ? 1.25 : 1.6; ctx.save(); ctx.translate(W / 2, H * (big ? 0.95 : 0.9)); ctx.scale(sc, sc);
     const ok = drawFactionUnit(ctx, { type: k, team: 0, x: 0, y: 0, stats: it.s, hp: 1, angle: 0, id: 1, inc: 2.5, load: 300 }, 0.4, 0); ctx.restore();
     const sp = { raider: 1, spitter: 1, brute: 1, shaman: 1, spark: 1, lance: 1, hiveorb: 1 }[k]; return !sp || !!getSprite({ raider: 'r_raider', spitter: 'r_spitter', brute: 'r_brute', shaman: 'r_shaman', spark: 'r_spark', lance: 'r_lance', hiveorb: 'r_hive' }[k], 0); }
@@ -138,6 +140,9 @@ export class Sidebar {
       const AB = { infantry: ['stim', '⚡Stim', 'Stim: faster move + fire for 6 s (costs 10 HP)'], sniper: ['cloak', '◌Cloak', 'Cloak: invisible to enemies for 8 s'],
         rocket: ['digin', '⛉Dig in', 'Dig in: sandbags, +range, half damage, can\'t move'],
         raider: ['leap', '⤳Leap', 'Leap: pounce onto the nearest enemy (30 damage)'], brute: ['harden', '⛊Harden', 'Harden: half damage for 6 s'],
+        sentinel: ['stim', '✦Overcharge', 'Overcharge: faster move + fire for 6 s (costs 10 HP)'], guardian: ['shield', '⬡Shield', 'Light barrier: allies within 2.5 tiles take 60% less damage for 6 s'],
+        tallwhite: ['blink', '✧Blink', 'Phase-step up to 5 tiles onto the nearest enemy'], psionic: ['stun', '◎Stun', 'Psychic shock: stuns enemies around the nearest foe for 3 s'],
+        abductor: ['abduct', '⇪Abduct', 'Capture beam: take control of a nearby enemy infantryman (≤140 HP)'], hybrid: ['cloak', '◌Blend', 'Blend in: invisible for 8 s'],
         buggy: ['ram', '➤Ram', 'Ram: 2 s speed burst, double ramming damage'], truck: ['ram', '➤Ram', 'Ram: 2 s speed burst, double ramming damage'], dropship: null };
       const PT = { spitter: ['acid', '☣Acid', 'Acid pool: tap a spot (damages ground units and structures)'], shaman: ['storm', '✺Storm', 'Tiberium storm: tap a spot'],
         broodship: ['eggs', '◉Eggs', 'Drop Eggs: tap a spot ($100). Eggs hatch into hatchlings after 5 s'] };

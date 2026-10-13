@@ -1,24 +1,27 @@
-import { ME, setMe } from './engine/local.js?v=10.0';
-import { net } from './net/lockstep.js?v=10.0';
-import { Game, GRACE_SECONDS } from './engine/game.js?v=10.0';
-import { BUILDINGS } from './data/stats.js?v=10.0';
-import { Camera } from './engine/camera.js?v=10.0';
-import { Renderer } from './engine/renderer.js?v=10.0';
-import { Input } from './engine/input.js?v=10.0';
-import { startLoop } from './engine/loop.js?v=10.0';
-import { PlayerUI } from './ui/selection.js?v=10.0';
-import { Sidebar } from './ui/sidebar.js?v=10.0';
-import { Minimap } from './ui/minimap.js?v=10.0';
-import { EnemyAI } from './ai/enemyAI.js?v=10.0';
-import { loadSprites } from './engine/sprites.js?v=10.0';
-import { Sound } from './engine/audio.js?v=10.0';
+import { ME, setMe } from './engine/local.js?v=10.1';
+import { net } from './net/lockstep.js?v=10.1';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=10.1';
+import { BUILDINGS } from './data/stats.js?v=10.1';
+import { Camera } from './engine/camera.js?v=10.1';
+import { Renderer } from './engine/renderer.js?v=10.1';
+import { Input } from './engine/input.js?v=10.1';
+import { startLoop } from './engine/loop.js?v=10.1';
+import { PlayerUI } from './ui/selection.js?v=10.1';
+import { Sidebar } from './ui/sidebar.js?v=10.1';
+import { Minimap } from './ui/minimap.js?v=10.1';
+import { EnemyAI } from './ai/enemyAI.js?v=10.1';
+import { loadSprites } from './engine/sprites.js?v=10.1';
+import { Sound } from './engine/audio.js?v=10.1';
 
 loadSprites();
 
 // v10: faction pick (start menu). The page reloads into the chosen faction; ?faction=human|reptile overrides. The AI plays the other side.
 const params0 = new URLSearchParams(location.search);
-const myFaction = ['human', 'reptile'].includes(params0.get('faction')) ? params0.get('faction') : (localStorage.getItem('tiberium.faction') || 'human');
-const game = new Game({ factions: [myFaction, myFaction === 'human' ? 'reptile' : 'human'] });
+const FK = ['human', 'reptile', 'nordic', 'grey'];
+let saved = null; try { saved = localStorage.getItem('tiberium.faction'); } catch {}
+const myFaction = FK.includes(params0.get('faction')) ? params0.get('faction') : FK.includes(saved) ? saved : 'human';
+const others = FK.filter(f => f !== myFaction), aiFaction = others.includes(params0.get('ai')) ? params0.get('ai') : others[Math.floor(Math.random() * others.length)]; // AI: a different faction
+const game = new Game({ factions: [myFaction, aiFaction] }); window.aiFaction = aiFaction;
 const sound = new Sound(); game.sfx = (n, src) => sound.play(n, src, camera);
 const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇', '🔈', '🔉', '🔊'];
 volBtn.textContent = VOL_ICON[sound.level]; volBtn.addEventListener('click', () => { sound.start(); volBtn.textContent = VOL_ICON[sound.cycle()]; sound.play('select'); });
@@ -37,7 +40,10 @@ let started = false;
 // Start menu: optional 10-minute ceasefire for both sides (default ON). ?grace=0|1 overrides; ?autostart=1 skips the menu.
 const params = new URLSearchParams(location.search), graceOpt = document.getElementById('graceOpt');
 if (params.has('grace')) graceOpt.checked = params.get('grace') !== '0';
-for (const r of document.querySelectorAll('input[name=faction]')) r.checked = r.value === myFaction;
+for (const r of document.querySelectorAll('input[name=faction]')) { r.checked = r.value === myFaction;
+  r.addEventListener('change', () => { try { localStorage.setItem('tiberium.faction', r.value); } catch {} markFac(); }); }
+function markFac() { for (const l of document.querySelectorAll('#factionPick .fac')) l.classList.toggle('on', !!l.querySelector('input')?.checked); }
+markFac();
 function start() {
   const pick = document.querySelector('input[name=faction]:checked')?.value || myFaction;
   if (pick !== myFaction) { try { localStorage.setItem('tiberium.faction', pick); } catch {} const q = new URLSearchParams(location.search); q.set('faction', pick); q.set('autostart', '1'); q.set('grace', graceOpt.checked ? '1' : '0'); location.search = q.toString(); return; }

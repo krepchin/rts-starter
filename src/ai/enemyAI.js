@@ -1,12 +1,14 @@
-import { TILE, BUILDINGS } from '../data/stats.js?v=10.0';
-import { FACTIONS } from '../data/factions.js?v=10.0';
+import { TILE, BUILDINGS } from '../data/stats.js?v=10.1';
+import { FACTIONS } from '../data/factions.js?v=10.1';
 
 // Scripted opponent using the same rules as the player: Construction Yard + queues, power, repair, superweapon, waves.
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];
 // v10: the same plan for either faction, translated through faction roles (reptiles have no superweapon)
 const ROLE_OF = { power: 'power', refinery: 'refinery', barracks: 'infantry', factory: 'vehicle', radar: 'radar', turret: 'def', airfield: 'air' };
 const MIX = { human: { inf: ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], veh: ['tank', 'buggy', 'tank', 'truck'], air: ['carrier', 'jet', 'jet', 'bomber'] },
-  reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'spark', 'lance', 'spark', 'lance'], air: ['hiveorb', 'broodship'] } };
+  reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'spark', 'lance', 'spark', 'lance'], air: ['hiveorb', 'broodship'] },
+  nordic: { inf: ['sentinel', 'sentinel', 'guardian', 'seer', 'sentinel', 'tallwhite'], veh: ['skiff'], air: ['lightcraft', 'lightcraft', 'lightship'] },
+  grey: { inf: ['greydrone', 'greydrone', 'greydrone', 'hybrid', 'psionic', 'greydrone', 'abductor', 'hybrid'], veh: ['crawler', 'crawler', 'probe'], air: ['saucer', 'saucer', 'mothership'] } };
 
 export class EnemyAI {
   constructor(game, team = 1) { this.g = game; this.team = team; this.think = 0; this.waveTimer = 120; this.waveSize = 5; }
@@ -37,7 +39,7 @@ export class EnemyAI {
         const mix = MIX[fac].inf, k = mix[(this.inf = (this.inf || 0) + 1) % mix.length];
         g.enqueue(me, g.canProduce(me, k, false) ? k : mix[0], false); }
       if (qlen('vehicle') < 2) { const vm = MIX[fac].veh, k = vm[(this.veh = (this.veh || 0) + 1) % vm.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : vm[0], false); }
-      if (qlen('aircraft') < 1 && army.length > 6) { const air = MIX[fac].air, k = air[(this.air = (this.air || 0) + 1) % air.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : 'carrier', false); }
+      if (qlen('aircraft') < 1 && army.length > 6) { const air = MIX[fac].air, k = air[(this.air = (this.air || 0) + 1) % air.length]; g.enqueue(me, g.canProduce(me, k, false) ? k : air[0], false); }
       if (count('repairbay') < 1 && count('turret') >= 2 && g.time > 300 && g.canProduce(me, 'repairbay', true) && t.credits > 1500 && !t.queues.building.length && !t.readyBuilding) g.enqueue(me, 'repairbay', true);
     }
     // 3b) v9 defenses: a short wall arc with a gate toward the enemy, plus turrets (stops once a handful exist).
@@ -51,8 +53,10 @@ export class EnemyAI {
       else if (u.type === 'broodship' && u.canUse()) { const e = g.findEnemyNear(u, 7 * TILE, x => !x.dead && !x.isAir); if (e) u.castAt(e.x + (Math.random() - .5) * 40, e.y + 30); } }
     // 3c) Infantry abilities: stim when fighting, cloak snipers when hurt, dig in rockets on defense; engineers sabotage.
     for (const u of g.units) { if (u.team !== me || !u.stats.inf || u.dead) continue;
-      const fighting = u.target && !u.target.dead && u.dist(u.target) < u.stats.range * TILE * 1.2;
-      if (u.type === 'infantry' && fighting && u.hp > 40 && u.canUse()) u.useAbility();
+      const fighting = u.target && !u.target.dead && u.dist(u.target) < (u.stats.weapon?.range ?? 4) * TILE * 1.2;
+      if ((u.type === 'infantry' || u.type === 'sentinel') && fighting && u.hp > 40 && u.canUse()) u.useAbility();
+      else if (['guardian', 'tallwhite', 'psionic', 'abductor'].includes(u.type) && fighting && u.canUse()) u.useAbility();
+      else if (u.type === 'hybrid' && u.hp < u.stats.hp * 0.6 && u.canUse()) u.useAbility();
       else if (u.type === 'sniper' && u.hp < u.stats.hp * 0.6 && u.canUse()) u.useAbility();
       else if (u.type === 'rocket' && !u.order && fighting && !u.dug && u.canUse()) u.useAbility();
       else if (u.type === 'engineer' && g.combat && !u.order && (this.engT = (this.engT || 0) + 1) % 20 === 0) {

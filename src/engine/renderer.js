@@ -1,13 +1,13 @@
-import { ME } from './local.js?v=10.0';
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.0';
-import { drawBuildingArt } from './buildingArt.js?v=10.0';
-import { Terrain } from '../world/terrain.js?v=10.0';
-import { drawMobileBase } from './mcvArt.js?v=10.0';
-import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt } from './artReptile.js?v=10.0';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.0';
-import { FORMATION } from '../entities/mcv.js?v=10.0';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.0';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.0';
+import { ME } from './local.js?v=10.1';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.1';
+import { drawBuildingArt } from './buildingArt.js?v=10.1';
+import { Terrain } from '../world/terrain.js?v=10.1';
+import { drawMobileBase } from './mcvArt.js?v=10.1';
+import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.1';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.1';
+import { FORMATION } from '../entities/mcv.js?v=10.1';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.1';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.1';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -93,6 +93,7 @@ export class Renderer {
     if (b.morph || b.unfold) { drawMorphing(ctx, b, t, this.g); return; } // v9 staged transform / reverse unfold
     if (b.stats.wall) drawWall(ctx, b, t, this.g); else if (b.stats.gate) drawGate(ctx, b, t, this.g); else if (b.type === 'turret') drawTurret(ctx, b, t, this.g);
     else if (b.stats.faction === 'reptile') drawOrganic(ctx, b, t);
+    else if (isAlienBuilding(b.stats)) drawAlienBuilding(ctx, b, t);
     else drawBuildingArt(ctx, b, t, this.g);
     if (!b.stats.wall || sel || b.hp < b.stats.hp) this.hpBar(b, x, y - 6, w, sel);
     for (const c of this.g.charges) if (c.b === b) { const on = Math.sin(t * (20 - c.t * 3)) > 0; ctx.fillStyle = on ? '#f33' : '#600'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(c.t), b.x, b.y - 6); }
@@ -144,7 +145,7 @@ export class Renderer {
   // the aft island tower, glowing blue thruster pods, a soft ground shadow and a launch strobe on the deck.
   drawCarrierTD(u, sel, col, t) {
     const spr = getSprite('carrier_td', u.team); if (!spr) return false;
-    const ctx = this.ctx, L = 96, W = L * spr.aspect, lift = 18, bob = Math.sin(t * 1.6 + u.id) * 1.5, a = u.angle;
+    const ctx = this.ctx, L = 144, W = L * spr.aspect, lift = 18, bob = Math.sin(t * 1.6 + u.id) * 1.5, a = u.angle;
     ctx.save(); ctx.translate(u.x + lift * 0.7, u.y + lift + 8); ctx.rotate(a); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-L / 2, -W * 0.32, L, W * 0.64, 8) : ctx.rect(-L / 2, -W * 0.32, L, W * 0.64); ctx.fill(); ctx.filter = 'none'; ctx.restore();
     ctx.save(); ctx.translate(u.x, u.y + bob); ctx.rotate(a);
@@ -257,7 +258,7 @@ export class Renderer {
   }
   drawPlacement(ui) {
     const s = BUILDINGS[ui.placing], ht = ui.hoverTile, ok = this.g.canPlace(ME, ui.placing, ht.x, ht.y), ctx = this.ctx;
-    ctx.globalAlpha = 0.55; (s.faction === 'reptile' ? drawOrganic : drawBuildingArt)(ctx, { type: ui.placing, team: 0, faceRight: !!this.g.teams[ME].startLeft, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.55; (s.faction === 'reptile' ? drawOrganic : isAlienBuilding(s) ? drawAlienBuilding : drawBuildingArt)(ctx, { type: ui.placing, team: 0, faceRight: !!this.g.teams[ME].startLeft, tx: ht.x, ty: ht.y, w: s.w, h: s.h, stats: s, age: 9, aim: 1.57, charge: 0 }, performance.now() / 1000, null); ctx.globalAlpha = 1;
     ctx.fillStyle = ok ? '#3f63' : '#f334'; ctx.strokeStyle = ok ? '#6f6' : '#f55';
     for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { ctx.fillRect((ht.x + x) * TILE + 1, (ht.y + y) * TILE + 1, TILE - 2, TILE - 2); }
     ctx.strokeRect(ht.x * TILE, ht.y * TILE, s.w * TILE, s.h * TILE);

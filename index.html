@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Tiberium Skirmish — RTS Starter v10.0</title>
+<title>Tiberium Skirmish — RTS Starter v10.1.0</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="styles.css?v=10.0">
+<link rel="stylesheet" href="styles.css?v=10.1">
 </head>
 <body>
 <div id="app">
@@ -40,10 +40,12 @@
   <div id="startMenu">
     <div class="panel">
       <h1>Tiberium Skirmish</h1>
-      <div id="version">v10 · reptilians &amp; multiplayer</div>
-      <div id="factionPick" role="radiogroup" aria-label="Faction">
-        <label class="fac"><input type="radio" name="faction" value="human" checked><span><b>Humans</b><small>Base Walker, walls, air wing</small></span></label>
-        <label class="fac"><input type="radio" name="faction" value="reptile"><span><b>Reptilians</b><small>Hive, drones, Brood Ship</small></span></label>
+      <div id="version">v10.1 · four factions</div>
+      <div id="factionPick" role="radiogroup" aria-label="Choose your faction">
+        <label class="fac" data-fac="human"><input type="radio" name="faction" value="human" checked><img src="assets/portrait_human.jpg?v=10.1" alt="" width="320" height="240"><span><b>Humans</b><small>Tiberium-age army: riflemen, snipers, rocket troops, tanks, monster trucks, a transforming Base Walker, jets, stealth bombers and the camo flight-deck Carrier.</small></span></label>
+        <label class="fac" data-fac="reptile"><input type="radio" name="faction" value="reptile"><img src="assets/portrait_reptile.jpg?v=10.1" alt="" width="320" height="240"><span><b>Reptilians</b><small>Living hive: Raiders, Spitters, Brutes and Shamans, spark and lance drones, the Hive Orb and the egg-laying Brood Ship. Organic buildings heal themselves.</small></span></label>
+        <label class="fac" data-fac="nordic"><input type="radio" name="faction" value="nordic"><img src="assets/portrait_nordic.jpg?v=10.1" alt="" width="320" height="240"><span><b>Nordics</b><small>Tall, golden-haired visitors with white-and-gold light tech. Few but mighty: Sentinels, Seers that heal, shield Guardians, the Tall White blademaster, Light-craft and the Lightship.</small></span></label>
+        <label class="fac" data-fac="grey"><input type="radio" name="faction" value="grey"><img src="assets/portrait_grey.jpg?v=10.1" alt="" width="320" height="240"><span><b>Greys</b><small>Big-eyed abductors in a swarm of cheap drones. Psionics stun, Abductors steal soldiers, Hybrids blend in, robot crawlers, probe orbs and tractor-beam saucers lift your army away.</small></span></label>
       </div>
       <label class="opt"><input type="checkbox" id="graceOpt" checked> <span><b>No attacks for the first 10 minutes</b><br><small>Ceasefire for both sides: no damage, no targeting, no AI attacks, no Ion strikes. Building and harvesting continue.</small></span></label>
       <button id="startBtn">Start Skirmish</button>
@@ -76,6 +78,6 @@
   document.addEventListener('click', function (e) { if (e.target && e.target.id === 'startBtn' && !window.startGame) { window.__wantStart = true; e.target.textContent = 'Loading...'; } }, true);
 })();
 </script>
-<script type="module" src="src/main.js?v=10.0"></script>
+<script type="module" src="src/main.js?v=10.1"></script>
 </body>
 </html>

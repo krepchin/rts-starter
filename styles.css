@@ -139,10 +139,6 @@ html,body{background:#120d08;color:#d6dccf}
 @media (max-height:500px){#topDisplay #minimap{width:70%;margin:0 auto}#buildMenu button{height:46px}#selInfo{height:28px}}
 
 /* v10 faction pick */
-#factionPick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
-#factionPick .fac{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid #444;border-radius:6px;background:#141614;cursor:pointer}
-#factionPick .fac:has(input:checked){border-color:#7dff4a;box-shadow:inset 0 0 8px #3c3}
-#factionPick input{width:20px;height:20px;flex:none;margin:0}#factionPick b{display:block;color:#e6eadf}#factionPick small{font-size:11px;color:#9fb88a}
 
 /* v10 multiplayer lobby */
 #mpBtn{margin-top:8px;background:#20261d;border:1px solid #4a5a3a;color:#cfe3b0}
@@ -153,3 +149,17 @@ html,body{background:#120d08;color:#d6dccf}
 #mpStatus{min-height:16px;color:#ffd27a;margin-top:6px}
 #netBadge{position:absolute;left:8px;bottom:8px;z-index:6;font:12px monospace;background:#000a;color:#bfe39a;padding:3px 6px;border-radius:4px;pointer-events:none}
 #netBadge.bad{color:#ff7a6a}
+
+/* v10.1 faction selection: four large tappable cards with portraits */
+#factionPick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px}
+#factionPick .fac{position:relative;display:flex;flex-direction:column;border:2px solid #3a3d36;border-radius:10px;background:#141614;cursor:pointer;overflow:hidden;min-height:44px;transition:transform .12s,border-color .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#factionPick .fac img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;pointer-events:none}
+#factionPick .fac span{padding:8px 10px 10px}
+#factionPick .fac b{display:block;color:#e6eadf;font-size:17px;margin-bottom:3px}
+#factionPick .fac small{display:block;font-size:12px;line-height:1.35;color:#a9b89a}
+#factionPick input{position:absolute;opacity:0;width:1px;height:1px}
+#factionPick .fac.on,#factionPick .fac:has(input:checked){border-color:#7dff4a;box-shadow:0 0 0 2px #7dff4a55,inset 0 0 14px #3c35;transform:translateY(-2px)}
+#factionPick .fac:has(input:focus-visible){outline:2px solid #fff}
+#startMenu .panel{max-width:min(980px,96vw)}
+@media (max-width:760px){#factionPick{grid-template-columns:1fr 1fr;gap:8px}#factionPick .fac b{font-size:15px}#factionPick .fac small{font-size:11px}}
+@media (max-width:760px) and (max-height:900px){#startMenu{overflow-y:auto;align-items:flex-start}#startMenu .panel{margin:8px auto}}
