@@ -222,7 +222,7 @@ export class Sidebar {
     }
     if (one?.packing) { setT(this.el.info, `${one.stats.name}\nPacking up… (offline)`); return; }
     setT(this.el.info, one ? `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp}` +
-      (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.type === 'harvester' ? `\nLoad ${one.load | 0}` : '')
+      (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.load !== undefined ? `\nLoad ${one.load | 0}` : '')
       : sel.length ? `${sel.length} selected` : this.ui.targeting ? 'Ion Cannon: tap a target (right-click/Esc cancels)'
       : this.ui.placing && BUILDINGS[this.ui.placing].wall ? 'Tap a tile, or drag a line of wall ($50 each)' : this.ui.placing && BUILDINGS[this.ui.placing].gate ? 'Tap a tile next to a wall'
       : t.readyBuilding ? 'Structure ready: tap it, then place on map' : !g.has(ME, 'cy') ? `${BUILDINGS[g.role(ME, 'yard')].name} lost!` : 'Tap/drag to select. Tap (or right-click) to command.');

@@ -29,10 +29,13 @@ export class PlayerUI {
       for (const u of units) if (u !== target && target.canTake(u)) { u.command({ type: 'board', target }); n++; }
       if (n) { this.g.sfx?.('move'); this.g.effects.push({ t: 0.3, ping: true, x, y }); return; } }
     units.forEach((u, i) => {
-      if (target && target.team !== u.team && this.g.combat) u.command({ type: 'attack', target });
+      const miner = u.load !== undefined; // v10.3: every faction's miner (harvester, grazer, harmonizer, reaper), not just type 'harvester'
+      if (miner && target && target.team === u.team && target.type === (u.stats.dock || 'refinery')) { u.command({ type: 'harvest' }); u.state = 'return'; }
+      else if (miner && (tib || (target && target.team !== u.team))) u.command({ type: 'harvest' });
+      else if (target && target.team !== u.team && this.g.combat) u.command({ type: 'attack', target });
       else if (u.type === 'engineer' && target && target.team === u.team && target !== u && !target.stats.inf && !target.isAir && target.hp < target.stats.hp) u.command({ type: 'repair', target });
       else if ((u.type === 'medic' || u.stats.healer) && target && target.team === u.team && target !== u && target.stats.inf) u.command({ type: 'heal', target });
-      else if (u.type === 'harvester' && tib) u.command({ type: 'harvest' });
+      
       else { const n = Math.ceil(Math.sqrt(units.length)), ox = (i % n - (n - 1) / 2) * 26, oy = (Math.floor(i / n) - (n - 1) / 2) * 26;
         u.command({ type: 'move', x: x + ox, y: y + oy }); }
     });
@@ -43,7 +46,7 @@ export class PlayerUI {
   find(camera) {
     let list = [...this.selection].filter(e => !e.dead);
     if (!list.length) {
-      const army = this.g.units.filter(u => u.team === ME && !u.carrier && u.type !== 'harvester');
+      const army = this.g.units.filter(u => u.team === ME && !u.carrier && u.load === undefined);
       if (!army.length) return false;
       this.findIdx = ((this.findIdx ?? -1) + 1) % (army.length + 1);
       list = this.findIdx === 0 ? army : [army[this.findIdx - 1]];

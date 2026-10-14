@@ -102,3 +102,4 @@ startLoop(dt => {
   renderer.render(ui); sidebar.update(); minimap.render(); });
 
 window.game = game; window.sound = sound; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests
+window.__B = BUILDINGS;

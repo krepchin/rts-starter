@@ -298,7 +298,7 @@ export class Game {
             const p = prods[(t.rr[cat] = ((t.rr[cat] || 0) + 1) % prods.length)];
             const sp = p.spawnPoint(); const u = this.spawnUnit(it.key, t.id, sp.x + (Math.random() - .5) * 20, sp.y);
             if (t.id === 0) { this.sfx?.('ready'); this.sfx?.('voice:ready', u); }
-            if (p.rally) u.command(u.type === 'harvester' ? { type: 'harvest' } : { type: 'move', x: p.rally.x, y: p.rally.y });
+            if (p.rally) u.command(u.load !== undefined ? { type: 'harvest' } : { type: 'move', x: p.rally.x, y: p.rally.y });
           }
         }
       }
