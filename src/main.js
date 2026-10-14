@@ -24,6 +24,9 @@ const others = FK.filter(f => f !== myFaction), aiFaction = others.includes(para
 const game = new Game({ factions: [myFaction, aiFaction] }); window.aiFaction = aiFaction;
 const sound = new Sound(); game.sfx = (n, src) => sound.play(n, src, camera);
 const volBtn = document.getElementById('volBtn'), VOL_ICON = ['🔇', '🔈', '🔉', '🔊'];
+// v10.0 UI clicks + music toggle
+document.addEventListener('click', e => { const b = e.target.closest?.('button'); if (b && b.id !== 'volBtn') { sound.start(); sound.play('click'); } }, true);
+{ const mb = document.getElementById('musBtn'); if (mb) { const show = () => { mb.textContent = sound.musicOn ? '♫' : '♫̸'; mb.style.opacity = sound.musicOn ? 1 : 0.45; }; show(); mb.addEventListener('click', () => { sound.start(); sound.toggleMusic(); show(); }); } }
 volBtn.textContent = VOL_ICON[sound.level]; volBtn.addEventListener('click', () => { sound.start(); volBtn.textContent = VOL_ICON[sound.cycle()]; sound.play('select'); });
 const camera = new Camera(game.map);
 game.lowFx = matchMedia('(max-width: 700px), (pointer: coarse)').matches; // lighter particles on phones
@@ -81,7 +84,12 @@ window.startGame = start;
 if (window.__wantStart) { document.getElementById('startBtn').textContent = 'Start Skirmish'; start(); } // tapped while modules were still loading
 
 // iOS Safari: 100vh includes the URL bar, so size from innerHeight.
-function onResize() { document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`); renderer.resize(); }
+function onResize() { const h = window.visualViewport?.height || window.innerHeight; if (!CSS.supports?.('height', '100dvh')) document.documentElement.style.setProperty('--vh', `${h}px`); renderer.resize(); }
+// v10.0 full screen: Fullscreen API where supported (Android/desktop/iPad); iPhone Safari has none, so explain Add to Home Screen
+{ const fb = document.getElementById('fsBtn'), el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen, standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
+  if (fb) { if (standalone) fb.hidden = true;
+    fb.addEventListener('click', () => { if (req) { Promise.resolve(req.call(el)).then(() => setTimeout(onResize, 300)).catch(() => {}); }
+      else fb.textContent = 'iPhone: tap Share, then "Add to Home Screen" for full screen'; }); } }
 window.addEventListener('resize', onResize); window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 window.visualViewport?.addEventListener('resize', onResize);
 onResize();

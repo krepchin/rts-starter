@@ -20,11 +20,14 @@ const r = (a, b) => a + Math.random() * (b - a), pick = a => a[(Math.random() * 
 export class Sound {
   constructor() {
     const v = parseInt(localStorage.getItem(KEY) ?? '2', 10); this.level = Number.isFinite(v) && LEVELS[v] !== undefined ? v : 2;
+    try { this.musicOn = localStorage.getItem('tiberium.music') !== '0'; } catch { this.musicOn = true; }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch {} // iOS 16.4+: respect the silent switch
     this.ctx = null; this.last = {}; this.buf = {}; this.voices = 0; this.stats = { played: 0, dropped: 0, samples: 0, ducks: 0 };
     const unlock = () => { this.start(); if (this.ctx?.state === 'running') for (const ev of ['pointerdown', 'keydown', 'touchend']) window.removeEventListener(ev, unlock, true); };
     for (const ev of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(ev, unlock, true);
   }
   get volume() { return LEVELS[this.level]; }
+  toggleMusic() { this.musicOn = !this.musicOn; try { localStorage.setItem('tiberium.music', this.musicOn ? '1' : '0'); } catch {} if (this.musicBus) this.musicBus.gain.setTargetAtTime(this.musicOn ? 0.13 : 0, this.ctx.currentTime, 0.3); return this.musicOn; }
   cycle() { this.level = (this.level + 1) % LEVELS.length; try { localStorage.setItem(KEY, String(this.level)); } catch {} this.apply(); return this.level; }
   apply() { if (this.master) this.master.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.05); }
   start() {
@@ -36,7 +39,7 @@ export class Sound {
       this.master = c.createGain(); this.master.gain.value = this.volume; this.master.connect(this.comp);
       this.reverb = c.createConvolver(); this.reverb.buffer = this.impulse(2.2, 2.6); this.revOut = c.createGain(); this.revOut.gain.value = 0.35; this.reverb.connect(this.revOut); this.revOut.connect(this.master);
       const bus = (g, rev) => { const n = c.createGain(); n.gain.value = g; n.connect(this.master); if (rev) { const s = c.createGain(); s.gain.value = rev; n.connect(s); s.connect(this.reverb); } return n; };
-      this.musicBus = bus(0.22, 0.5); this.ambBus = bus(0.1, 0); this.sfxBus = bus(0.85, 0.18); this.voiceBus = bus(0.55, 0.05);
+      this.musicBus = bus(this.musicOn ? 0.13 : 0, 0.9); this.ambBus = bus(0.1, 0); this.sfxBus = bus(0.85, 0.18); this.voiceBus = bus(0.55, 0.05);
       this.duckers = [this.musicBus, this.ambBus];
       this.step = 0; this.nextT = c.currentTime + 0.1; this.timer = setInterval(() => { try { this.schedule(); } catch { clearInterval(this.timer); } }, 120);
       window.addEventListener('pagehide', () => clearInterval(this.timer));
@@ -74,7 +77,7 @@ export class Sound {
     g.gain.value = gain * (1 + r(-0.12, 0.12)); s.connect(g); g.connect(bus); s.start(t, offset, dur); return true;
   }
   duck(amount = 0.35, hold = 0.6) { const c = this.ctx, t = c.currentTime; this.stats.ducks++;
-    for (const b of this.duckers) { const v = b === this.musicBus ? 0.22 : 0.1; b.gain.cancelScheduledValues(t); b.gain.setTargetAtTime(v * amount, t, 0.03); b.gain.setTargetAtTime(v, t + hold, 0.5); } }
+    for (const b of this.duckers) { const v = b === this.musicBus ? (this.musicOn ? 0.13 : 0) : 0.1; b.gain.cancelScheduledValues(t); b.gain.setTargetAtTime(v * amount, t, 0.03); b.gain.setTargetAtTime(v, t + hold, 0.5); } }
   // ---- desert ambience: two layers of filtered noise with slow gusts
   ambience() {
     const c = this.ctx; this.noise(c.currentTime, 0.01, { gain: 0.0001 }); // ensure noise buffer
@@ -110,38 +113,28 @@ export class Sound {
     this.noise(tt, 0.09, { gain: 0.1, cutoff: 2000, type: 'bandpass', q: 2, bus: B }); this.tone(tt, 1800, 0.04, { type: 'sine', gain: 0.03, bus: B });
     this.voiceBusy = tt + 0.3;
   }
-  // ---- cinematic hybrid music, 92 BPM in 16ths. Sections (8 bars each): intro (low string drone + distant taiko) -> A (taiko groove +
-  // string ostinato) -> B (brass swells on top) -> C (tension build: rising ostinato, snare roll, crescendo) -> A ...
+  // ---- v10.0 ambient cinematic score (no square/chip timbres): continuous overlapping pads, low string drone, sparse soft
+  // keys, distant felt percussion; slow 72 BPM; four "tracks" (keys/progressions/moods) that crossfade every ~4 minutes, no gaps.
   schedule() {
     const c = this.ctx; if (!c || c.state !== 'running') return;
-    const st = 60 / 92 / 4, hz = m => 440 * Math.pow(2, (m - 69) / 12), M = this.musicBus;
-    const prog = [38, 38, 34, 36, 38, 41, 36, 33], ORDER = ['A', 'B', 'C', 'A', 'B'];
-    while (this.nextT < c.currentTime + 0.6) {
-      const s = this.step, t = this.nextT, bar = Math.floor(s / 16), i16 = s % 16, root = prog[bar % 8];
-      const sec = s < 128 ? 'intro' : ORDER[(Math.floor(s / 128) - 1) % ORDER.length], secPos = (s % 128) / 128;
-      if (i16 === 0) { // low strings: 4 detuned saws per note, slow attack, vibrato-free warmth via lowpass
-        const ch = [root, root + 7, root + 12, root + (bar % 2 ? 15 : 14)];
-        for (const m of ch) for (const d of [-9, -3, 4, 10]) this.tone(t, hz(m), st * 16.5, { type: 'sawtooth', gain: sec === 'intro' ? 0.018 : 0.022, bus: M, attack: 0.9, cutoff: sec === 'C' ? 600 + secPos * 1400 : 520, detune: d });
-        this.tone(t, hz(root - 12), st * 16, { type: 'sine', gain: 0.12, bus: M, attack: 0.4 });
-      }
-      const taiko = (g, f = 70) => { this.tone(t, f * 1.6, 0.5, { type: 'sine', gain: g, to: f * 0.7, bus: M, attack: 0.003 }); this.noise(t, 0.16, { gain: g * 0.5, cutoff: 500, bus: M }); };
-      if (sec === 'intro' && i16 === 0 && bar % 2 === 1) taiko(0.25);
-      if (sec !== 'intro') {
-        const pat = sec === 'C' ? [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1] : [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0];
-        if (pat[i16]) taiko(i16 === 0 ? 0.55 : 0.32, i16 === 0 ? 60 : 78);
-        if (i16 === 8 && sec !== 'C') { this.noise(t, 0.3, { gain: 0.18, cutoff: 1500, type: 'bandpass', q: 0.8, bus: M }); this.tone(t, 180, 0.2, { type: 'triangle', gain: 0.1, to: 120, bus: M }); }
-        // string ostinato (spiccato 8ths), rises through section C
-        if (i16 % 2 === 0) { const shift = sec === 'C' ? Math.floor(secPos * 8) : 0, os = [0, 7, 12, 7, 3, 7, 12, 15][(i16 / 2) | 0];
-          this.tone(t, hz(root + 12 + os + shift), st * 1.4, { type: 'sawtooth', gain: 0.03 + (sec === 'C' ? secPos * 0.03 : 0), bus: M, cutoff: 1500, attack: 0.01 }); }
-        if (sec === 'C' && secPos > 0.75) this.noise(t, st * 0.9, { gain: 0.05 + (secPos - 0.75) * 0.4, cutoff: 3000, type: 'bandpass', q: 1.2, bus: M }); // snare roll build
-      }
-      if (sec === 'B' && i16 === 0 && bar % 2 === 0) { // brass swell: saw+square through an opening filter
-        for (const [m, ty] of [[root + 12, 'sawtooth'], [root + 19, 'sawtooth'], [root + 24, 'square']]) {
-          const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(); o.type = ty; o.frequency.value = hz(m); f.type = 'lowpass'; f.Q.value = 2;
-          f.frequency.setValueAtTime(250, t); f.frequency.linearRampToValueAtTime(1800, t + st * 12); f.frequency.linearRampToValueAtTime(400, t + st * 30);
-          g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.045, t + st * 12); g.gain.linearRampToValueAtTime(0.0001, t + st * 30);
-          o.connect(f); f.connect(g); g.connect(M); o.start(t); o.stop(t + st * 31); }
-      }
+    const st = 60 / 72 / 4, hz = m => 440 * Math.pow(2, (m - 69) / 12), M = this.musicBus;
+    const TRACKS = [
+      { prog: [38, 34, 41, 36], q: [0, 7, 12, 15, 19], perc: 0.4, keys: 0.25 },   // D minor, wide and dusty
+      { prog: [33, 36, 31, 38], q: [0, 7, 14, 15, 22], perc: 0.15, keys: 0.35 },  // A minor add9, sparse and open
+      { prog: [36, 39, 34, 41], q: [0, 7, 12, 16, 19], perc: 0.55, keys: 0.2 },   // C, tense low pulse
+      { prog: [40, 36, 38, 33], q: [0, 5, 12, 15, 19], perc: 0.25, keys: 0.3 } ]; // E sus, drifting
+    while (this.nextT < c.currentTime + 0.8) {
+      const s = this.step, t = this.nextT, bar = Math.floor(s / 16), i16 = s % 16, trk = TRACKS[Math.floor(bar / 72) % TRACKS.length], ch = Math.floor(bar / 2);
+      const root = trk.prog[ch % trk.prog.length], rnd = (Math.imul(s + 1, 2654435761) >>> 0) / 4294967296;
+      if (i16 === 0 && bar % 2 === 0) { const dur = st * 40; // overlapping 2-bar chords, long attack/release -> continuous
+        for (const o of trk.q.slice(1, 4)) for (const d of [-6, 5]) this.tone(t, hz(root + 12 + o), dur, { type: 'triangle', gain: 0.012, bus: M, attack: 1.6, cutoff: 900, detune: d });
+        this.tone(t, hz(root), dur, { type: 'sawtooth', gain: 0.016, bus: M, attack: 1.8, cutoff: 260 });
+        this.tone(t, hz(root - 12), dur, { type: 'sine', gain: 0.05, bus: M, attack: 1.2 }); }
+      if (i16 % 4 === 0 && rnd < trk.keys) { const n = root + 24 + trk.q[(rnd * 97 | 0) % trk.q.length];
+        this.tone(t, hz(n), 2.6, { type: 'sine', gain: 0.03, bus: M, attack: 0.01 }); this.tone(t, hz(n + 12), 1.4, { type: 'sine', gain: 0.008, bus: M, attack: 0.01 }); }
+      if (i16 === 0 && (bar % 2 === 1 || trk.perc > 0.5)) { this.tone(t, 82, 0.9, { type: 'sine', gain: 0.07 * (0.5 + trk.perc), to: 46, bus: M, attack: 0.02 }); this.noise(t, 0.25, { gain: 0.015, cutoff: 280, bus: M }); }
+      if (i16 % 4 === 2 && rnd < trk.perc * 0.5) this.noise(t, 0.12, { gain: 0.012, cutoff: 5200, type: 'bandpass', q: 0.7, bus: M });
+      if (i16 === 0 && bar % 8 === 6) this.noise(t, st * 32, { gain: 0.02, cutoff: 600, to: 2400, type: 'bandpass', q: 0.6, bus: M, attack: st * 24 });
       this.step++; this.nextT += st;
     }
   }
@@ -149,7 +142,7 @@ export class Sound {
   play(name, src, cam) { try { this._play(name, src, cam); } catch {} }
   _play(name, src, cam) {
     const c = this.ctx; if (!c || c.state !== 'running' || !this.level) return;
-    const now = c.currentTime, gap = { rifle: 0.06, shot: 0.06, step: 0.12, spray: 0.18, drill: 0.25, 'alert:base': 15, 'alert:unit': 25, rocket: 0.08, boom_m: 0.05, die_inf: 0.08 }[name] ?? 0.05;
+    const now = c.currentTime, gap = { rifle: 0.06, shot: 0.06, step: 0.12, spray: 0.18, drill: 0.25, mine: 0.9, stage: 0.15, click: 0.04, 'alert:base': 15, 'alert:unit': 25, rocket: 0.08, boom_m: 0.05, die_inf: 0.08 }[name] ?? 0.05;
     if (now - (this.last[name] || 0) < gap) { this.stats.dropped++; return; }
     let vol = 1; if (src && cam && src.x !== undefined) { const cx = cam.x + cam.vw / 2, cy = cam.y + cam.vh / 2, d = Math.hypot(src.x - cx, src.y - cy), R = Math.max(cam.vw, cam.vh) * 0.6;
       vol = d < R ? 1 : Math.max(0, 1 - (d - R) / (R * 1.5)); if (vol <= 0.02 && !name.startsWith('alert') && !name.startsWith('voice')) return; }
@@ -159,7 +152,7 @@ export class Sound {
     if (name.startsWith('voice:')) { if (src?.type) { this.voice(src.type, name.slice(6)); if (src.type === 'dropship') this.sample(t, 'engine_low', { gain: 0.3, dur: 1.4 }); } return; }
     switch (name) {
       // UI
-      case 'select': this.sample(t, 'ui_select', { gain: 0.35 }) || this.tone(t, 880, 0.07, { type: 'square', gain: 0.05, cutoff: 3000 }); break;
+      case 'select': this.sample(t, 'ui_select', { gain: 0.35 }) || this.tone(t, 880, 0.07, { type: 'sine', gain: 0.05, cutoff: 3000 }); break;
       case 'move': this.sample(t, 'ui_click', { gain: 0.35 }) || this.tone(t, 520, 0.08, { gain: 0.08, to: 700 }); break;
       case 'attack': this.sample(t, 'ui_switch', { gain: 0.4 }); this.tone(t, 260, 0.1, { type: 'sawtooth', gain: 0.05, to: 130, cutoff: 1500 }); break;
       case 'queue': this.sample(t, 'ui_toggle', { gain: 0.35 }) || this.tone(t, 660, 0.06, { gain: 0.08 }); break;
@@ -167,9 +160,18 @@ export class Sound {
       case 'constructed': this.sample(t, 'ui_confirm', { gain: 0.4 }); this.voice('engineer', 'ready'); break;
       case 'ready': this.sample(t, 'ui_confirm', { gain: 0.3, rate: 1.1 }); break;
       case 'sell': this.sample(t, 'ui_down', { gain: 0.4 }); this.sample(t + 0.1, 'mining', { gain: 0.3 }); break;
+      case 'click': this.sample(t, 'ui_click', { gain: 0.25 }); break;
+      case 'mine': { const f = src?.stats?.faction; if (f === 'reptile') { this.sample(t, 'slime', { gain: 0.18 * g, rate: 0.8 }); this.noise(t, 0.15, { gain: 0.05 * g, cutoff: 700 }); }
+        else if (f === 'nordic') this.tone(t, 1320, 0.6, { type: 'sine', gain: 0.03 * g, attack: 0.01 });
+        else if (f === 'grey') this.tone(t, 220, 0.5, { type: 'sine', gain: 0.04 * g, to: 330 });
+        else this.sample(t, 'mining', { gain: 0.25 * g, dur: 0.6 }); break; }
+      case 'stage': { const f = src?.stats?.faction; if (f === 'reptile') { this.sample(t, 'slime', { gain: 0.3 * g, rate: 0.6 + Math.random() * 0.2 }); this.tone(t, 60, 0.5, { type: 'sine', gain: 0.1 * g, to: 40 }); }
+        else if (f === 'nordic') { this.tone(t, 660, 0.9, { type: 'sine', gain: 0.05 * g, attack: 0.05 }); this.tone(t, 990, 0.9, { type: 'sine', gain: 0.03 * g, attack: 0.08 }); }
+        else if (f === 'grey') { this.tone(t, 140, 0.4, { type: 'sine', gain: 0.07 * g, to: 210 }); this.sample(t, 'ui_glitch', { gain: 0.15 * g }); }
+        else { this.sample(t, ['metal1', 'metal2', 'metal3'][Math.random() * 3 | 0], { gain: 0.35 * g }); this.sample(t + 0.08, 'plate_h', { gain: 0.25 * g, rate: 1.2 }); } break; }
       case 'powerup': this.sample(t, 'ui_up', { gain: 0.45 }); this.tone(t, 110, 0.9, { type: 'sawtooth', gain: 0.06, to: 330, cutoff: 1200, attack: 0.1 }); break;
       case 'lowpower': this.sample(t, 'ui_down', { gain: 0.5 }); this.tone(t, 330, 1.1, { type: 'sawtooth', gain: 0.07, to: 90, cutoff: 900 }); this.voice('engineer', 'alert'); break;
-      case 'alert:base': this.duck(0.3, 1.6); for (let i = 0; i < 2; i++) { this.tone(t + i * 0.42, 620, 0.2, { type: 'square', gain: 0.07, cutoff: 2000 }); this.tone(t + i * 0.42 + 0.2, 460, 0.2, { type: 'square', gain: 0.07, cutoff: 2000 }); }
+      case 'alert:base': this.duck(0.3, 1.6); for (let i = 0; i < 2; i++) { this.tone(t + i * 0.42, 620, 0.2, { type: 'triangle', gain: 0.06, cutoff: 2000 }); this.tone(t + i * 0.42 + 0.2, 460, 0.2, { type: 'triangle', gain: 0.06, cutoff: 2000 }); }
         this.sample(t + 0.85, 'comp1', { gain: 0.25 }); setTimeout(() => this.voice('infantry', 'alert'), 900); break;
       case 'alert:unit': this.sample(t, 'comp2', { gain: 0.2 }); break;
       // weapons
@@ -194,14 +196,14 @@ export class Sound {
       case 'decloak': this.sample(t, ['field1', 'field2'], { gain: 0.4 * g, rate: 0.8 }); this.tone(t, 200, 0.5, { type: 'sine', gain: 0.05, to: 1200 }); break;
       case 'digin': this.sample(t, 'mining', { gain: 0.4 }); this.noise(t, 0.35, { gain: 0.2, cutoff: 500 }); break;
       case 'capture': this.sample(t, 'comp2', { gain: 0.35 }); for (let i = 0; i < 4; i++) this.tone(t + i * 0.09, 440 * Math.pow(1.26, i), 0.12, { type: 'square', gain: 0.04, cutoff: 3000 }); break;
-      case 'demo': for (let i = 0; i < 3; i++) this.tone(t + i * 0.15, 1800, 0.06, { type: 'square', gain: 0.06, cutoff: 4000 }); this.sample(t, 'tick_l', { gain: 0.3 }); break;
+      case 'demo': for (let i = 0; i < 3; i++) this.tone(t + i * 0.15, 1800, 0.06, { type: 'triangle', gain: 0.05, cutoff: 4000 }); this.sample(t, 'tick_l', { gain: 0.3 }); break;
       case 'board': this.sample(t, 'door_close', { gain: 0.4 * g }); break;
       case 'drop': this.sample(t, 'door_open', { gain: 0.35 * g, rate: 1.2 }); this.sample(t + 0.1, 'step_c', { gain: 0.3 * g }); break;
       case 'hum': this.sample(t, ['engine_low', 'engine_circ'], { gain: 0.25 * g, dur: 1.2 }); break;
       // structures / walker
       case 'wall': this.sample(t, ['metal_h', 'plate_h'], { gain: 0.5 }); this.tone(t, 90, 0.2, { type: 'sine', gain: 0.18, to: 45 }); break;
       case 'clank': this.sample(t, ['metal1', 'metal2', 'metal3'], { gain: 0.45 * g }); break;
-      case 'alarm': for (let i = 0; i < 3; i++) { this.tone(t + i * 0.32, 760, 0.15, { type: 'square', gain: 0.05, cutoff: 2400 }); this.tone(t + i * 0.32 + 0.15, 560, 0.15, { type: 'square', gain: 0.05, cutoff: 2400 }); } break;
+      case 'alarm': for (let i = 0; i < 3; i++) { this.tone(t + i * 0.32, 760, 0.15, { type: 'triangle', gain: 0.05, cutoff: 2400 }); this.tone(t + i * 0.32 + 0.15, 560, 0.15, { type: 'triangle', gain: 0.05, cutoff: 2400 }); } break;
       case 'hiss': this.noise(t, 0.8, { gain: 0.16 * g, cutoff: 5000, type: 'highpass', attack: 0.05 }); this.sample(t, 'thrust2', { gain: 0.15 * g, rate: 1.6, dur: 0.6 }); break;
       case 'servo': this.sample(t, ['door_open', 'door_close'], { gain: 0.35 * g, rate: 0.8 }); this.tone(t, 160, 0.5, { type: 'sawtooth', gain: 0.04, to: 320, cutoff: 900, attack: 0.05 }); break;
       case 'stomp': this.sample(t, 'punch_h', { gain: 0.6, rate: 0.6 }); this.tone(t, 70, 0.7, { type: 'sine', gain: 0.45, to: 25 }); this.noise(t, 0.6, { gain: 0.25, cutoff: 350 }); this.duck(0.5, 0.5); break;

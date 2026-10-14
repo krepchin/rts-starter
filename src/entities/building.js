@@ -16,6 +16,9 @@ export class Building extends Entity {
   spawnPoint() { return { x: this.x, y: (this.ty + this.h) * TILE + 14 }; }
   contains(px, py) { return px >= this.tx * TILE && py >= this.ty * TILE && px < (this.tx + this.w) * TILE && py < (this.ty + this.h) * TILE; }
   update(dt) {
+    { const a0 = this.age, a1 = a0 + dt; // v10.0 construction stage sounds (foundation, walls, roof) + power-up on completion
+      if (a0 < 2.4) for (const k of [0.05, 0.75, 1.5]) if (a0 < k && a1 >= k) this.game.sfx?.('stage', this);
+      if (a0 < 2.4 && a1 >= 2.4 && this.stats.power > 0) this.game.sfx?.('powerup', this); }
     this.cool -= dt; this.age += dt; this.flash -= dt; this.hitT = (this.hitT ?? 9) + dt;
     if (this.stats.organic && this.hitT > 6 && this.hp < this.stats.hp && this.age > 1) this.hp = Math.min(this.stats.hp, this.hp + this.stats.hp * 0.006 * dt); // organic regen
     if (this.stats.gate) { // opens for nearby friendly ground units unless locked; always closed to enemies

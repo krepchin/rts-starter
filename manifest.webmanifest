@@ -1,0 +1,2 @@
+{ "name": "Tiberium Skirmish", "short_name": "Tiberium", "start_url": "./", "display": "fullscreen", "orientation": "landscape", "background_color": "#000000", "theme_color": "#0c1a24",
+  "icons": [{ "src": "assets/icon512.png", "sizes": "512x512", "type": "image/png" }] }

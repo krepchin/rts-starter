@@ -185,6 +185,7 @@ export class Harvester extends Unit {
       const fx = (this.field.tx + 0.5) * TILE, fy = (this.field.ty + 0.5) * TILE;
       if (this.moveToward(fx, fy, dt, 6)) this.state = 'harvest';
     } else if (this.state === 'harvest') {
+      this.mineT = (this.mineT || 0) - dt; if (this.mineT <= 0) { this.mineT = 1.1; if (this.team === this.game.me) this.game.sfx?.('mine', this); }
       this.load += map.harvest(this.field.tx, this.field.ty, s.harvestRate * dt);
       if (this.load >= s.capacity) this.state = 'return';
       else if (map.tib[map.idx(this.field.tx, this.field.ty)] < 1) { this.field = null; this.state = 'seek'; }

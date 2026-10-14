@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tiberium">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon512.png">
 <title>Tiberium Skirmish — RTS Starter v10.0</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css?v=10.0">
@@ -27,7 +32,7 @@
     <div id="bottomStrip" class="bevel">
       <div id="radarSweep" title="Radar"></div>
       <div id="queueCtl">
-        <button id="volBtn" class="sq" title="Sound: off / low / med / high (remembered)">🔉</button>
+        <button id="volBtn" class="sq" title="Sound: off / low / med / high (remembered)">🔉</button><button id="musBtn" class="sq" title="Music on/off (remembered)">♫</button>
         <button id="findBtn" class="sq" title="Find my units (Space / F, or double-tap a unit)">◎</button>
         <button id="qPause" class="sq" title="Pause queue">❚❚</button>
         <button id="qCancel" class="sq" title="Cancel last / stop placing">✕</button>
@@ -49,6 +54,7 @@
       </div>
       <label class="opt"><input type="checkbox" id="graceOpt" checked> <span><b>No attacks for the first 10 minutes</b><br><small>Ceasefire for both sides: no damage, no targeting, no AI attacks, no Ion strikes. Building and harvesting continue.</small></span></label>
       <div class="mprow playrow"><button id="startBtn">Play vs AI</button><button id="mpBtn" class="secondary">Play Online</button></div>
+      <button id="fsBtn" class="secondary">Full screen</button>
       <div id="mpPanel" hidden>
         <p class="mpnote">2-player online, peer-to-peer. Both players pick their faction above. One taps <b>Create room</b> and reads out the 5-letter code; the other types it and taps <b>Join</b>.</p>
         <div class="mprow"><button id="mpHost">Create room</button></div>
