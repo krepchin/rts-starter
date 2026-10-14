@@ -38,8 +38,11 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
     if (u.hardT > 0) glow(ctx, u.x, u.y - H * 0.5, H * 0.7, 'rgba(200,255,120,0.5)');
     const y0 = u.y - alt - bob; ctx.save(); ctx.translate(u.x, y0);
     if (u.fired > 0 && !hover) ctx.translate(face * 2, 0);
+    if (hover) { const pa = u._pa ?? u.angle ?? 0, da = Math.atan2(Math.sin((u.angle || 0) - pa), Math.cos((u.angle || 0) - pa)); u._pa = u.angle; u._bank = (u._bank || 0) * 0.88 + Math.max(-0.3, Math.min(0.3, da * 4)) * 0.12;
+      ctx.rotate(u._bank + Math.sin(t * 2.1 + (u.id || 0)) * 0.05); const br = 1 + Math.sin(t * 3.2 + (u.id || 0)) * 0.035; ctx.scale(1 / br, br); } // bank into turns, sway, breathe
     ctx.scale(face * (tp === 'spark' ? -1 : 1), 1);
-    if (sp) { const w = H / sp.aspect; ctx.drawImage(sp.img, -w / 2, -H, w, H); }
+    if (sp) { const w = H / sp.aspect; ctx.drawImage(sp.img, -w / 2, -H, w, H);
+      if (UNITS[tp].faction === 'reptile') { ctx.globalCompositeOperation = 'lighter'; glow(ctx, 0, -H * 0.45, H * 0.32, 'rgba(120,255,60,0.6)', 0.35 + 0.35 * Math.sin(t * 4 + (u.id || 0))); ctx.globalCompositeOperation = 'source-over'; } }
     else { ctx.fillStyle = hover ? '#7a8a3a' : '#4a5a32'; ctx.beginPath(); ctx.ellipse(0, -H / 2, H * 0.3, H / 2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#9f4'; ctx.beginPath(); ctx.arc(H * 0.12, -H * 0.7, 2.5, 0, 7); ctx.fill(); }
     ctx.restore(); top = y0 - H;
     if (u.cloaked) { ctx.strokeStyle = 'rgba(160,255,220,0.5)'; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.ellipse(u.x, y0 - H / 2, H * 0.4, H * 0.55, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
@@ -65,7 +68,8 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
 function drawBroodShip(ctx, u, t, face) {
   const lift = 34 + Math.sin(t * 1.4 + (u.id || 0)) * 3, x = u.x, y = u.y - lift, flap = Math.sin(t * 3 + (u.id || 0)) * 0.5 + 0.5;
   shadow(ctx, u.x, u.y + 4, 44, 12, 0.25);
-  ctx.save(); ctx.translate(x, y); ctx.scale(face, 1);
+  const pa = u._pa ?? u.angle ?? 0, da = Math.atan2(Math.sin((u.angle || 0) - pa), Math.cos((u.angle || 0) - pa)); u._pa = u.angle; u._bank = (u._bank || 0) * 0.9 + Math.max(-0.25, Math.min(0.25, da * 4)) * 0.1;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(u._bank + Math.sin(t * 0.9 + (u.id || 0)) * 0.04); const heave = 1 + Math.sin(t * 1.7 + (u.id || 0)) * 0.04; ctx.scale(face / heave, heave);
   // membrane wings (behind)
   for (const s of [-1, 1]) { const tipX = s * 50, tipY = -44 - flap * 16; ctx.fillStyle = 'rgba(150,128,84,0.72)'; ctx.strokeStyle = '#3a3220'; ctx.lineWidth = 1.3;
     ctx.beginPath(); ctx.moveTo(s * 4, -16); ctx.quadraticCurveTo(s * 18, -40 - flap * 12, tipX, tipY); ctx.quadraticCurveTo(s * 40, -26, s * 44, -12 + flap * 2);
@@ -130,14 +134,21 @@ function drawCar(ctx, u, t, face, moving) {
 // ---- organic reptilian structures (painted code art)
 export function drawOrganic(ctx, b, t) {
   const X = b.tx * TILE, Y = b.ty * TILE, W = b.w * TILE, H = b.h * TILE, cx = X + W / 2, cy = Y + H / 2, p = 0.5 + 0.5 * Math.sin(t * 2.4 + (b.id || 0)), dmg = 1 - b.hp / b.stats.hp;
-  const built = Math.min(1, (b.age || 0) / 0.8);
-  shadow(ctx, cx + 4, Y + H - 4, W * 0.5, H * 0.24, 0.3);
-  ctx.save(); ctx.translate(cx, Y + H - 4); ctx.scale(1, 0.4 + 0.6 * built); ctx.translate(-cx, -(Y + H - 4));
+  const RISE = 2.6, age = b.age ?? 9, creep = Math.min(1, age / 0.6), built = Math.max(0, Math.min(1, (age - 0.4) / (RISE - 0.4)));
+  // creep / ooze patch spreads first
+  if (creep > 0) { const g = ctx.createRadialGradient(cx, Y + H - 6, 2, cx, Y + H - 6, W * 0.75 * creep); g.addColorStop(0, 'rgba(40,60,20,0.75)'); g.addColorStop(0.7, 'rgba(30,45,18,0.45)'); g.addColorStop(1, 'rgba(20,30,10,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H - 6, W * 0.75 * creep, H * 0.42 * creep, 0, 0, 7); ctx.fill();
+    if (built < 1) { ctx.strokeStyle = 'rgba(140,255,80,0.35)'; ctx.lineWidth = 1; for (let i = 0; i < 7; i++) { const a = i * 0.9 + (b.id || 0); ctx.beginPath(); ctx.moveTo(cx, Y + H - 6);
+      ctx.quadraticCurveTo(cx + Math.cos(a) * W * 0.3, Y + H - 6 + Math.sin(a) * H * 0.1, cx + Math.cos(a) * W * 0.7 * creep, Y + H - 6 + Math.sin(a) * H * 0.38 * creep); ctx.stroke(); } } }
+  if (built <= 0) return;
+  shadow(ctx, cx + 4, Y + H - 4, W * 0.5 * built, H * 0.24, 0.3);
+  const top = Y - H * 0.35, revealY = Y + H + 2 - (Y + H + 2 - top) * built; // reveal line moves bottom -> top
+  ctx.save(); if (built < 1) { ctx.beginPath(); ctx.rect(X - W, revealY, W * 3, Y + H * 2 - revealY); ctx.clip(); }
   const mound = (rx, ry, oy = 0) => { const g = ctx.createRadialGradient(cx - rx * 0.3, Y + H - ry - oy - ry * 0.4, 2, cx, Y + H - ry * 0.6 - oy, rx * 1.1);
-    g.addColorStop(0, '#9c8a58'); g.addColorStop(0.55, '#5e5430'); g.addColorStop(1, '#2a2612'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H - ry * 0.55 - oy, rx, ry, 0, Math.PI, 0); ctx.quadraticCurveTo(cx + rx * 0.9, Y + H - oy + 2, cx, Y + H - oy + 2); ctx.quadraticCurveTo(cx - rx * 0.9, Y + H - oy + 2, cx - rx, Y + H - ry * 0.55 - oy); ctx.fill();
+    g.addColorStop(0, '#56634a'); g.addColorStop(0.55, '#262e1f'); g.addColorStop(1, '#0b0f08'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H - ry * 0.55 - oy, rx, ry, 0, Math.PI, 0); ctx.quadraticCurveTo(cx + rx * 0.9, Y + H - oy + 2, cx, Y + H - oy + 2); ctx.quadraticCurveTo(cx - rx * 0.9, Y + H - oy + 2, cx - rx, Y + H - ry * 0.55 - oy); ctx.fill();
     ctx.strokeStyle = 'rgba(25,22,10,0.6)'; ctx.lineWidth = 1; for (let i = 0; i < 9; i++) { const a = Math.PI + (i + 0.5) / 9 * Math.PI; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * rx * 0.75, Y + H - ry * 0.55 - oy + Math.sin(a) * ry * 0.7, 4, 0.2, Math.PI - 0.2); ctx.stroke(); } };
   const sac = (x, y, r) => { glow(ctx, x, y, r * 2.4, `rgba(150,255,80,${0.3 + p * 0.35})`); ctx.fillStyle = `rgba(165,240,85,${0.7 + p * 0.25})`; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.85, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#33441a'; ctx.stroke(); };
-  const spike = (x, y, h, a = 0) => { ctx.fillStyle = '#d8c89a'; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.quadraticCurveTo(x + a * 0.5, y - h * 0.6, x + a, y - h); ctx.quadraticCurveTo(x + 1, y - h * 0.5, x + 3, y); ctx.fill(); ctx.strokeStyle = '#4a4228'; ctx.stroke(); };
+  const spike = (x, y, h, a = 0) => { ctx.fillStyle = '#7d8270'; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.quadraticCurveTo(x + a * 0.5, y - h * 0.6, x + a, y - h); ctx.quadraticCurveTo(x + 1, y - h * 0.5, x + 3, y); ctx.fill(); ctx.strokeStyle = '#4a4228'; ctx.stroke(); };
   switch (b.type) {
     case 'hive': mound(W * 0.48, H * 0.62); for (const [dx, h, a] of [[-30, 22, -8], [-14, 30, -4], [6, 34, 3], [24, 24, 8]]) spike(cx + dx, Y + H * 0.42, h, a);
       ctx.fillStyle = '#140f06'; ctx.beginPath(); ctx.ellipse(cx, Y + H - 16, 14, 9, 0, 0, 7); ctx.fill(); sac(cx, Y + H - 16, 7); sac(cx - 26, Y + H - 24, 5); sac(cx + 28, Y + H - 22, 5); break;
@@ -165,6 +176,14 @@ export function drawOrganic(ctx, b, t) {
   if (dmg > 0.4) { ctx.fillStyle = 'rgba(60,20,10,0.5)'; ctx.beginPath(); ctx.ellipse(cx - W * 0.15, Y + H * 0.6, 8, 4, 0.4, 0, 7); ctx.fill(); }
   if (dmg > 0.7) { ctx.fillStyle = 'rgba(150,230,80,0.6)'; ctx.beginPath(); ctx.ellipse(cx + W * 0.2, Y + H * 0.7, 3, 6, 0, 0, 7); ctx.fill(); }
   ctx.restore();
+  if (built < 1) { // glowing growth edge with sinew tendrils knitting the shell
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; const eg = ctx.createLinearGradient(0, revealY - 5, 0, revealY + 5); eg.addColorStop(0, 'rgba(120,255,60,0)'); eg.addColorStop(0.5, 'rgba(160,255,90,0.85)'); eg.addColorStop(1, 'rgba(120,255,60,0)');
+    const half = W * 0.5 * Math.sqrt(Math.max(0.05, 1 - Math.pow((revealY - (Y + H * 0.55)) / (H * 1.3), 2)));
+    ctx.fillStyle = eg; ctx.fillRect(cx - half, revealY - 5, half * 2, 10);
+    ctx.strokeStyle = 'rgba(170,255,110,0.6)'; ctx.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const x = cx - half + (i + 0.5) / 6 * half * 2, w = Math.sin(t * 6 + i * 2) * 4;
+      ctx.beginPath(); ctx.moveTo(x, revealY + 8); ctx.quadraticCurveTo(x + w, revealY - 2, x + w * 0.5, revealY - 10 - (i % 3) * 3); ctx.stroke(); }
+    ctx.restore(); }
+  else if (age < RISE + 0.5) { const k = 1 - (age - RISE) / 0.5; glow(ctx, cx, Y + H * 0.45, W * (0.8 + (1 - k) * 0.5), `rgba(170,255,90,${0.8 * k})`); } // completion pulse
   ctx.fillStyle = b.team === ME ? '#4fa7d8' : '#c8402c'; ctx.fillRect(X + 3, Y + H - 6, 5, 3);
 }
 
