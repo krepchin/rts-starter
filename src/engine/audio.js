@@ -14,7 +14,7 @@ const VOICES = { infantry: [150, 1, 0.3], sniper: [118, 0.92, 0.2], rocket: [96,
   carrier: [105, 0.9, 0.3], dropship: [128, 0.95, 0.35], robot: [62, 0.7, 0.85], mcv: [70, 0.75, 0.7], buggy: [140, 1, 0.4], truck: [78, 0.8, 0.8], default: [130, 1, 0.3],
   // reptilians: low growls / hisses (rough, formants shifted down, extra noise)
   raider: [95, 0.7, 0.9, 1], spitter: [120, 0.75, 0.8, 1], brute: [55, 0.6, 1, 1], shaman: [140, 0.8, 0.6, 1], hatchling: [170, 0.8, 0.8, 1], grazer: [70, 0.6, 0.9, 1],
-  spark: [300, 1.4, 0.5, 2], lance: [220, 1.2, 0.6, 2], hiveorb: [150, 1, 0.6, 2], broodship: [45, 0.55, 1, 1] };
+  spark: [300, 1.4, 0.5, 2], lance: [220, 1.2, 0.6, 2], biotank: [70, 0.7, 0.9, 1], hiveorb: [150, 1, 0.6, 2], broodship: [45, 0.55, 1, 1] };
 const VOWELS = [[730, 1090], [270, 2290], [530, 1840], [570, 840], [300, 870], [660, 1720], [440, 1020]];
 const r = (a, b) => a + Math.random() * (b - a), pick = a => a[(Math.random() * a.length) | 0];
 export class Sound {

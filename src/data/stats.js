@@ -96,6 +96,8 @@ export const UNITS = {
                weapon: { range: 2.5, damage: 9, cooldown: 0.4, air: true, color: '#d8ff9a', fx: 'lightning', chain: 2, vsWall: 0.2 } },
   lance:     { name: 'Lance Drone', faction: 'reptile', from: 'vehicle', hp: 287, cost: 800, time: 9, speed: 55, radius: 11, sight: 8, hover: true, req: ['digester'],
                weapon: { range: 7, damage: 61, cooldown: 2.6, air: true, color: '#b6ff5a', fx: 'beam', vsVeh: 1.4, vsWall: 1.1 } },
+  biotank:   { name: 'Bio-Tank', faction: 'reptile', from: 'vehicle', hp: 640, cost: 1100, time: 11, speed: 34, radius: 14, sight: 7, req: ['digester'],
+               weapon: { range: 5.5, damage: 58, cooldown: 2.1, air: false, color: '#9f3', fx: 'acid', vsVeh: 1.3, vsInf: 0.8, vsWall: 1.2 } },
   hiveorb:   { name: 'Hive Orb', faction: 'reptile', from: 'aircraft', hp: 1334, cost: 2200, time: 18, speed: 28, radius: 22, sight: 9, hover: true, spawns: 'spark', maxSpawn: 6, spawnEvery: 3.5, launchRange: 7 },
   broodship: { name: 'Brood Ship', faction: 'reptile', from: 'aircraft', hp: 1949, cost: 2600, time: 22, speed: 24, radius: 26, sight: 9, air: true, ability: 'eggs',
                eggCost: 100, eggCd: 9, maxEggs: 4, hatch: 'hatchling', hatchCount: 3 },

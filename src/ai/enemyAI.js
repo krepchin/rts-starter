@@ -6,7 +6,7 @@ const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar
 // v10: the same plan for either faction, translated through faction roles (reptiles have no superweapon)
 const ROLE_OF = { power: 'power', refinery: 'refinery', barracks: 'infantry', factory: 'vehicle', radar: 'radar', turret: 'def', airfield: 'air' };
 const MIX = { human: { inf: ['infantry', 'infantry', 'rocket', 'sniper', 'rocket', 'infantry', 'engineer'], veh: ['tank', 'buggy', 'bike', 'tank', 'truck'], air: ['carrier', 'jet', 'jet', 'bomber'] },
-  reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'spark', 'lance', 'spark', 'lance'], air: ['hiveorb', 'broodship'] },
+  reptile: { inf: ['raider', 'raider', 'spitter', 'brute', 'raider', 'shaman', 'spitter'], veh: ['spark', 'biotank', 'lance', 'spark', 'biotank'], air: ['hiveorb', 'broodship'] },
   nordic: { inf: ['sentinel', 'sentinel', 'guardian', 'seer', 'sentinel', 'tallwhite'], veh: ['skiff'], air: ['lightcraft', 'lightcraft', 'lightship'] },
   grey: { inf: ['greydrone', 'greydrone', 'greydrone', 'hybrid', 'psionic', 'greydrone', 'abductor', 'hybrid'], veh: ['crawler', 'crawler', 'crawler'], air: ['probe', 'scoutsaucer', 'saucer', 'warsaucer', 'probe', 'mothership'] } };
 

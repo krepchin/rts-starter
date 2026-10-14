@@ -22,7 +22,7 @@ function drawIcon(c, it) {
     drawAlienBuilding(ctx, { type: k, team: 0, tx: 0, ty: 0, w: s.w, h: s.h, stats: s, hp: s.hp, age: 9, id: 1 }, 0.5); ctx.restore(); return !!getSprite(s.art, 0); }
   if (!it.isB && isFactionArt(k)) { const R = it.s.radius || 8, big = R > 15, sc = big ? 0.9 : R > 10 ? 1.25 : 1.6; ctx.save(); ctx.translate(W / 2, H * (big ? 0.95 : 0.9)); ctx.scale(sc, sc);
     const ok = drawFactionUnit(ctx, { type: k, team: 0, x: 0, y: 0, stats: it.s, hp: 1, angle: 0, id: 1, inc: 2.5, load: 300 }, 0.4, 0); ctx.restore();
-    const sp = { raider: 1, spitter: 1, brute: 1, shaman: 1, spark: 1, lance: 1, hiveorb: 1 }[k]; return !sp || !!getSprite({ raider: 'r_raider', spitter: 'r_spitter', brute: 'r_brute', shaman: 'r_shaman', spark: 'r_spark', lance: 'r_lance', hiveorb: 'r_hive' }[k], 0); }
+    const sp = { raider: 1, spitter: 1, brute: 1, shaman: 1, spark: 1, lance: 1, hiveorb: 1, biotank: 1 }[k]; return !sp || !!getSprite({ raider: 'r_raider', spitter: 'r_spitter', brute: 'r_brute', shaman: 'r_shaman', spark: 'r_spark', lance: 'r_lance', hiveorb: 'r_hive', biotank: 'rb_tank' }[k], 0); }
   const name = SPR[k] || (it.isB && !it.s.def ? 'b_' + k : null);
   if (name) { const sp = getSprite(name, 0); if (!sp) return false; const r = Math.min(W / sp.img.width, H / (sp.img.width * sp.aspect)) * 0.95;
     const w = sp.img.width * r, h = sp.img.width * sp.aspect * r; ctx.drawImage(sp.img, (W - w) / 2, (H - h) / 2, w, h); return true; }
