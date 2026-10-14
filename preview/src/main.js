@@ -1,17 +1,17 @@
-import { ME, setMe } from './engine/local.js?v=10.2p2';
-import { net } from './net/lockstep.js?v=10.2p2';
-import { Game, GRACE_SECONDS } from './engine/game.js?v=10.2p2';
-import { BUILDINGS } from './data/stats.js?v=10.2p2';
-import { Camera } from './engine/camera.js?v=10.2p2';
-import { Renderer } from './engine/renderer.js?v=10.2p2';
-import { Input } from './engine/input.js?v=10.2p2';
-import { startLoop } from './engine/loop.js?v=10.2p2';
-import { PlayerUI } from './ui/selection.js?v=10.2p2';
-import { Sidebar } from './ui/sidebar.js?v=10.2p2';
-import { Minimap } from './ui/minimap.js?v=10.2p2';
-import { EnemyAI } from './ai/enemyAI.js?v=10.2p2';
-import { loadSprites } from './engine/sprites.js?v=10.2p2';
-import { Sound } from './engine/audio.js?v=10.2p2';
+import { ME, setMe } from './engine/local.js?v=10.3p';
+import { net } from './net/lockstep.js?v=10.3p';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=10.3p';
+import { BUILDINGS } from './data/stats.js?v=10.3p';
+import { Camera } from './engine/camera.js?v=10.3p';
+import { Renderer } from './engine/renderer.js?v=10.3p';
+import { Input } from './engine/input.js?v=10.3p';
+import { startLoop } from './engine/loop.js?v=10.3p';
+import { PlayerUI } from './ui/selection.js?v=10.3p';
+import { Sidebar } from './ui/sidebar.js?v=10.3p';
+import { Minimap } from './ui/minimap.js?v=10.3p';
+import { EnemyAI } from './ai/enemyAI.js?v=10.3p';
+import { loadSprites } from './engine/sprites.js?v=10.3p';
+import { Sound } from './engine/audio.js?v=10.3p';
 
 loadSprites();
 
@@ -102,3 +102,4 @@ startLoop(dt => {
   renderer.render(ui); sidebar.update(); minimap.render(); });
 
 window.game = game; window.sound = sound; window.ui = ui; window.camera = camera; // handy for debugging / scripted tests
+window.__B = BUILDINGS;

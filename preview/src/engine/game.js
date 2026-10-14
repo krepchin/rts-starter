@@ -1,16 +1,16 @@
-import { Jet, Bomber } from '../entities/air.js?v=10.2p2';
-import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=10.2p2';
-import { GameMap } from '../world/map.js?v=10.2p2';
-import { Fog } from '../world/fog.js?v=10.2p2';
-import { Building } from '../entities/building.js?v=10.2p2';
-import { Unit, Harvester } from '../entities/unit.js?v=10.2p2';
-import { Carrier, Interceptor } from '../entities/carrier.js?v=10.2p2';
-import { Dropship } from '../entities/dropship.js?v=10.2p2';
-import { resetIds } from '../entities/entity.js?v=10.2p2';
-import { MobileBase, FORMATION } from '../entities/mcv.js?v=10.2p2';
-import { FactionHarvester, Lightcraft, Saucer } from '../entities/aliens.js?v=10.2p2';
-import { FACTIONS, factionOf } from '../data/factions.js?v=10.2p2';
-import { Egg, HiveOrb, BroodShip, Truck, Grazer } from '../entities/reptile.js?v=10.2p2';
+import { Jet, Bomber } from '../entities/air.js?v=10.3p';
+import { TILE, BUILDINGS, UNITS, ECONOMY } from '../data/stats.js?v=10.3p';
+import { GameMap } from '../world/map.js?v=10.3p';
+import { Fog } from '../world/fog.js?v=10.3p';
+import { Building } from '../entities/building.js?v=10.3p';
+import { Unit, Harvester } from '../entities/unit.js?v=10.3p';
+import { Carrier, Interceptor } from '../entities/carrier.js?v=10.3p';
+import { Dropship } from '../entities/dropship.js?v=10.3p';
+import { resetIds } from '../entities/entity.js?v=10.3p';
+import { MobileBase, FORMATION } from '../entities/mcv.js?v=10.3p';
+import { FactionHarvester, Lightcraft, Saucer } from '../entities/aliens.js?v=10.3p';
+import { FACTIONS, factionOf } from '../data/factions.js?v=10.3p';
+import { Egg, HiveOrb, BroodShip, Truck, Grazer } from '../entities/reptile.js?v=10.3p';
 export const MORPH_TIME = { pack: 2.6, transform: 5.1 }; // hand-off at 78%, then the unit rises (~1 s): ~4 s / ~2 s total
 // where each folded building ends up relative to the walker/crawler ground point (matches the painted walker layers)
 export const ATTACH = { transform: { cy: [-12, -62], barracks: [-48, -44], factory: [38, -62], power: [-18, -88] }, pack: { cy: [0, -22] } };
@@ -136,7 +136,7 @@ export class Game {
   }
   placeInstant(team, type, tx, ty) {
     if (!this.canPlaceInstant(team, type, tx, ty)) return false;
-    this.teams[team].credits -= BUILDINGS[type].cost; const b = this.addBuilding(type, team, tx, ty); b.age = 0.6;
+    this.teams[team].credits -= BUILDINGS[type].cost; const b = this.addBuilding(type, team, tx, ty); b.age = BUILDINGS[type].faction === 'reptile' ? 0 : 0.6;
     if (team === this.me) this.sfx?.('wall'); return b;
   }
   // Tiles of a straight wall line from (x0,y0) to (x1,y1) (dominant axis), for drag placement.
@@ -298,7 +298,7 @@ export class Game {
             const p = prods[(t.rr[cat] = ((t.rr[cat] || 0) + 1) % prods.length)];
             const sp = p.spawnPoint(); const u = this.spawnUnit(it.key, t.id, sp.x + (Math.random() - .5) * 20, sp.y);
             if (t.id === 0) { this.sfx?.('ready'); this.sfx?.('voice:ready', u); }
-            if (p.rally) u.command(u.type === 'harvester' ? { type: 'harvest' } : { type: 'move', x: p.rally.x, y: p.rally.y });
+            if (p.rally) u.command(u.load !== undefined ? { type: 'harvest' } : { type: 'move', x: p.rally.x, y: p.rally.y });
           }
         }
       }

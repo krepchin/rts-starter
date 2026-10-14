@@ -1,5 +1,5 @@
-import { TILE, BUILDINGS } from '../data/stats.js?v=10.2p2';
-import { FACTIONS } from '../data/factions.js?v=10.2p2';
+import { TILE, BUILDINGS } from '../data/stats.js?v=10.3p';
+import { FACTIONS } from '../data/factions.js?v=10.3p';
 
 // Scripted opponent using the same rules as the player: Construction Yard + queues, power, repair, superweapon, waves.
 const BUILD_ORDER = ['power', 'refinery', 'barracks', 'power', 'factory', 'radar', 'turret', 'power', 'refinery', 'airfield', 'power', 'turret', 'power', 'ion', 'power', 'factory'];

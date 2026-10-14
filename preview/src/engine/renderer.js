@@ -1,13 +1,14 @@
-import { ME } from './local.js?v=10.2p2';
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.2p2';
-import { drawBuildingArt } from './buildingArt.js?v=10.2p2';
-import { Terrain } from '../world/terrain.js?v=10.2p2';
-import { drawMobileBase } from './mcvArt.js?v=10.2p2';
-import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.2p2';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.2p2';
-import { FORMATION } from '../entities/mcv.js?v=10.2p2';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.2p2';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.2p2';
+import { ME } from './local.js?v=10.3p';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.3p';
+import { drawBuildingArt } from './buildingArt.js?v=10.3p';
+import { Terrain } from '../world/terrain.js?v=10.3p';
+import { drawMobileBase } from './mcvArt.js?v=10.3p';
+import { nightGround, nightLights } from './night.js?v=10.3p';
+import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.3p';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.3p';
+import { FORMATION } from '../entities/mcv.js?v=10.3p';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.3p';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.3p';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -21,26 +22,28 @@ export class Renderer {
   render(ui) {
     const { ctx, g, cam } = this, fog = g.fog;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#5a4026'; ctx.fillRect(0, 0, cam.vw, cam.vh);
+    ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, cam.vw, cam.vh);
     const sh = g.shake || 0, shx = sh ? (Math.random() - .5) * sh * 2 : 0, shy = sh ? (Math.random() - .5) * sh * 2 : 0; // footfall / blast screen shake
     ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
     const x0 = Math.max(0, (cam.x / TILE) | 0), y0 = Math.max(0, (cam.y / TILE) | 0);
     const x1 = Math.min(g.map.w, x0 + Math.ceil(cam.vw / TILE) + 2), y1 = Math.min(g.map.h, y0 + Math.ceil(cam.vh / TILE) + 2);
     const t = performance.now() / 1000;
     this.terrain.draw(ctx, cam.x, cam.y, cam.x + cam.vw, cam.y + cam.vh); // pre-rendered ground chunks
+    for (const d of g.decals) { // scorch decals under everything
+      const a = Math.min(1, d.t / 4) * 0.55; ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot); ctx.fillStyle = `rgba(30,22,14,${a})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * 0.55, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(20,14,8,${a})`; ctx.beginPath(); ctx.ellipse(1, 0, d.r * 0.5, d.r * 0.3, 0.4, 0, 7); ctx.fill(); ctx.restore(); }
+    nightGround(ctx, cam, g, x0, y0, x1, y1, t);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const i = g.map.idx(x, y);
       const amt = g.map.tib[i];
       if (amt > 5) drawCrystalCluster(ctx, x, y, amt / 500, t);
     }
-    for (const d of g.decals) { // scorch decals under everything
-      const a = Math.min(1, d.t / 4) * 0.55; ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot); ctx.fillStyle = `rgba(30,22,14,${a})`;
-      ctx.beginPath(); ctx.ellipse(0, 0, d.r, d.r * 0.55, 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(20,14,8,${a})`; ctx.beginPath(); ctx.ellipse(1, 0, d.r * 0.5, d.r * 0.3, 0.4, 0, 7); ctx.fill(); ctx.restore(); }
     for (const z of g.zones) drawZone(ctx, z, t);
     const vis = g.buildings.filter(b => b.team === ME || fog.visibleAt(b.x, b.y) || b.seen).sort((a, b) => (a.ty + a.h) - (b.ty + b.h));
     for (const b of vis) { if (b.team !== ME) b.seen = true; this.drawBuilding(b, ui.selection.has(b), t); }
     const ground = g.units.filter(u => !u.isAir), air = g.units.filter(u => u.isAir);
-    for (const u of [...ground, ...air]) if (u.team === ME || fog.visibleAt(u.x, u.y)) this.drawUnit(u, ui.selection.has(u), t);
+    const shown = [...ground, ...air].filter(u => u.team === ME || fog.visibleAt(u.x, u.y)); for (const u of shown) this.drawUnit(u, ui.selection.has(u), t);
+    nightLights(ctx, cam, g, vis, shown, t, fog);
     for (const r of g.rockets) { // painted rocket: flame glow, body, fins, nose
       ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.a);
       const fl = 6 + Math.random() * 4, gr = ctx.createRadialGradient(-6, 0, 0, -6, 0, fl + 4); gr.addColorStop(0, 'rgba(255,240,170,0.95)'); gr.addColorStop(0.4, 'rgba(255,150,40,0.7)'); gr.addColorStop(1, 'rgba(255,80,0,0)');
@@ -253,7 +256,7 @@ export class Renderer {
     const g = this.g; if (!g.fog.enabled) return; const ctx = this.ctx, v = g.fog.v;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const s = v[g.map.idx(x, y)]; if (s === 2) continue;
-      ctx.fillStyle = s === 0 ? '#120d08' : '#120d0888'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      ctx.fillStyle = s === 0 ? '#03050a' : '#03050a99'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
   drawPlacement(ui) {

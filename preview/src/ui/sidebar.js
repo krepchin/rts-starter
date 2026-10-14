@@ -1,10 +1,10 @@
-import { ME } from '../engine/local.js?v=10.2p2';
-import { BUILDINGS, UNITS } from '../data/stats.js?v=10.2p2';
-import { CATS, PRODUCER } from '../engine/game.js?v=10.2p2';
-import { getSprite } from '../engine/sprites.js?v=10.2p2';
-import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.2p2';
-import { drawFactionUnit, drawOrganic, isFactionArt, drawAlienBuilding, isAlienBuilding } from '../engine/artReptile.js?v=10.2p2';
-import { factionOf } from '../data/factions.js?v=10.2p2';
+import { ME } from '../engine/local.js?v=10.3p';
+import { BUILDINGS, UNITS } from '../data/stats.js?v=10.3p';
+import { CATS, PRODUCER } from '../engine/game.js?v=10.3p';
+import { getSprite } from '../engine/sprites.js?v=10.3p';
+import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.3p';
+import { drawFactionUnit, drawOrganic, isFactionArt, drawAlienBuilding, isAlienBuilding } from '../engine/artReptile.js?v=10.3p';
+import { factionOf } from '../data/factions.js?v=10.3p';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],
@@ -222,7 +222,7 @@ export class Sidebar {
     }
     if (one?.packing) { setT(this.el.info, `${one.stats.name}\nPacking up… (offline)`); return; }
     setT(this.el.info, one ? `${one.stats.name}\nHP ${Math.ceil(one.hp)}/${one.stats.hp}` +
-      (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.type === 'harvester' ? `\nLoad ${one.load | 0}` : '')
+      (one.type === 'carrier' ? `\nInterceptors docked: ${one.docked}` : '') + (one.load !== undefined ? `\nLoad ${one.load | 0}` : '')
       : sel.length ? `${sel.length} selected` : this.ui.targeting ? 'Ion Cannon: tap a target (right-click/Esc cancels)'
       : this.ui.placing && BUILDINGS[this.ui.placing].wall ? 'Tap a tile, or drag a line of wall ($50 each)' : this.ui.placing && BUILDINGS[this.ui.placing].gate ? 'Tap a tile next to a wall'
       : t.readyBuilding ? 'Structure ready: tap it, then place on map' : !g.has(ME, 'cy') ? `${BUILDINGS[g.role(ME, 'yard')].name} lost!` : 'Tap/drag to select. Tap (or right-click) to command.');
