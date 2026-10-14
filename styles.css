@@ -173,3 +173,7 @@ html,body{background:#120d08;color:#d6dccf}
 @supports (height:100dvh){:root{--vh:100dvh}}
 #app{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);box-sizing:border-box}
 #fsBtn{margin-top:6px}
+/* v10.0: short landscape phones (e.g. iPhone 844x390): menu scrolls, compact cards so Play is reachable */
+#startMenu{overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media (max-height:600px){#startMenu{align-items:flex-start;padding:8px max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left))}#startMenu .panel{margin:0 auto;padding:10px 12px}
+  #startMenu h1{font-size:18px;margin-bottom:6px}#factionPick .fac img{height:72px;object-fit:cover}#factionPick .fac small{font-size:10.5px;line-height:1.25}}
