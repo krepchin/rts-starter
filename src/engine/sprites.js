@@ -1,7 +1,7 @@
 // Preloaded raster sprites (assets/*.png, @2x for high-DPI screens). Each sprite gets a per-team canvas:
 // team 0 = original steel-blue art, team 1 = red/rust tinted copy so factions stay distinct.
 // get() returns null until loaded or if loading failed, so callers fall back to procedural drawing.
-import { paintGrade } from './paint.js?v=10.1';
+import { paintGrade } from './paint.js?v=10.0';
 const PW_TINT = { 1: 'rgba(160,40,20,0.28)' };
 const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_drone', 'icp_jet', 'icp_vtol', 'harvester', 'soldier',
   'b_power', 'b_refinery', 'b_barracks', 'b_factory', 'b_airfield', 'b_radar', 'b_turret', 'b_ion',
@@ -22,8 +22,8 @@ export function loadSprites() {
   for (const n of NAMES) {
     const img = new Image(); img.decoding = 'async';
     img.onload = () => { cache[n] = { 0: tinted(img, 0, n), 1: tinted(img, 1, n), aspect: img.naturalHeight / img.naturalWidth }; };
-    img.onerror = () => { if (hi && !img.dataset.retry) { img.dataset.retry = 1; img.src = `assets/${n}.png?v=10.1`; } else console.warn('sprite failed, using fallback:', n); };
-    img.src = `assets/${n}${hi ? "@2x" : ""}.png?v=10.1`;
+    img.onerror = () => { if (hi && !img.dataset.retry) { img.dataset.retry = 1; img.src = `assets/${n}.png?v=10.0`; } else console.warn('sprite failed, using fallback:', n); };
+    img.src = `assets/${n}${hi ? "@2x" : ""}.png?v=10.0`;
   }
 }
 export function getSprite(name, team) { const s = cache[name]; return s ? { img: s[team] || s[0], aspect: s.aspect } : null; }

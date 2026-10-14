@@ -1,10 +1,10 @@
-import { ME } from '../engine/local.js?v=10.1';
-import { BUILDINGS, UNITS } from '../data/stats.js?v=10.1';
-import { CATS, PRODUCER } from '../engine/game.js?v=10.1';
-import { getSprite } from '../engine/sprites.js?v=10.1';
-import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.1';
-import { drawFactionUnit, drawOrganic, isFactionArt, drawAlienBuilding, isAlienBuilding } from '../engine/artReptile.js?v=10.1';
-import { factionOf } from '../data/factions.js?v=10.1';
+import { ME } from '../engine/local.js?v=10.0';
+import { BUILDINGS, UNITS } from '../data/stats.js?v=10.0';
+import { CATS, PRODUCER } from '../engine/game.js?v=10.0';
+import { getSprite } from '../engine/sprites.js?v=10.0';
+import { drawWall, drawGate, drawTurret, drawTrooper, drawDropship } from '../engine/art9.js?v=10.0';
+import { drawFactionUnit, drawOrganic, isFactionArt, drawAlienBuilding, isAlienBuilding } from '../engine/artReptile.js?v=10.0';
+import { factionOf } from '../data/factions.js?v=10.0';
 
 // v9 sidebar: four icon tabs like the painted mock-up: tiberium (base structures), vehicle, infantry, shield (defenses).
 const TABS = { building: ['Base structures', '<svg viewBox="0 0 24 24"><path d="M12 2l4 7-4 13-4-13z" fill="#5f5"/><path d="M5 10l3 2-1 7-3-5zM19 10l-3 2 1 7 3-5z" fill="#3c3"/></svg>'],

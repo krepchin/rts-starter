@@ -1,5 +1,5 @@
-import { ME } from '../engine/local.js?v=10.1';
-import { BUILDINGS } from '../data/stats.js?v=10.1';
+import { ME } from '../engine/local.js?v=10.0';
+import { BUILDINGS } from '../data/stats.js?v=10.0';
 // Player-side command layer: selection, orders, building placement + superweapon targeting state.
 export class PlayerUI {
   constructor(game) { this.g = game; this.selection = new Set(); this.box = null; this.placing = null; this.targeting = false; this.hoverTile = { x: 0, y: 0 }; this.hoverWorld = null; }

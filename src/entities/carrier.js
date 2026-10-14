@@ -1,5 +1,5 @@
-import { Unit } from './unit.js?v=10.1';
-import { TILE } from '../data/stats.js?v=10.1';
+import { Unit } from './unit.js?v=10.0';
+import { TILE } from '../data/stats.js?v=10.0';
 
 // StarCraft-style carrier: no gun of its own, launches interceptors at targets within launchRange.
 export class Carrier extends Unit {

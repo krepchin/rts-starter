@@ -1,5 +1,5 @@
-import { Entity } from './entity.js?v=10.1';
-import { BUILDINGS, TILE } from '../data/stats.js?v=10.1';
+import { Entity } from './entity.js?v=10.0';
+import { BUILDINGS, TILE } from '../data/stats.js?v=10.0';
 
 export class Building extends Entity {
   toggleLock() { this.locked = !this.locked; return true; } // v10: a method so multiplayer can network it

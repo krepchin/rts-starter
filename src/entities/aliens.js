@@ -1,6 +1,6 @@
-import { Unit, Harvester } from './unit.js?v=10.1';
-import { Jet } from './air.js?v=10.1';
-import { TILE, UNITS } from '../data/stats.js?v=10.1';
+import { Unit, Harvester } from './unit.js?v=10.0';
+import { Jet } from './air.js?v=10.0';
+import { TILE, UNITS } from '../data/stats.js?v=10.0';
 
 // v10.1 Nordic + Grey special units.
 export class FactionHarvester extends Harvester { constructor(game, team, x, y, type) { super(game, team, x, y, type); } }

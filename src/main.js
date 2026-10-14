@@ -1,17 +1,17 @@
-import { ME, setMe } from './engine/local.js?v=10.1';
-import { net } from './net/lockstep.js?v=10.1';
-import { Game, GRACE_SECONDS } from './engine/game.js?v=10.1';
-import { BUILDINGS } from './data/stats.js?v=10.1';
-import { Camera } from './engine/camera.js?v=10.1';
-import { Renderer } from './engine/renderer.js?v=10.1';
-import { Input } from './engine/input.js?v=10.1';
-import { startLoop } from './engine/loop.js?v=10.1';
-import { PlayerUI } from './ui/selection.js?v=10.1';
-import { Sidebar } from './ui/sidebar.js?v=10.1';
-import { Minimap } from './ui/minimap.js?v=10.1';
-import { EnemyAI } from './ai/enemyAI.js?v=10.1';
-import { loadSprites } from './engine/sprites.js?v=10.1';
-import { Sound } from './engine/audio.js?v=10.1';
+import { ME, setMe } from './engine/local.js?v=10.0';
+import { net } from './net/lockstep.js?v=10.0';
+import { Game, GRACE_SECONDS } from './engine/game.js?v=10.0';
+import { BUILDINGS } from './data/stats.js?v=10.0';
+import { Camera } from './engine/camera.js?v=10.0';
+import { Renderer } from './engine/renderer.js?v=10.0';
+import { Input } from './engine/input.js?v=10.0';
+import { startLoop } from './engine/loop.js?v=10.0';
+import { PlayerUI } from './ui/selection.js?v=10.0';
+import { Sidebar } from './ui/sidebar.js?v=10.0';
+import { Minimap } from './ui/minimap.js?v=10.0';
+import { EnemyAI } from './ai/enemyAI.js?v=10.0';
+import { loadSprites } from './engine/sprites.js?v=10.0';
+import { Sound } from './engine/audio.js?v=10.0';
 
 loadSprites();
 

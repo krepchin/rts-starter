@@ -1,14 +1,14 @@
-import { ME } from './local.js?v=10.1';
-import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.1';
-import { drawBuildingArt } from './buildingArt.js?v=10.1';
-import { Terrain } from '../world/terrain.js?v=10.1';
-import { drawMobileBase } from './mcvArt.js?v=10.1';
-import { nightGround, nightLights } from './night.js?v=10.1';
-import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.1';
-import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.1';
-import { FORMATION } from '../entities/mcv.js?v=10.1';
-import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.1';
-import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.1';
+import { ME } from './local.js?v=10.0';
+import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.0';
+import { drawBuildingArt } from './buildingArt.js?v=10.0';
+import { Terrain } from '../world/terrain.js?v=10.0';
+import { drawMobileBase } from './mcvArt.js?v=10.0';
+import { nightGround, nightLights } from './night.js?v=10.0';
+import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.0';
+import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.0';
+import { FORMATION } from '../entities/mcv.js?v=10.0';
+import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.0';
+import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.0';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
 export class Renderer {
@@ -22,7 +22,7 @@ export class Renderer {
   render(ui) {
     const { ctx, g, cam } = this, fog = g.fog;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, cam.vw, cam.vh);
+    ctx.fillStyle = '#5a4026'; ctx.fillRect(0, 0, cam.vw, cam.vh);
     const sh = g.shake || 0, shx = sh ? (Math.random() - .5) * sh * 2 : 0, shy = sh ? (Math.random() - .5) * sh * 2 : 0; // footfall / blast screen shake
     ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
     const x0 = Math.max(0, (cam.x / TILE) | 0), y0 = Math.max(0, (cam.y / TILE) | 0);
@@ -256,7 +256,7 @@ export class Renderer {
     const g = this.g; if (!g.fog.enabled) return; const ctx = this.ctx, v = g.fog.v;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const s = v[g.map.idx(x, y)]; if (s === 2) continue;
-      ctx.fillStyle = s === 0 ? '#03050a' : '#03050a99'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      ctx.fillStyle = s === 0 ? '#120d08' : '#120d0888'; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
   drawPlacement(ui) {

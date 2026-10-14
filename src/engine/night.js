@@ -1,13 +1,13 @@
 // v10.3 "look B": dark sci-fi night. Cheap full-screen multiply tints + additive cached glow sprites (no per-pixel work, phone-safe).
-import { TILE } from '../data/stats.js?v=10.1';
-import { ME } from './local.js?v=10.1';
+import { TILE } from '../data/stats.js?v=10.0';
+import { ME } from './local.js?v=10.0';
 const cache = new Map();
 function glowSprite(col) { let c = cache.get(col); if (c) return c; c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
   const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(0.35, col.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45) + ')')); g.addColorStop(1, 'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0, 0, 64, 64); cache.set(col, c); return c; }
 export const FACTION_LIGHT = { human: 'rgba(255,150,60,0.9)', reptile: 'rgba(120,255,60,0.9)', nordic: 'rgba(255,240,190,0.95)', grey: 'rgba(175,90,255,0.9)' };
 export function light(ctx, x, y, r, col, a = 1) { ctx.globalAlpha = a; ctx.drawImage(glowSprite(col), x - r, y - r, r * 2, r * 2); }
-export const night = { on: true };
+export const night = { on: false }; // v10.0 look A (daylight): night pass disabled; kept for a possible night map
 // after terrain + crystals + decals: deep blue night on the ground
 export function nightGround(ctx, cam, g, x0, y0, x1, y1, t) {
   if (!night.on) return; ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(44,58,104)'; ctx.fillRect(cam.x - 40, cam.y - 40, cam.vw + 80, cam.vh + 80);

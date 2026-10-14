@@ -1,8 +1,8 @@
-import { ME } from './local.js?v=10.1';
+import { ME } from './local.js?v=10.0';
 // v10 art: Reptilian units (sprites cut from Kent's concept art, assets/r_*.png, with code fallbacks), drones, Brood Ship, eggs,
 // organic structures (painted code art), the human Dune Buggy and Monster Truck, and new weapon effects.
-import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.1';
-import { getSprite } from './sprites.js?v=10.1';
+import { TILE, UNITS, BUILDINGS } from '../data/stats.js?v=10.0';
+import { getSprite } from './sprites.js?v=10.0';
 
 const SPR = { raider: ['r_raider', 30], spitter: ['r_spitter', 28], brute: ['r_brute', 44], shaman: ['r_shaman', 38], hatchling: ['r_raider', 19],
   spark: ['r_spark', 20], lance: ['r_lance', 30], hiveorb: ['r_hive', 54],
@@ -145,7 +145,7 @@ export function drawOrganic(ctx, b, t) {
   const top = Y - H * 0.35, revealY = Y + H + 2 - (Y + H + 2 - top) * built; // reveal line moves bottom -> top
   ctx.save(); if (built < 1) { ctx.beginPath(); ctx.rect(X - W, revealY, W * 3, Y + H * 2 - revealY); ctx.clip(); }
   const mound = (rx, ry, oy = 0) => { const g = ctx.createRadialGradient(cx - rx * 0.3, Y + H - ry - oy - ry * 0.4, 2, cx, Y + H - ry * 0.6 - oy, rx * 1.1);
-    g.addColorStop(0, '#56634a'); g.addColorStop(0.55, '#262e1f'); g.addColorStop(1, '#0b0f08'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H - ry * 0.55 - oy, rx, ry, 0, Math.PI, 0); ctx.quadraticCurveTo(cx + rx * 0.9, Y + H - oy + 2, cx, Y + H - oy + 2); ctx.quadraticCurveTo(cx - rx * 0.9, Y + H - oy + 2, cx - rx, Y + H - ry * 0.55 - oy); ctx.fill();
+    g.addColorStop(0, '#8a8f6a'); g.addColorStop(0.55, '#4a5136'); g.addColorStop(1, '#1c2014'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H - ry * 0.55 - oy, rx, ry, 0, Math.PI, 0); ctx.quadraticCurveTo(cx + rx * 0.9, Y + H - oy + 2, cx, Y + H - oy + 2); ctx.quadraticCurveTo(cx - rx * 0.9, Y + H - oy + 2, cx - rx, Y + H - ry * 0.55 - oy); ctx.fill();
     ctx.strokeStyle = 'rgba(25,22,10,0.6)'; ctx.lineWidth = 1; for (let i = 0; i < 9; i++) { const a = Math.PI + (i + 0.5) / 9 * Math.PI; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * rx * 0.75, Y + H - ry * 0.55 - oy + Math.sin(a) * ry * 0.7, 4, 0.2, Math.PI - 0.2); ctx.stroke(); } };
   const sac = (x, y, r) => { glow(ctx, x, y, r * 2.4, `rgba(150,255,80,${0.3 + p * 0.35})`); ctx.fillStyle = `rgba(165,240,85,${0.7 + p * 0.25})`; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.85, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#33441a'; ctx.stroke(); };
   const spike = (x, y, h, a = 0) => { ctx.fillStyle = '#7d8270'; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.quadraticCurveTo(x + a * 0.5, y - h * 0.6, x + a, y - h); ctx.quadraticCurveTo(x + 1, y - h * 0.5, x + 3, y); ctx.fill(); ctx.strokeStyle = '#4a4228'; ctx.stroke(); };
