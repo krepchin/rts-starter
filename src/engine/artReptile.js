@@ -234,7 +234,38 @@ function saucerShape(ctx, x, y, R, t, id, tilt, lights = 10) {
   ctx.fillStyle = d; ctx.beginPath(); ctx.ellipse(0, -H * 0.55, R * 0.38, H * 1.3, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#2a2e33'; ctx.stroke();
   ctx.restore(); ctx.lineWidth = 1; return H;
 }
+// v10.3: saucers use pixel-faithful cutouts from grey-craft-concept.jpg; procedural only for bays, underglow, lights and motion
+const SAUCER_SPR = { minisaucer: 'gs_small', scoutsaucer: 'gs_scout', saucer: 'gs_saucer', warsaucer: 'gs_saucer', mothership: 'gs_mother' };
+// mothership hull bays (fractions of sprite width/height): six recessed hatches set into the upper hull band
+const BAYS = [[-0.33, 0.43], [-0.18, 0.38], [-0.04, 0.36], [0.11, 0.37], [0.25, 0.40], [0.38, 0.47]];
 function drawSaucer(ctx, u, t, R) {
+  const sp = getSprite(SAUCER_SPR[u.type], 0); if (sp) return drawSaucerSprite(ctx, u, t, R, sp);
+  return drawSaucerVec(ctx, u, t, R); }
+function drawSaucerSprite(ctx, u, t, R, sp) {
+  const id = u.id || 0, W = R * (u.type === 'mothership' ? 3.6 : 2.4), H = W * sp.aspect, alt = 26 + R * 0.5 + Math.sin(t * 1.8 + id) * 2.5, y = u.y - alt;
+  const turn = Math.max(-0.12, Math.min(0.12, ((u.angle || 0) - (u._pa ?? u.angle ?? 0)) * 3)); u._pa = u.angle; u._bank = (u._bank || 0) * 0.9 + turn * 0.1;
+  const tilt = Math.sin(t * 1.3 + id * 2) * 0.035 + u._bank;
+  ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + 4, W * 0.42, W * 0.12, 0, 0, 7); ctx.fill(); ctx.restore();
+  if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, y, b.x, b.y); gr.addColorStop(0, 'rgba(120,255,110,0.75)'); gr.addColorStop(1, 'rgba(120,255,110,0.18)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(u.x - W * 0.12, y + H * 0.35); ctx.lineTo(u.x + W * 0.12, y + H * 0.35); ctx.lineTo(b.x + 15, b.y + 4); ctx.lineTo(b.x - 15, b.y + 4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,255,190,0.5)'; for (let i = 0; i < 3; i++) { const k = (t * 1.5 + i / 3) % 1; ctx.beginPath(); ctx.ellipse(u.x + (b.x - u.x) * k, y + (b.y - y) * k, W * 0.12 + k * 10, 3 + k * 2, 0, 0, 7); ctx.stroke(); } }
+  // subtle underglow + rotating purple/green belly lights
+  glow(ctx, u.x, y + H * 0.38, W * 0.42, 'rgba(170,90,255,0.35)', 0.6 + 0.2 * Math.sin(t * 3 + id));
+  ctx.save(); ctx.translate(u.x, y); ctx.rotate(tilt); ctx.drawImage(sp.img, -W / 2, -H / 2, W, H);
+  const n = u.type === 'mothership' ? 14 : 7;
+  for (let i = 0; i < n; i++) { const a = t * 1.4 + i / n * Math.PI * 2; if (Math.sin(a) < 0) continue; const on = 0.5 + 0.5 * Math.sin(t * 7 + i * 1.9);
+    ctx.fillStyle = i % 2 ? `rgba(190,110,255,${on})` : `rgba(150,255,120,${on})`; ctx.beginPath(); ctx.arc(Math.cos(a) * W * 0.36, H * 0.22 + Math.sin(a) * H * 0.1, Math.max(1, W * 0.012), 0, 7); ctx.fill(); }
+  if (u.type === 'mothership') { const have = u.docked || 0, mini = getSprite('gs_small', 0);
+    BAYS.forEach(([bx, by], i) => { const x = bx * W, yy = -H / 2 + by * H, bw = W * 0.05, bh = bw * 0.38;
+      ctx.fillStyle = 'rgba(8,8,12,0.92)'; ctx.beginPath(); ctx.ellipse(x, yy, bw, bh, 0, 0, 7); ctx.fill(); // recessed bay
+      ctx.strokeStyle = 'rgba(200,190,170,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, yy + 0.5, bw, bh, 0, 0.1, Math.PI - 0.1); ctx.stroke(); // lit lower lip
+      if (i < have && mini) { ctx.save(); ctx.beginPath(); ctx.ellipse(x, yy, bw * 0.95, bh * 1.15, 0, 0, 7); ctx.clip();
+        const mw = bw * 1.7; ctx.drawImage(mini.img, x - mw / 2, yy - mw * mini.aspect * 0.35, mw, mw * mini.aspect); ctx.restore(); }
+      else { ctx.fillStyle = `rgba(150,255,120,${0.25 + 0.2 * Math.sin(t * 4 + i)})`; ctx.beginPath(); ctx.ellipse(x, yy, bw * 0.5, bh * 0.4, 0, 0, 7); ctx.fill(); } }); }
+  ctx.restore();
+  if (u.type === 'minisaucer' && u.docked) { ctx.fillStyle = '#eaf6ff'; for (let i = 0; i < u.docked; i++) { ctx.beginPath(); ctx.arc(u.x - 4 + i * 4, y + H * 0.5 + 3, 1.3, 0, 7); ctx.fill(); } }
+  return y - H / 2 - 2; }
+function drawSaucerVec(ctx, u, t, R) {
   const id = u.id || 0, alt = 26 + R * 0.5 + Math.sin(t * 1.8 + id) * 2.5, tilt = Math.sin(t * 1.3 + id * 2) * 0.07 + Math.cos(u.angle || 0) * 0.04, y = u.y - alt;
   shadow(ctx, u.x, u.y + 2, R * 0.9, R * 0.28, 0.22);
   if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, y, b.x, b.y); gr.addColorStop(0, 'rgba(120,255,110,0.75)'); gr.addColorStop(1, 'rgba(120,255,110,0.18)');
