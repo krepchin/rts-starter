@@ -41,7 +41,14 @@ export function drawMorphing(ctx, b, t, g) {
 
 // ---- walls: riveted armored slabs, yellow hazard stripes, green conduits; auto-connect to neighbouring walls/gates
 function link(g, b, dx, dy) { return !!(g && g.wallAt(b.team, b.tx + dx, b.ty + dy)); }
-function slab(ctx, x, y, w, h, dmg, t, glow) {
+// v10.1 per-faction wall materials: human concrete + hazard stripe, reptile hide over bone ribs, nordic white ashlar + gold band, grey brushed silver + purple seam
+const WALLP = { human: { a: '#77756a', b: '#4a4940', lit: '#8e8b7d', band: '#c9a227', dark: '#1e1d1a', glow: 'rgba(110,255,90,', gc: '#6f4' },
+  reptile: { a: '#8f7d4c', b: '#4d4426', lit: '#e3d6aa', band: '#d9cb9c', dark: '#3a2e18', glow: 'rgba(150,255,80,', gc: '#9f4' },
+  nordic: { a: '#fbf8ef', b: '#cfc5ad', lit: '#ffffff', band: '#d9b04a', dark: '#b39548', glow: 'rgba(255,240,180,', gc: '#fe9' },
+  grey: { a: '#d5d9e0', b: '#737884', lit: '#f6f8fb', band: '#8b5bdc', dark: '#4a4e58', glow: 'rgba(185,120,255,', gc: '#b7f' } };
+let WF = 'human';
+const facOf = (g, b) => (g && g.teams && g.teams[b.team] && g.teams[b.team].faction) || 'human';
+function slab(ctx, x, y, w, h, dmg, t, glow) { if (WF !== 'human') return slabF(ctx, x, y, w, h, dmg, t, glow, WALLP[WF]);
   ctx.fillStyle = '#0006'; ctx.fillRect(x + 3, y + 4, w, h);
   const gr = ctx.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#77756a'); gr.addColorStop(1, '#4a4940'); ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
   ctx.fillStyle = '#8e8b7d'; ctx.fillRect(x, y, w, 3); // lit top edge
@@ -52,7 +59,30 @@ function slab(ctx, x, y, w, h, dmg, t, glow) {
   if (dmg > 0.33) { ctx.strokeStyle = '#1b1a16'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + w * 0.3, y + 3); ctx.lineTo(x + w * 0.45, y + h * 0.5); ctx.lineTo(x + w * 0.35, y + h - 6); ctx.stroke(); ctx.lineWidth = 1; }
   if (dmg > 0.66) { ctx.fillStyle = '#2a2620'; ctx.beginPath(); ctx.moveTo(x + w * 0.6, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h * 0.45); ctx.closePath(); ctx.fill(); }
 }
-export function drawWall(ctx, b, t, g) {
+function slabF(ctx, x, y, w, h, dmg, t, glow, P) {
+  ctx.fillStyle = '#0005'; ctx.fillRect(x + 3, y + 4, w, h);
+  if (WF === 'reptile') { // stretched hide between bone ribs, tusk tips along the top
+    ctx.fillStyle = lg9(ctx, x, y, x, y + h, [P.a, P.b]); ctx.beginPath(); ctx.moveTo(x, y + 3); for (let k = 0; k <= w; k += 8) ctx.quadraticCurveTo(x + k - 4, y + 7, x + k, y + 3); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,45,20,0.45)'; for (let k = 3; k < w; k += 5) { ctx.beginPath(); ctx.arc(x + k, y + h * 0.55 + (k % 2) * 3, 2.5, 0.2, Math.PI - 0.2); ctx.stroke(); }
+    ctx.fillStyle = P.band; for (let k = 0; k <= w; k += 8) { ctx.fillRect(x + k - 1.5, y + 2, 3, h - 2); ctx.beginPath(); ctx.moveTo(x + k - 2, y + 3); ctx.lineTo(x + k + 1, y - 5); ctx.lineTo(x + k + 2, y + 3); ctx.fill(); } }
+  else if (WF === 'nordic') { // dressed white ashlar blocks with a gold band
+    ctx.fillStyle = lg9(ctx, x, y, x, y + h, [P.a, P.b]); ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(140,125,90,0.45)'; ctx.lineWidth = 0.8;
+    for (let r = 0; r < 3; r++) { const yy = y + 3 + r * (h - 3) / 3; ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); for (let k = (r % 2) * 5; k < w; k += 10) { ctx.beginPath(); ctx.moveTo(x + k, yy); ctx.lineTo(x + k, yy + (h - 3) / 3); ctx.stroke(); } }
+    ctx.lineWidth = 1; ctx.fillStyle = P.lit; ctx.fillRect(x, y, w, 3); ctx.fillStyle = P.band; ctx.fillRect(x, y + 3, w, 2); ctx.fillRect(x, y + h - 4, w, 1.5); }
+  else { // grey: one seamless brushed-silver extrusion with rounded top and a purple light seam
+    ctx.fillStyle = lg9(ctx, x, y, x, y + h, [P.lit, P.a, P.b]); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, [6, 6, 2, 2]) : ctx.rect(x, y, w, h); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.moveTo(x + 3, y + 2.5); ctx.lineTo(x + w - 3, y + 2.5); ctx.stroke();
+    ctx.fillStyle = `rgba(185,120,255,${0.6 + 0.3 * Math.sin(t * 3)})`; ctx.fillRect(x + 1, y + h * 0.6, w - 2, 1.8); }
+  if (glow) { ctx.fillStyle = `${P.glow}${0.45 + 0.25 * Math.sin(t * 3)})`; ctx.shadowColor = P.gc; ctx.shadowBlur = 5; ctx.fillRect(x + 2, y + h * 0.42, w - 4, 1.6); ctx.shadowBlur = 0; }
+  if (dmg > 0.33) { ctx.strokeStyle = 'rgba(30,26,18,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + w * 0.3, y + 3); ctx.lineTo(x + w * 0.45, y + h * 0.5); ctx.lineTo(x + w * 0.35, y + h - 6); ctx.stroke(); ctx.lineWidth = 1; }
+}
+const lg9 = (ctx, x0, y0, x1, y1, st) => { const gr = ctx.createLinearGradient(x0, y0, x1, y1); st.forEach((c, i) => gr.addColorStop(i / Math.max(1, st.length - 1), c)); return gr; };
+function postF(ctx, X, top, H, team, t) { const P = WALLP[WF];
+  if (WF === 'reptile') { ctx.fillStyle = P.band; ctx.beginPath(); ctx.moveTo(X + 11, top + H); ctx.quadraticCurveTo(X + 10, top - 4, X + 17, top - 10); ctx.quadraticCurveTo(X + 16, top, X + 21, top + H); ctx.fill(); ctx.strokeStyle = '#7a6a44'; ctx.stroke(); }
+  else if (WF === 'nordic') { ctx.fillStyle = lg9(ctx, X + 10, 0, X + 22, 0, ['#e3dac4', '#fffdf6', '#bdb29a']); ctx.beginPath(); ctx.moveTo(X + 11, top + H); ctx.lineTo(X + 12, top - 2); ctx.lineTo(X + 16, top - 10); ctx.lineTo(X + 20, top - 2); ctx.lineTo(X + 21, top + H); ctx.fill(); ctx.fillStyle = P.band; ctx.beginPath(); ctx.moveTo(X + 12, top - 2); ctx.lineTo(X + 16, top - 11); ctx.lineTo(X + 20, top - 2); ctx.fill(); }
+  else { ctx.fillStyle = lg9(ctx, X + 10, 0, X + 22, 0, ['#9aa0ab', '#f4f6fa', '#646975']); ctx.fillRect(X + 12, top - 2, 8, H + 2); const g = ctx.createRadialGradient(X + 15, top - 6, 0, X + 16, top - 5, 7); g.addColorStop(0, '#fff'); g.addColorStop(0.5, '#c9a6ff'); g.addColorStop(1, 'rgba(140,80,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X + 16, top - 5, 7, 0, 7); ctx.fill(); }
+  ctx.fillStyle = TEAM_COLORS[team]; ctx.fillRect(X + 14, top + H - 6, 4, 3); }
+export function drawWall(ctx, b, t, g) { WF = facOf(g, b); if (WF !== 'human') { drawWallF(ctx, b, t, g); WF = 'human'; return; }
   const X = b.tx * TILE, Y = b.ty * TILE, dmg = 1 - b.hp / b.stats.hp, H = 22, top = Y + TILE - H - 2;
   const n = link(g, b, 0, -1), s = link(g, b, 0, 1), e = link(g, b, 1, 0), w = link(g, b, -1, 0);
   if (n) slab(ctx, X + 9, Y - 4, 14, TILE - H + 6, dmg, t, false);
@@ -62,8 +92,31 @@ export function drawWall(ctx, b, t, g) {
   if ((n || s) && (e || w) || (!e && !w)) { ctx.fillStyle = '#5c5a50'; ctx.fillRect(X + 10, top - 4, 12, H + 4); ctx.fillStyle = '#9a9686'; ctx.fillRect(X + 10, top - 4, 12, 3);
     ctx.fillStyle = TEAM_COLORS[b.team]; ctx.fillRect(X + 14, top + 2, 4, 3); }
 }
+function drawWallF(ctx, b, t, g) {
+  const X = b.tx * TILE, Y = b.ty * TILE, dmg = 1 - b.hp / b.stats.hp, H = 22, top = Y + TILE - H - 2;
+  const n = link(g, b, 0, -1), s = link(g, b, 0, 1), e = link(g, b, 1, 0), w = link(g, b, -1, 0);
+  if (n) slab(ctx, X + 9, Y - 4, 14, TILE - H + 6, dmg, t, false);
+  const l = w ? X : X + 6, r = e ? X + TILE : X + TILE - 6; slab(ctx, l, top, r - l, H, dmg, t, e || w);
+  if (s && !e && !w) slab(ctx, X + 9, top + H - 4, 14, 8, dmg, t, false);
+  if ((n || s) && (e || w) || (!e && !w)) postF(ctx, X, top, H, b.team, t);
+}
+// faction gates: reptile = ribcage jaws that part, nordic = gold-framed white arch with light curtain, grey = iris of silver petals
+function drawGateF(ctx, b, t, g) {
+  const X = b.tx * TILE, Y = b.ty * TILE, k = b.openK || 0, H = 26, top = Y + TILE - H - 2, P = WALLP[WF], cx = X + TILE / 2;
+  ctx.fillStyle = '#0005'; ctx.fillRect(X + 2, top + 4, TILE, H);
+  if (WF === 'reptile') { for (const sd of [-1, 1]) { ctx.fillStyle = P.band; ctx.beginPath(); ctx.moveTo(cx + sd * 15, top + H); ctx.quadraticCurveTo(cx + sd * 17, top - 6, cx + sd * 8, top - 10); ctx.quadraticCurveTo(cx + sd * 12, top, cx + sd * 11, top + H); ctx.fill(); }
+    for (let i = 0; i < 4; i++) for (const sd of [-1, 1]) { const y = top + 2 + i * 6, len = (10 - i) * (1 - k * 0.9); ctx.strokeStyle = P.band; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + sd * 12, y); ctx.quadraticCurveTo(cx + sd * (12 - len * 0.6), y - 2, cx + sd * (12 - len), y + 2); ctx.stroke(); } ctx.lineWidth = 1; }
+  else if (WF === 'nordic') { ctx.fillStyle = lg9(ctx, 0, top - 8, 0, top + H, [P.a, P.b]); ctx.fillRect(X, top - 4, 6, H + 4); ctx.fillRect(X + TILE - 6, top - 4, 6, H + 4);
+    ctx.strokeStyle = P.band; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, top + 4, TILE / 2 - 3, Math.PI, 0); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillStyle = `rgba(255,244,200,${(1 - k) * (0.45 + 0.2 * Math.sin(t * 4))})`; ctx.fillRect(X + 6, top + 4, TILE - 12, H - 4); }
+  else { ctx.fillStyle = lg9(ctx, 0, top, 0, top + H, ['#f4f6fa', '#9aa0ab', '#555a65']); ctx.beginPath(); ctx.ellipse(cx, top + H / 2, TILE / 2, H / 2 + 2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1a1922'; ctx.beginPath(); ctx.ellipse(cx, top + H / 2, (TILE / 2 - 4) * k, (H / 2 - 2) * k, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,60,72,0.7)'; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + k * 1.2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (TILE / 2 - 4) * k, top + H / 2 + Math.sin(a) * (H / 2 - 2) * k); ctx.lineTo(cx + Math.cos(a + 0.6) * (TILE / 2 - 2), top + H / 2 + Math.sin(a + 0.6) * (H / 2)); ctx.stroke(); }
+    ctx.strokeStyle = `rgba(185,120,255,${0.6 + 0.3 * Math.sin(t * 3)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, top + H / 2, TILE / 2 - 1, H / 2 + 1, 0, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+  const on = b.locked ? '#f43' : k > 0.5 ? '#5f5' : '#fb3'; ctx.fillStyle = on; ctx.beginPath(); ctx.arc(cx, top - 12, 2.2, 0, 7); ctx.fill();
+}
 // ---- gate: hydraulic blast doors in a wall line; doors slide apart by openK; red/green status light, padlock when locked
-export function drawGate(ctx, b, t, g) {
+export function drawGate(ctx, b, t, g) { WF = facOf(g, b); if (WF !== 'human') { drawGateF(ctx, b, t, g); WF = 'human'; return; }
   const X = b.tx * TILE, Y = b.ty * TILE, k = b.openK || 0, H = 26, top = Y + TILE - H - 2, dmg = 1 - b.hp / b.stats.hp;
   ctx.fillStyle = '#0006'; ctx.fillRect(X + 2, top + 4, TILE, H);
   ctx.fillStyle = '#3a3933'; ctx.fillRect(X, top - 4, 5, H + 4); ctx.fillRect(X + TILE - 5, top - 4, 5, H + 4); // frame pillars

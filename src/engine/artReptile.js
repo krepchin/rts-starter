@@ -15,6 +15,8 @@ const HOVER_GLOW = { nordic: 'rgba(255,245,200,0.5)', grey: 'rgba(190,120,255,0.
 export const isFactionArt = type => !!SPR[type] || ['egg', 'broodship', 'grazer', 'buggy', 'truck', 'bike', 'probe', 'orbling', 'minisaucer', 'scoutsaucer', 'warsaucer', 'saucer', 'mothership'].includes(type);
 const TEAMC = { 0: '#3fa9ff', 1: '#ff4a3a' };
 function shadow(ctx, x, y, rx, ry, a = 0.3) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); }
+// v10.1 air depth: sun from upper-left, so a craft's ground shadow slides down-right and softens/shrinks with altitude
+function airShadow(ctx, x, gy, rx, ry, alt) { const k = Math.min(1, alt / 60), ox = alt * 0.55, oy = alt * 0.22; ctx.fillStyle = `rgba(0,0,0,${0.12 - k * 0.04})`; ctx.beginPath(); ctx.ellipse(x + ox, gy + oy, rx * (1.15 - k * 0.15), ry * (1.25 - k * 0.15), 0, 0, 7); ctx.fill(); ctx.fillStyle = `rgba(0,0,0,${0.24 - k * 0.08})`; ctx.beginPath(); ctx.ellipse(x + ox, gy + oy, rx * (0.85 - k * 0.15), ry * (0.85 - k * 0.15), 0, 0, 7); ctx.fill(); }
 function glow(ctx, x, y, r, c, a = 1) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(120,255,80,0)'); ctx.globalAlpha *= a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.globalAlpha /= a; }
 
 // returns the top y of the drawn unit (for hp bars)
@@ -26,7 +28,7 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
   if (SPR[tp]) {
     const [name, H] = SPR[tp], hover = UNITS[tp].hover || UNITS[tp].air, sp = getSprite(name, 0);
     let alt = hover ? 12 + Math.sin(t * 3 + (u.id || 0)) * 2.5 : (u.hop || 0), rep = UNITS[tp].faction === 'reptile' && !hover, gp = t * (tp === 'biotank' || tp === 'brute' ? 3.2 : 5) + (u.id || 0), bob = !hover && moving ? Math.abs(Math.sin(gp)) * (rep ? 1.1 : 1.6) : 0;
-    shadow(ctx, u.x, u.y + 1, H * (hover ? 0.42 : 0.35), H * 0.12, hover ? 0.22 : 0.3);
+    if (hover) airShadow(ctx, u.x, u.y + 1, H * 0.42, H * 0.13, 12 + (UNITS[tp].air ? 16 : 0) + alt * 0.2); else shadow(ctx, u.x, u.y + 1, H * 0.35, H * 0.12, 0.3);
     if (u.team !== viewer || true) { ctx.strokeStyle = TEAMC[u.team]; ctx.globalAlpha *= 0.45; ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, H * 0.33, H * 0.11, 0, 0, 7); ctx.stroke(); ctx.globalAlpha /= 0.45; }
     if (UNITS[tp].air) { alt += 16; }
     if (hover) glow(ctx, u.x, u.y - alt - H * 0.4, H * 0.75, HOVER_GLOW[UNITS[tp].faction] || 'rgba(170,255,90,0.45)', 0.7 + 0.3 * Math.sin(t * 5 + (u.id || 0)));
@@ -69,7 +71,7 @@ export function drawFactionUnit(ctx, u, t, viewer = 0) {
 function drawBroodShip(ctx, u, t, face) {
   // v10.1: sprite cut pixel-faithful from Kent's Brood Ship sketch; motion only (hover heave, banking, egg-sac pulse, wing-beat lift)
   const sp = getSprite('rb_brood', 0), id = u.id || 0, beat = Math.sin(t * 2.2 + id), lift = 36 + Math.sin(t * 1.1 + id) * 2.5 + beat * 1.2, x = u.x, y = u.y - lift, W = 150;
-  shadow(ctx, u.x, u.y + 4, 56, 13, 0.24);
+  airShadow(ctx, u.x, u.y + 4, 56, 13, lift);
   const pa = u._pa ?? u.angle ?? 0, da = Math.atan2(Math.sin((u.angle || 0) - pa), Math.cos((u.angle || 0) - pa)); u._pa = u.angle; u._bank = (u._bank || 0) * 0.92 + Math.max(-0.12, Math.min(0.12, da * 3)) * 0.08;
   ctx.save(); ctx.translate(x, y); ctx.rotate(u._bank + Math.sin(t * 0.8 + id) * 0.025); ctx.scale(face, 1);
   if (sp) { const H = W * sp.aspect; ctx.drawImage(sp.img, -W / 2, -H * 0.62, W, H);
@@ -208,20 +210,78 @@ export function drawZone(ctx, z, t) {
 const PADS = { nordic: { a: '#e8e2d0', b: '#b9ad8a', ring: '#e6c35a', glow: 'rgba(255,240,190,0.55)' }, grey: { a: '#3a3a40', b: '#1c1c22', ring: '#a46cff', glow: 'rgba(150,255,110,0.45)' } };
 const ART_SCALE = { n_spire: 0.75, n_crystal: 0.8, g_orb: 0.8, g_hive: 1.05, g_dome: 1.15, n_skiff: 1.15, n_lightcraft: 1.2, g_saucer: 1.15 };
 export function drawAlienBuilding(ctx, b, t) {
-  const s = b.stats, P = PADS[s.faction], X = b.tx * TILE, Y = b.ty * TILE, W = b.w * TILE, H = b.h * TILE, cx = X + W / 2, built = Math.min(1, (b.age ?? 9) / 0.8), p = 0.5 + 0.5 * Math.sin(t * 2 + (b.id || 0));
-  shadow(ctx, cx + 4, Y + H - 6, W * 0.52, H * 0.26, 0.35);
-  const g = ctx.createLinearGradient(X, Y, X + W, Y + H); g.addColorStop(0, P.a); g.addColorStop(1, P.b);
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, Y + H * 0.62, W * 0.48, H * 0.34, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = P.ring; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5 + 0.4 * p; ctx.beginPath(); ctx.ellipse(cx, Y + H * 0.62, W * 0.4, H * 0.27, 0, 0, 7); ctx.stroke();
-  for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283 + t * 0.3; ctx.fillStyle = P.ring; ctx.fillRect(cx + Math.cos(a) * W * 0.4 - 1, Y + H * 0.62 + Math.sin(a) * H * 0.27 - 1, 2, 2); }
-  ctx.globalAlpha = 1; ctx.lineWidth = 1;
-  const sp = getSprite(s.art, 0);
-  if (sp) { const k = ART_SCALE[s.art] || 1, sw0 = W * 0.95 * k, sh0 = sw0 * sp.aspect, sh = Math.min(sh0, H * 2.1 * k), sw = sh / sp.aspect;
-    glow(ctx, cx, Y + H * 0.5, W * 0.55, P.glow, 0.5 + 0.4 * p);
-    ctx.save(); ctx.translate(cx, Y + H * 0.8); if (b.faceRight === false) ctx.scale(-1, 1); ctx.scale(1, built);
-    if (b.powered === false) ctx.filter = 'brightness(0.55)'; ctx.drawImage(sp.img, -sw / 2, -sh, sw, sh); ctx.filter = 'none'; ctx.restore(); }
-  ctx.fillStyle = TEAMC[b.team] || '#fff'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(cx, Y + H - 4, 2.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
-  if (s.weapon && b.flash > 0 && b.target) { ctx.strokeStyle = s.weapon.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, Y - 6); ctx.lineTo(b.target.x, b.target.y); ctx.stroke(); ctx.lineWidth = 1; }
+  // v10.1: every Nordic / Grey structure has its own procedural architecture (no shared or unit sprites):
+  // Nordics = white marble + gold trim, stepped plinths, spires, arches and floating crystals; Greys = brushed silver domes & discs, purple light seams.
+  const s = b.stats, X = b.tx * TILE, Y = b.ty * TILE, W = b.w * TILE, H = b.h * TILE, cx = X + W / 2, gy = Y + H - 4, id = b.id || 0, p = 0.5 + 0.5 * Math.sin(t * 2 + id), off = b.powered === false;
+  shadow(ctx, cx + 6, gy - 2, W * 0.5, H * 0.22, 0.32);
+  if (s.faction === 'nordic') nordicBuilding(ctx, b.type, X, Y, W, H, cx, gy, t, p, off); else greyBuilding(ctx, b.type, X, Y, W, H, cx, gy, t, p, off);
+  ctx.fillStyle = TEAMC[b.team] || '#fff'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(X + 6, gy - 1, 2.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  if (s.weapon && b.flash > 0 && b.target) { ctx.strokeStyle = s.weapon.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, Y - 16); ctx.lineTo(b.target.x, b.target.y); ctx.stroke(); ctx.lineWidth = 1; }
+}
+const lg = (ctx, x0, y0, x1, y1, stops) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g; };
+// ---- Nordic: marble + gold
+const MARB = ['#fbf8ef', '#e4dccb', '#b8ad94'], GOLD = '#d9b04a', GOLDL = '#f6dc8a';
+function plinth(ctx, cx, gy, w, steps = 2, sh = 5) { for (let i = 0; i < steps; i++) { const ww = w * (1 - i * 0.14), y = gy - (i + 1) * sh;
+    ctx.fillStyle = lg(ctx, 0, y, 0, y + sh, ['#fffdf6', '#cfc5ad']); ctx.fillRect(cx - ww / 2, y, ww, sh); ctx.fillStyle = 'rgba(120,105,70,0.35)'; ctx.fillRect(cx - ww / 2, y + sh - 1, ww, 1); }
+  ctx.fillStyle = GOLD; ctx.fillRect(cx - w * (1 - (steps - 1) * 0.14) / 2, gy - steps * sh, w * (1 - (steps - 1) * 0.14), 1.5); return gy - steps * sh; }
+function spireN(ctx, x, base, h, w) { ctx.fillStyle = lg(ctx, x - w, 0, x + w, 0, ['#fffef8', '#e6ddc8', '#a99d82']); ctx.beginPath(); ctx.moveTo(x - w, base); ctx.lineTo(x - w * 0.55, base - h * 0.85); ctx.lineTo(x, base - h); ctx.lineTo(x + w * 0.55, base - h * 0.85); ctx.lineTo(x + w, base); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(110,95,60,0.5)'; ctx.lineWidth = 0.8; ctx.stroke(); ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(x - w * 0.55, base - h * 0.85); ctx.lineTo(x, base - h - 3); ctx.lineTo(x + w * 0.55, base - h * 0.85); ctx.closePath(); ctx.fill(); ctx.fillRect(x - w, base - h * 0.35, w * 2, 1.4); }
+function crystalN(ctx, x, y, r, t, p) { glow(ctx, x, y, r * 2.6, `rgba(190,235,255,${0.3 + p * 0.25})`); ctx.fillStyle = lg(ctx, x - r, y - r * 1.6, x + r, y + r, ['#ffffff', '#bfe8ff', '#6fb3e0']);
+  ctx.beginPath(); ctx.moveTo(x, y - r * 1.7); ctx.lineTo(x + r, y - r * 0.2); ctx.lineTo(x, y + r * 1.1); ctx.lineTo(x - r, y - r * 0.2); ctx.closePath(); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, y - r * 1.7); ctx.lineTo(x, y + r * 1.1); ctx.stroke(); }
+function column(ctx, x, top, base, w) { ctx.fillStyle = lg(ctx, x - w, 0, x + w, 0, ['#d9d0bb', '#fffdf5', '#bdb29a']); ctx.fillRect(x - w, top, w * 2, base - top); ctx.fillStyle = GOLD; ctx.fillRect(x - w - 1, top - 2, w * 2 + 2, 2); ctx.fillRect(x - w - 1, base - 2, w * 2 + 2, 2); }
+function nordicBuilding(ctx, ty, X, Y, W, H, cx, gy, t, p, off) {
+  const fl = off ? 0.3 : 1, bob = Math.sin(t * 1.5 + cx) * 2;
+  switch (ty) {
+    case 'sanctum': { const top = plinth(ctx, cx, gy, W * 0.95, 3, 6); for (const dx of [-0.36, 0.36]) spireN(ctx, cx + dx * W, top, H * 0.75, 6); for (const dx of [-0.18, 0.18]) spireN(ctx, cx + dx * W, top, H * 0.55, 5);
+      spireN(ctx, cx, top, H * 0.3, W * 0.2); crystalN(ctx, cx, top - H * 0.55 + bob, 9, t, p * fl); break; }
+    case 'lightwell': { const top = plinth(ctx, cx, gy, W * 0.8, 2, 5); ctx.fillStyle = lg(ctx, 0, top - 14, 0, top, MARB); ctx.beginPath(); ctx.ellipse(cx, top - 6, W * 0.3, 7, 0, 0, 7); ctx.fill(); ctx.fillRect(cx - W * 0.3, top - 6, W * 0.6, 6);
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, top - 6, W * 0.3, 7, 0, 0, 7); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = `rgba(255,248,210,${(0.35 + p * 0.3) * fl})`; ctx.beginPath(); ctx.moveTo(cx - 8, top - 6); ctx.lineTo(cx - 4, Y - H * 0.6); ctx.lineTo(cx + 4, Y - H * 0.6); ctx.lineTo(cx + 8, top - 6); ctx.closePath(); ctx.fill(); glow(ctx, cx, top - 8, 18, `rgba(255,240,180,${0.5 * fl})`); break; }
+    case 'resonator': { const top = plinth(ctx, cx, gy, W * 0.95, 2, 5); for (const dx of [-0.32, 0, 0.32]) { const x = cx + dx * W; column(ctx, x - 5, top - H * 0.6, top, 2); column(ctx, x + 5, top - H * 0.6, top, 2); ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, top - H * 0.6, 5, Math.PI, 0); ctx.stroke(); ctx.lineWidth = 1; }
+      crystalN(ctx, cx - W * 0.16, top - H * 0.42 + bob, 5, t, p * fl); crystalN(ctx, cx + W * 0.16, top - H * 0.42 - bob, 5, t, p * fl); break; }
+    case 'temple': { const top = plinth(ctx, cx, gy, W * 0.95, 3, 4); for (let i = 0; i < 4; i++) column(ctx, cx - W * 0.33 + i * W * 0.22, top - H * 0.5, top, 2.6);
+      ctx.fillStyle = lg(ctx, 0, top - H * 0.75, 0, top - H * 0.5, ['#fffdf6', '#d8cfb8']); ctx.beginPath(); ctx.moveTo(cx - W * 0.45, top - H * 0.52); ctx.lineTo(cx, top - H * 0.82); ctx.lineTo(cx + W * 0.45, top - H * 0.52); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; ctx.fillStyle = GOLDL; ctx.beginPath(); ctx.arc(cx, top - H * 0.6, 3, 0, 7); ctx.fill(); break; }
+    case 'forge': { const top = plinth(ctx, cx, gy, W * 0.95, 2, 6); ctx.fillStyle = lg(ctx, 0, top - H * 0.8, 0, top, MARB); ctx.beginPath(); ctx.moveTo(cx - W * 0.38, top); ctx.lineTo(cx - W * 0.38, top - H * 0.45); ctx.arc(cx, top - H * 0.45, W * 0.38, Math.PI, 0); ctx.lineTo(cx + W * 0.38, top); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#4a4f63'; ctx.beginPath(); ctx.moveTo(cx - W * 0.22, top); ctx.lineTo(cx - W * 0.22, top - H * 0.4); ctx.arc(cx, top - H * 0.4, W * 0.22, Math.PI, 0); ctx.lineTo(cx + W * 0.22, top); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, top - H * 0.45, W * 0.38, Math.PI, 0); ctx.stroke(); ctx.lineWidth = 1; glow(ctx, cx, top - H * 0.25, W * 0.2, `rgba(255,220,140,${(0.4 + 0.3 * p) * fl})`); crystalN(ctx, cx, top - H * 0.98 + bob, 7, t, p * fl); break; }
+    case 'oracle': { const top = plinth(ctx, cx, gy, W * 0.7, 2, 5); spireN(ctx, cx, top, H * 1.15, 5); const a = t * 1.2; ctx.strokeStyle = 'rgba(217,176,74,0.7)'; ctx.beginPath(); ctx.ellipse(cx, top - H * 0.9, 14, 4, 0, 0, 7); ctx.stroke();
+      crystalN(ctx, cx + Math.cos(a) * 14, top - H * 0.9 + Math.sin(a) * 4, 3.5, t, p * fl); break; }
+    case 'skygate': { const top = plinth(ctx, cx, gy, W * 0.95, 2, 5); ctx.strokeStyle = lg(ctx, cx - W * 0.4, 0, cx + W * 0.4, 0, ['#c9a23f', '#ffe9a0', '#b28a2e']); ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(cx - W * 0.34, top); ctx.lineTo(cx - W * 0.34, top - H * 0.55); ctx.arc(cx, top - H * 0.55, W * 0.34, Math.PI, 0); ctx.lineTo(cx + W * 0.34, top); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = `rgba(200,235,255,${(0.25 + 0.2 * p) * fl})`; ctx.beginPath(); ctx.moveTo(cx - W * 0.3, top); ctx.lineTo(cx - W * 0.3, top - H * 0.55); ctx.arc(cx, top - H * 0.55, W * 0.3, Math.PI, 0); ctx.lineTo(cx + W * 0.3, top); ctx.closePath(); ctx.fill(); crystalN(ctx, cx, top - H * 0.55 - W * 0.34, 4, t, p * fl); break; }
+    case 'sunlance': { const top = plinth(ctx, cx, gy, W * 0.85, 2, 4); spireN(ctx, cx, top, H * 1.2, 5.5); glow(ctx, cx, top - H * 1.2, 9, `rgba(255,236,160,${(0.5 + 0.4 * p) * fl})`); break; }
+    default: { const top = plinth(ctx, cx, gy, W * 0.8, 2, 5); spireN(ctx, cx, top, H * 0.7, 7); }
+  }
+}
+// ---- Grey: brushed silver domes and discs, purple seams
+const SILV = ['#f4f6fa', '#b9bec8', '#6e7380', '#3b3e47'];
+function dome(ctx, x, base, rx, ry) { ctx.fillStyle = lg(ctx, x - rx, base - ry, x + rx * 0.6, base, SILV); ctx.beginPath(); ctx.ellipse(x, base, rx, ry, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(x, base, rx * 0.78, ry * 0.8, 0, Math.PI * 1.15, Math.PI * 1.45); ctx.stroke(); ctx.lineWidth = 1; }
+function disc(ctx, x, y, rx, ry) { ctx.fillStyle = lg(ctx, 0, y - ry, 0, y + ry, ['#eef1f5', '#a9afb9', '#4d515b']); ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(40,42,50,0.6)'; ctx.stroke(); }
+function seam(ctx, x, y, rx, ry, p, fl) { ctx.strokeStyle = `rgba(178,110,255,${(0.55 + 0.4 * p) * fl})`; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0.05, Math.PI - 0.05); ctx.stroke(); ctx.lineWidth = 1; }
+function lights(ctx, x, y, rx, ry, n, t, fl) { for (let i = 0; i < n; i++) { const a = (i + 0.5) / n * Math.PI, on = (0.5 + 0.5 * Math.sin(t * 5 + i * 1.3)) * fl; ctx.fillStyle = i % 2 ? `rgba(190,120,255,${on})` : `rgba(160,255,130,${on})`; ctx.beginPath(); ctx.arc(x + Math.cos(a) * rx, y + Math.sin(a) * ry, 1.4, 0, 7); ctx.fill(); } }
+function greyBuilding(ctx, ty, X, Y, W, H, cx, gy, t, p, off) {
+  const fl = off ? 0.25 : 1, hov = Math.sin(t * 1.4 + cx) * 2;
+  disc(ctx, cx, gy - 4, W * 0.47, H * 0.2); seam(ctx, cx, gy - 4, W * 0.4, H * 0.15, p, fl); // landing pad every Grey site sits on
+  switch (ty) {
+    case 'nexus': dome(ctx, cx, gy - 6, W * 0.38, H * 0.55); seam(ctx, cx, gy - 6, W * 0.38, H * 0.08, p, fl); disc(ctx, cx, gy - H * 0.82 + hov, W * 0.3, 6); lights(ctx, cx, gy - H * 0.82 + hov, W * 0.28, 4, 8, t, fl);
+      glow(ctx, cx, gy - H * 0.7 + hov, 14, `rgba(170,100,255,${0.4 * fl})`); break;
+    case 'reactor': { ctx.fillStyle = '#4b4f5a'; ctx.fillRect(cx - 3, gy - 22, 6, 18); const y = gy - 26 + hov * 0.5; glow(ctx, cx, y, 20, `rgba(175,95,255,${(0.45 + 0.35 * p) * fl})`);
+      ctx.fillStyle = lg(ctx, cx - 10, y - 10, cx + 8, y + 10, ['#ffffff', '#c9b6ff', '#6b4fb8']); ctx.beginPath(); ctx.arc(cx, y, 10, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(230,230,240,0.8)'; ctx.beginPath(); ctx.ellipse(cx, y, 15, 4, 0.3 + t * 0.5 % 6.28, 0, 7); ctx.stroke(); break; }
+    case 'extractor': dome(ctx, cx - W * 0.12, gy - 6, W * 0.26, H * 0.45); ctx.strokeStyle = '#8c919c'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(cx + W * 0.05, gy - H * 0.3); ctx.quadraticCurveTo(cx + W * 0.36, gy - H * 0.55, cx + W * 0.4, gy - 6); ctx.stroke(); ctx.lineWidth = 1;
+      glow(ctx, cx + W * 0.4, gy - 6, 9, `rgba(150,255,110,${(0.4 + 0.4 * p) * fl})`); lights(ctx, cx - W * 0.12, gy - 8, W * 0.22, 3, 5, t, fl); break;
+    case 'vat': for (const dx of [-0.24, 0, 0.24]) { const x = cx + dx * W, hh = H * 0.55; ctx.fillStyle = 'rgba(160,230,190,0.35)'; ctx.fillRect(x - 6, gy - 8 - hh, 12, hh); ctx.fillStyle = `rgba(130,255,150,${0.35 + 0.2 * p})`; ctx.fillRect(x - 5, gy - 8 - hh * 0.75, 10, hh * 0.75);
+        ctx.fillStyle = 'rgba(80,90,100,0.7)'; ctx.beginPath(); ctx.ellipse(x, gy - 8 - hh * 0.4, 2.5, 4, 0, 0, 7); ctx.fill(); disc(ctx, x, gy - 8 - hh, 7, 2.5); ctx.fillStyle = '#8b5bdc'; ctx.fillRect(x - 6, gy - 9, 12, 2); } break;
+    case 'assembly': disc(ctx, cx, gy - 10, W * 0.42, H * 0.17); dome(ctx, cx + W * 0.16, gy - 12, W * 0.16, H * 0.3); ctx.strokeStyle = '#9aa0ab'; ctx.lineWidth = 3; const ar = Math.sin(t * 1.6) * 0.4; ctx.beginPath(); ctx.moveTo(cx - W * 0.25, gy - 12); ctx.lineTo(cx - W * 0.2, gy - H * 0.55); ctx.lineTo(cx - W * 0.05 + ar * 8, gy - H * 0.45); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = `rgba(200,150,255,${(0.6 + 0.4 * p) * fl})`; ctx.beginPath(); ctx.arc(cx - W * 0.05 + ar * 8, gy - H * 0.45, 2, 0, 7); ctx.fill(); lights(ctx, cx, gy - 10, W * 0.4, H * 0.14, 10, t, fl); break;
+    case 'beacon': ctx.fillStyle = lg(ctx, cx - 3, 0, cx + 3, 0, ['#c9ced8', '#ffffff', '#7d828d']); ctx.fillRect(cx - 2.5, gy - H * 1.05, 5, H * 1.0); for (let i = 0; i < 3; i++) { const y = gy - H * (0.45 + i * 0.25), r = 12 - i * 3; disc(ctx, cx, y, r, r * 0.3); seam(ctx, cx, y, r * 0.8, r * 0.22, Math.sin(t * 4 - i), fl); }
+      glow(ctx, cx, gy - H * 1.08, 10, `rgba(180,110,255,${(0.5 + 0.4 * p) * fl})`); break;
+    case 'hangar': dome(ctx, cx, gy - 6, W * 0.44, H * 0.62); ctx.fillStyle = '#16151d'; ctx.beginPath(); ctx.ellipse(cx, gy - 6, W * 0.22, H * 0.36, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(175,110,255,${(0.3 + 0.3 * p) * fl})`; ctx.fillRect(cx - W * 0.22, gy - 8, W * 0.44, 2); seam(ctx, cx, gy - 6, W * 0.44, H * 0.08, p, fl); break;
+    case 'psitower': { ctx.fillStyle = lg(ctx, cx - 5, 0, cx + 5, 0, ['#a7acb7', '#f5f6fa', '#686d78']); ctx.beginPath(); ctx.moveTo(cx - 6, gy - 6); ctx.lineTo(cx - 2.5, gy - H * 1.0); ctx.lineTo(cx + 2.5, gy - H * 1.0); ctx.lineTo(cx + 6, gy - 6); ctx.closePath(); ctx.fill();
+      const y = gy - H * 1.25 + hov; glow(ctx, cx, y, 12, `rgba(185,110,255,${(0.5 + 0.4 * p) * fl})`); ctx.fillStyle = '#f2e8ff'; ctx.beginPath(); ctx.arc(cx, y, 4, 0, 7); ctx.fill(); break; }
+    default: dome(ctx, cx, gy - 6, W * 0.35, H * 0.4);
+  }
 }
 export const isAlienBuilding = s => s && (s.faction === 'nordic' || s.faction === 'grey');
 
@@ -256,7 +316,7 @@ function drawSaucerSprite(ctx, u, t, R, sp) {
   const id = u.id || 0, W = R * (u.type === 'mothership' ? 3.6 : 2.4), H = W * sp.aspect, alt = 26 + R * 0.5 + Math.sin(t * 1.8 + id) * 2.5, y = u.y - alt;
   const turn = Math.max(-0.12, Math.min(0.12, ((u.angle || 0) - (u._pa ?? u.angle ?? 0)) * 3)); u._pa = u.angle; u._bank = (u._bank || 0) * 0.9 + turn * 0.1;
   const tilt = Math.sin(t * 1.3 + id * 2) * 0.035 + u._bank;
-  ctx.save(); ctx.filter = 'blur(4px)'; ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(u.x + 6, u.y + 4, W * 0.42, W * 0.12, 0, 0, 7); ctx.fill(); ctx.restore();
+  airShadow(ctx, u.x, u.y + 4, W * 0.42, W * 0.12, alt);
   if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, y, b.x, b.y); gr.addColorStop(0, 'rgba(120,255,110,0.75)'); gr.addColorStop(1, 'rgba(120,255,110,0.18)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(u.x - W * 0.12, y + H * 0.35); ctx.lineTo(u.x + W * 0.12, y + H * 0.35); ctx.lineTo(b.x + 15, b.y + 4); ctx.lineTo(b.x - 15, b.y + 4); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(200,255,190,0.5)'; for (let i = 0; i < 3; i++) { const k = (t * 1.5 + i / 3) % 1; ctx.beginPath(); ctx.ellipse(u.x + (b.x - u.x) * k, y + (b.y - y) * k, W * 0.12 + k * 10, 3 + k * 2, 0, 0, 7); ctx.stroke(); } }
@@ -278,7 +338,7 @@ function drawSaucerSprite(ctx, u, t, R, sp) {
   return y - H / 2 - 2; }
 function drawSaucerVec(ctx, u, t, R) {
   const id = u.id || 0, alt = 26 + R * 0.5 + Math.sin(t * 1.8 + id) * 2.5, tilt = Math.sin(t * 1.3 + id * 2) * 0.07 + Math.cos(u.angle || 0) * 0.04, y = u.y - alt;
-  shadow(ctx, u.x, u.y + 2, R * 0.9, R * 0.28, 0.22);
+  airShadow(ctx, u.x, u.y + 2, R * 0.9, R * 0.28, alt);
   if (u.beam && !u.beam.dead) { const b = u.beam, gr = ctx.createLinearGradient(u.x, y, b.x, b.y); gr.addColorStop(0, 'rgba(120,255,110,0.75)'); gr.addColorStop(1, 'rgba(120,255,110,0.18)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(u.x - R * 0.35, y + 4); ctx.lineTo(u.x + R * 0.35, y + 4); ctx.lineTo(b.x + 15, b.y + 4); ctx.lineTo(b.x - 15, b.y + 4); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(200,255,190,0.5)'; for (let i = 0; i < 3; i++) { const k = (t * 1.5 + i / 3) % 1; ctx.beginPath(); ctx.ellipse(u.x + (b.x - u.x) * k, y + (b.y - y) * k, R * 0.35 + k * 10, 3 + k * 2, 0, 0, 7); ctx.stroke(); } }
@@ -293,7 +353,7 @@ function drawSaucerVec(ctx, u, t, R) {
 function drawOrb(ctx, u, t) {
   const id = u.id || 0, big = u.type === 'probe', r = big ? 5 : 3.2, jx = Math.sin(t * 7.3 + id) * 3 + Math.sin(t * 13.1 + id * 3) * 1.5, jy = Math.cos(t * 6.1 + id * 2) * 3;
   const x = u.x + jx, y = u.y - (big ? 26 : 22) + jy;
-  shadow(ctx, u.x, u.y + 1, r * 1.4, r * 0.5, 0.18);
+  airShadow(ctx, u.x, u.y + 1, r * 1.4, r * 0.5, big ? 26 : 22);
   glow(ctx, x, y, r * 4, 'rgba(225,240,255,0.55)', 0.8 + 0.2 * Math.sin(t * 20 + id));
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0.5, x, y, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.7, '#e6f2ff'); g.addColorStop(1, '#9fc6ff');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();

@@ -9,7 +9,14 @@ const NAMES = ['cy', 'tank_hover', 'tank_heavy', 'tank_laser', 'carrier', 'icp_d
   'r_raider', 'r_spitter', 'r_brute', 'r_shaman', 'r_spark', 'r_lance', 'r_hive', 'rb_brood', 'rb_tank', 'rb_grazer', 'carrier_td', 'n_sentinel', 'n_seer', 'n_tallwhite', 'n_guardian', 'n_lightship', 'n_lightcraft', 'n_skiff', 'n_spire', 'n_crystal', 'g_drone', 'g_psionic', 'g_abductor', 'g_hybrid', 'g_crawler', 'g_mothership', 'g_saucer', 'g_orb', 'g_dome', 'g_hive', 'gs_mother', 'gs_saucer', 'gs_small', 'gs_scout', 'gs_orb']; // v10 reptilians, cut from the concept art // v9 painted Base Walker layers (cut from the approved preview)
 const cache = {};
 
-function tinted(img, team, name = '') {
+// v10.1: flyers get baked 3/4 volume shading (sky-lit top, shaded belly, warm rim) so they read as solid craft, not flat cut-outs
+const AIRSHADE = /^(r_spark|r_lance|r_hive|rb_brood|n_skiff|n_lightcraft|n_lightship|g_saucer|gs_mother|gs_saucer|gs_small|gs_scout|icp_)/;
+function shade3d(c) { const x = c.getContext('2d'), h = c.height; x.save(); x.globalCompositeOperation = 'source-atop';
+  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,250,235,0.22)'); g.addColorStop(0.35, 'rgba(255,250,235,0.04)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,8,4,0.42)');
+  x.fillStyle = g; x.fillRect(0, 0, c.width, h); const r = x.createRadialGradient(c.width * 0.3, h * 0.2, 0, c.width * 0.3, h * 0.2, c.width * 0.45); r.addColorStop(0, 'rgba(255,255,240,0.16)'); r.addColorStop(1, 'rgba(255,255,240,0)');
+  x.fillStyle = r; x.fillRect(0, 0, c.width, h); x.restore(); return c; }
+function tinted(img, team, name = '') { const c = tinted0(img, team, name); return AIRSHADE.test(name) ? shade3d(c) : c; }
+function tinted0(img, team, name = '') {
   const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
   const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
   if (name.startsWith('r_') || name.startsWith('rb_') || name.startsWith('n_') || name.startsWith('g_') || name.startsWith('gs_')) return c; // reptilian concept-art cutouts keep their original colours

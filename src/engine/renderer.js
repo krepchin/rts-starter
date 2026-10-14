@@ -12,6 +12,9 @@ import { drawJet, drawBomber, drawRepairGlint } from './art10.js?v=10.0';
 import { getSprite, TANK_VARIANTS, INTERCEPTOR_VARIANTS, NATIVE_RIGHT } from './sprites.js?v=10.0';
 
 // Placeholder vector art. Swap draw* functions for sprites later.
+// v10.1 human structures: orange safety chevrons on the front corners of the concrete apron (faction identity at a glance)
+function humanMarks(ctx, b) { if (b.stats.faction && b.stats.faction !== 'human') return; const X = b.tx * TILE, Y = b.ty * TILE, W = b.w * TILE, H = b.h * TILE; ctx.fillStyle = '#ff8a1e';
+  for (const [x, d] of [[X + 3, 1], [X + W - 3, -1]]) for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.moveTo(x + d * i * 5, Y + H - 3); ctx.lineTo(x + d * (i * 5 + 3), Y + H - 8); ctx.lineTo(x + d * (i * 5 + 5), Y + H - 8); ctx.lineTo(x + d * (i * 5 + 2), Y + H - 3); ctx.closePath(); ctx.fill(); } }
 export class Renderer {
   constructor(canvas, game, camera) { this.c = canvas; this.ctx = canvas.getContext('2d'); this.g = game; this.cam = camera; this.dpr = 1; this.terrain = new Terrain(game.map); }
   resize() {
@@ -97,7 +100,7 @@ export class Renderer {
     if (b.morph || b.unfold) { drawMorphing(ctx, b, t, this.g); return; } // v9 staged transform / reverse unfold
     if (b.stats.wall) drawWall(ctx, b, t, this.g); else if (b.stats.gate) drawGate(ctx, b, t, this.g); else if (b.type === 'turret') drawTurret(ctx, b, t, this.g);
     else if (b.stats.faction === 'reptile') drawOrganic(ctx, b, t);
-    else { const art = () => isAlienBuilding(b.stats) ? drawAlienBuilding(ctx, b, t) : drawBuildingArt(ctx, b, t, this.g);
+    else { const art = () => isAlienBuilding(b.stats) ? drawAlienBuilding(ctx, b, t) : humanMarks(ctx, b, drawBuildingArt(ctx, b, t, this.g));
       if ((b.age ?? 9) < BUILD_T && !b.packing) drawConstruction(ctx, b, t, art, TILE); else art(); }
     if (!b.stats.wall || sel || b.hp < b.stats.hp) this.hpBar(b, x, y - 6, w, sel);
     for (const c of this.g.charges) if (c.b === b) { const on = Math.sin(t * (20 - c.t * 3)) > 0; ctx.fillStyle = on ? '#f33' : '#600'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(c.t), b.x, b.y - 6); }
