@@ -183,7 +183,7 @@ export function drawOrganic(ctx, b, t) {
     ctx.strokeStyle = 'rgba(170,255,110,0.6)'; ctx.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const x = cx - half + (i + 0.5) / 6 * half * 2, w = Math.sin(t * 6 + i * 2) * 4;
       ctx.beginPath(); ctx.moveTo(x, revealY + 8); ctx.quadraticCurveTo(x + w, revealY - 2, x + w * 0.5, revealY - 10 - (i % 3) * 3); ctx.stroke(); }
     ctx.restore(); }
-  else if (age < RISE + 0.5) { const k = 1 - (age - RISE) / 0.5; glow(ctx, cx, Y + H * 0.45, W * (0.8 + (1 - k) * 0.5), `rgba(170,255,90,${0.8 * k})`); } // completion pulse
+  else if (age < RISE + 0.5) { const k = 1 - (age - RISE) / 0.5; glow(ctx, cx, Y + H * 0.45, W * 0.7, `rgba(170,255,90,${0.35 * k})`); } // completion pulse (soft, no size change)
   ctx.fillStyle = b.team === ME ? '#4fa7d8' : '#c8402c'; ctx.fillRect(X + 3, Y + H - 6, 5, 3);
 }
 

@@ -15,7 +15,7 @@ export function drawMorphing(ctx, b, t, g) {
   const m = b.morph || b.unfold, P = m.P ?? 0, i = m.i || 0, robot = m.mode === 'transform';
   const lift = easeOut(clamp(P / 0.2)) * 10;                                   // 1) hydraulic jacks
   const f = easeInOut(clamp((P - 0.2 - i * 0.06) / 0.22));                     // 2) fold, staggered per building
-  const c = clamp((P - 0.5 - i * 0.04) / 0.24), cb = c > 0 ? backOut(c) : 0;   // 3) arc flight with overshoot
+  const c = clamp((P - 0.5 - i * 0.04) / 0.24), cb = c > 0 ? easeInOut(c) : 0;   // 3) arc flight, eased in-out (v10.0: no overshoot)
   const sx = b.x, sy = b.y, ax = m.ax, ay = m.ay;
   const cx = (sx + ax) / 2 + (robot ? (i % 2 ? 30 : -30) : 0), cy = Math.min(sy, ay) - (robot ? 70 : 20);
   const qx = (1 - cb) * (1 - cb) * sx + 2 * (1 - cb) * cb * cx + cb * cb * ax, qy = (1 - cb) * (1 - cb) * sy + 2 * (1 - cb) * cb * cy + cb * cb * ay;

@@ -136,7 +136,7 @@ export class Game {
   }
   placeInstant(team, type, tx, ty) {
     if (!this.canPlaceInstant(team, type, tx, ty)) return false;
-    this.teams[team].credits -= BUILDINGS[type].cost; const b = this.addBuilding(type, team, tx, ty); b.age = BUILDINGS[type].faction === 'reptile' ? 0 : 0.6;
+    this.teams[team].credits -= BUILDINGS[type].cost; const b = this.addBuilding(type, team, tx, ty); b.age = 0;
     if (team === this.me) this.sfx?.('wall'); return b;
   }
   // Tiles of a straight wall line from (x0,y0) to (x1,y1) (dominant axis), for drag placement.

@@ -3,6 +3,7 @@ import { TILE, TEAM_COLORS, BUILDINGS } from '../data/stats.js?v=10.0';
 import { drawBuildingArt } from './buildingArt.js?v=10.0';
 import { Terrain } from '../world/terrain.js?v=10.0';
 import { drawMobileBase } from './mcvArt.js?v=10.0';
+import { drawConstruction, BUILD_T } from './construct.js?v=10.0';
 import { nightGround, nightLights } from './night.js?v=10.0';
 import { drawFactionUnit, drawOrganic, drawFx, drawZone, isFactionArt, drawAlienBuilding, isAlienBuilding } from './artReptile.js?v=10.0';
 import { drawMorphing, drawWall, drawGate, drawTurret, drawTrooper, drawCrystalCluster, drawDropship, SEL, MUZZLE } from './art9.js?v=10.0';
@@ -96,8 +97,8 @@ export class Renderer {
     if (b.morph || b.unfold) { drawMorphing(ctx, b, t, this.g); return; } // v9 staged transform / reverse unfold
     if (b.stats.wall) drawWall(ctx, b, t, this.g); else if (b.stats.gate) drawGate(ctx, b, t, this.g); else if (b.type === 'turret') drawTurret(ctx, b, t, this.g);
     else if (b.stats.faction === 'reptile') drawOrganic(ctx, b, t);
-    else if (isAlienBuilding(b.stats)) drawAlienBuilding(ctx, b, t);
-    else drawBuildingArt(ctx, b, t, this.g);
+    else { const art = () => isAlienBuilding(b.stats) ? drawAlienBuilding(ctx, b, t) : drawBuildingArt(ctx, b, t, this.g);
+      if ((b.age ?? 9) < BUILD_T && !b.packing) drawConstruction(ctx, b, t, art, TILE); else art(); }
     if (!b.stats.wall || sel || b.hp < b.stats.hp) this.hpBar(b, x, y - 6, w, sel);
     for (const c of this.g.charges) if (c.b === b) { const on = Math.sin(t * (20 - c.t * 3)) > 0; ctx.fillStyle = on ? '#f33' : '#600'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(c.t), b.x, b.y - 6); }
     if (sel) { ctx.strokeStyle = SEL; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(b.x, y + h * 0.62, w * 0.62, h * 0.42, 0, 0, 7); ctx.stroke();
